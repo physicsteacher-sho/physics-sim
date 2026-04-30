@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>斜面との衝突 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#2a3441; --blue:#2f81f7; --blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15); --green:#3fb950;
+    --orange:#e07b39; --red:#f85149; --pink:#d2a8ff;
+    --text:#e6edf3; --text-muted:#7d8590; --text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--blue-dim);text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;letter-spacing:.02em;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+
+  .sim-body{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 57px);}
+
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .panel-section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:12px;}
+
+  .slider-group{display:flex;flex-direction:column;gap:14px;}
+  .slider-row{display:flex;flex-direction:column;gap:6px;}
+  .slider-header{display:flex;justify-content:space-between;align-items:baseline;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);font-size:12px;}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);transition:box-shadow .15s;}
+  input[type=range]:disabled{opacity:.4;pointer-events:none;}
+
+  .btn-group{display:flex;flex-direction:column;gap:8px;}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;text-align:left;transition:background .15s,border-color .15s;display:flex;align-items:center;gap:8px;}
+  .btn:hover{background:var(--blue-glow);border-color:var(--blue);}
+  .btn:disabled{opacity:.4;pointer-events:none;}
+  .btn-icon{width:20px;height:20px;border-radius:4px;background:var(--blue-dim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--blue);font-family:var(--mono);flex-shrink:0;}
+
+  .btn-start{background:var(--blue-dim);border-color:var(--blue);color:var(--text);justify-content:center;font-weight:700;font-size:14px;padding:12px;}
+  .btn-start:hover{background:var(--blue);border-color:var(--blue);}
+  .btn-reset{background:transparent;color:var(--text-muted);border-color:var(--border);font-size:12px;justify-content:center;}
+  .btn-reset:hover{color:var(--text);background:var(--surface2);}
+  .btn-toggle{background:var(--surface2);border-color:var(--border);color:var(--text-muted);font-size:13px;justify-content:space-between;}
+  .btn-toggle.on{background:var(--blue-glow);border-color:var(--blue);color:var(--text);}
+  .toggle-pip{width:28px;height:16px;border-radius:8px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0;}
+  .btn-toggle.on .toggle-pip{background:var(--blue);}
+  .toggle-pip::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
+  .btn-toggle.on .toggle-pip::after{left:15px;}
+
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;letter-spacing:.05em;}
+  .metric-value{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text);}
+  .metric-value.highlight{color:var(--green);}
+  .metric-value.warn{color:var(--orange);}
+
+  /* タブUI */
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;transition:color .15s,border-color .15s;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:16px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+
+  .sim-canvas-area{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;}
+  canvas{display:block;border-radius:8px;border:1px solid var(--border);max-width:100%;max-height:100%;}
+</style>
+</head>
+<body>
+
+<header class="sim-header">
+  <span class="sim-badge">力学</span>
+  <h1 class="sim-title">斜面との衝突</h1>
+  <span class="sim-subtitle">Physics Simulation v1.0</span>
+  <button onclick="toggleFullscreen()" style="margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">⛶ 全画面</button>
+</header>
+
+<div class="sim-body">
+  <aside class="sim-panel">
+
+    <!-- タブバー -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-settings', this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-control', this)">操作</button>
+      <button class="tab-btn" onclick="switchTab('tab-display', this)">表示</button>
+    </div>
+
+    <!-- 設定タブ -->
+    <div class="tab-content active" id="tab-settings">
+      <div class="panel-section-label">初速度・重力</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>u</em>　x成分の初速度</span>
+            <span class="slider-value" id="u-label">4.0</span>
+          </div>
+          <input type="range" id="u-slider" min="0.5" max="14.9" value="4" step="0.1">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>v</em>　y成分の初速度</span>
+            <span class="slider-value" id="v-label">12.0</span>
+          </div>
+          <input type="range" id="v-slider" min="2" max="20" value="12" step="0.1">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>g</em>　重力加速度</span>
+            <span class="slider-value" id="g-label">9.8</span>
+          </div>
+          <input type="range" id="g-slider" min="9" max="10" value="9.8" step="0.1">
+        </div>
+      </div>
+
+      <div class="panel-section-label" style="margin-top:8px;">条件セット</div>
+      <div class="btn-group">
+        <button class="btn" id="btn-perp" onclick="applyPerp()">
+          <span class="btn-icon">(2)</span>垂直衝突　u/v = 1/3
+        </button>
+        <button class="btn" id="btn-maxoa" onclick="applyMaxOA()">
+          <span class="btn-icon">(3)</span>OA最大　u = v/2
+        </button>
+      </div>
+
+      <div class="panel-section-label" style="margin-top:8px;">計測値</div>
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-label">t₁</div>
+          <div class="metric-value" id="t1-val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">OA</div>
+          <div class="metric-value" id="oa-val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">速度 (vₓ, vᵧ)</div>
+          <div class="metric-value" id="vel-val">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">垂直判定</div>
+          <div class="metric-value" id="perp-val">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作タブ -->
+    <div class="tab-content" id="tab-control">
+      <div class="panel-section-label">再生</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn btn-start" id="btn-start" onclick="startAnim()" style="justify-content:center;">▶ 発射</button>
+        <button class="btn" id="btn-pause" onclick="togglePause()" disabled style="justify-content:center;">⏸ 一時停止</button>
+      </div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">再生速度</span>
+          <span class="slider-value" id="speed-label">1.0x</span>
+        </div>
+        <input type="range" id="speed-slider" min="0.1" max="3" value="1" step="0.1">
+      </div>
+      <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+
+      <div class="panel-section-label" style="margin-top:8px;">解説</div>
+      <div class="hint-box" id="hint-box">パラメータを設定して ▶ 発射 を押してみよう。</div>
+    </div>
+
+    <!-- 表示タブ -->
+    <div class="tab-content" id="tab-display">
+      <div class="panel-section-label">速度ベクトル</div>
+      <div class="btn-group">
+        <button class="btn btn-toggle on" id="btn-vel-composite" onclick="toggleFlag('showVelComposite', 'btn-vel-composite')">
+          合成速度ベクトル
+          <span class="toggle-pip"></span>
+        </button>
+        <button class="btn btn-toggle on" id="btn-vel-x" onclick="toggleFlag('showVelX', 'btn-vel-x')">
+          vₓ成分（水平）
+          <span class="toggle-pip"></span>
+        </button>
+        <button class="btn btn-toggle on" id="btn-vel-y" onclick="toggleFlag('showVelY', 'btn-vel-y')">
+          vᵧ成分（鉛直）
+          <span class="toggle-pip"></span>
+        </button>
+      </div>
+
+      <div class="panel-section-label" style="margin-top:8px;">その他</div>
+      <div class="btn-group">
+        <button class="btn btn-toggle on" id="btn-trail" onclick="toggleFlag('showTrail', 'btn-trail')">
+          軌跡
+          <span class="toggle-pip"></span>
+        </button>
+        <button class="btn btn-toggle on" id="btn-peak" onclick="toggleFlag('showPeak', 'btn-peak')">
+          最高点マーカー
+          <span class="toggle-pip"></span>
+        </button>
+        <button class="btn btn-toggle on" id="btn-time" onclick="toggleFlag('showTime', 'btn-time')">
+          経過時間
+          <span class="toggle-pip"></span>
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="sim-canvas-area">
+    <canvas id="sim-canvas" width="560" height="560"></canvas>
+  </main>
+</div>
+
+<script>
+const canvas = document.getElementById('sim-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const PAD = 56, DRAW = W - PAD*2;
+
+const C = {
+  bg:'#0d1117', border:'#2a3441', blue:'#2f81f7',
+  green:'#3fb950', orange:'#e07b39', pink:'#d2a8ff',
+  text:'#e6edf3', muted:'#7d8590', dim:'#2a3441', axis:'rgba(255,255,255,0.15)',
+};
+
+// アニメーション状態
+const flags = {
+  showVelComposite: true,
+  showVelX: true,
+  showVelY: true,
+  showTrail: true,
+  showPeak: true,
+  showTime: true,
+};
+let animId = null;
+let paused = false;
+let pausedAt = null; // 一時停止した実時刻
+let pauseOffset = 0; // 一時停止で蓄積した経過時間
+let animT = 0;       // 現在の物理時刻
+let animSpeed = 1.0; // 再生速度倍率
+let state = 'idle';  // idle | running | done
+let trail = [];      // 軌跡の点列
+
+function get() {
+  return {
+    u: parseFloat(document.getElementById('u-slider').value),
+    v: parseFloat(document.getElementById('v-slider').value),
+    g: parseFloat(document.getElementById('g-slider').value)
+  };
+}
+
+function togglePause() {
+  if (state !== 'running') return;
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  if (paused) {
+    btn.textContent = '▶ 再開';
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+  } else {
+    btn.textContent = '⏸ 一時停止';
+    // 再開：startTimeをずらして継続
+    let resumeStart = null;
+    const savedT = animT;
+    const {u,v,g} = get();
+    const t1 = 2*(v-u)/g;
+    function resumeStep(ts) {
+      if (!resumeStart) resumeStart = ts;
+      const elapsed = savedT + (ts - resumeStart) / 1000 * animSpeed;
+      animT = Math.min(elapsed, t1);
+      trail = [];
+      const steps = Math.ceil(animT / t1 * 60);
+      for (let i = 0; i <= steps; i++) {
+        const t = animT * i / steps;
+        trail.push([u*t, v*t - 0.5*g*t*t]);
+      }
+      const px = u*animT, py = v*animT - 0.5*g*animT*animT;
+      const vy_now = v - g*animT;
+      document.getElementById('vel-val').textContent = `(${u.toFixed(1)}, ${vy_now.toFixed(1)})`;
+      draw([px, py]);
+      if (animT >= t1) {
+        state = 'done'; paused = false;
+        document.getElementById('btn-start').textContent = '▶ 発射';
+        document.getElementById('btn-pause').textContent = '⏸ 一時停止';
+        document.getElementById('btn-pause').disabled = true;
+        setSliderDisabled(false);
+        onCollision(u,v,g,t1);
+        return;
+      }
+      animId = requestAnimationFrame(resumeStep);
+    }
+    animId = requestAnimationFrame(resumeStep);
+  }
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+}
+
+function toggleFlag(flag, btnId) {
+  flags[flag] = !flags[flag];
+  document.getElementById(btnId).classList.toggle('on', flags[flag]);
+  if (state === 'done' || state === 'idle') draw(null);
+}
+
+function applyPerp() {
+  if (state==='running') return;
+  const {v} = get();
+  document.getElementById('u-slider').value = Math.min(14.9, v/3);
+  resetAll();
+}
+function applyMaxOA() {
+  if (state==='running') return;
+  const {v} = get();
+  document.getElementById('u-slider').value = Math.min(14.9, v/2);
+  resetAll();
+}
+
+function resetAll() {
+  if (animId) { cancelAnimationFrame(animId); animId=null; }
+  state = 'idle';
+  paused = false;
+  animT = 0;
+  trail = [];
+  setSliderDisabled(false);
+  document.getElementById('btn-start').textContent = '▶ 発射';
+  document.getElementById('btn-pause').disabled = true;
+  document.getElementById('btn-pause').textContent = '⏸ 一時停止';
+  document.getElementById('hint-box').textContent = 'パラメータを設定して ▶ 発射 を押してみよう。';
+  ['t1-val','oa-val','vel-val','perp-val'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = '—';
+    el.className = 'metric-value';
+  });
+  draw(null);
+}
+
+function setSliderDisabled(disabled) {
+  ['u-slider','v-slider','g-slider'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+  ['btn-perp','btn-maxoa'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+}
+
+function startAnim() {
+  if (state==='running') return;
+  const {u,v,g} = get();
+  const t1 = 2*(v-u)/g;
+  if (t1 <= 0.01) {
+    document.getElementById('hint-box').textContent = 'u < v にしてください（t₁ > 0 が必要）';
+    return;
+  }
+  state = 'running';
+  paused = false;
+  animT = 0;
+  trail = [];
+  setSliderDisabled(true);
+  document.getElementById('btn-start').textContent = '飛翔中...';
+  document.getElementById('btn-pause').disabled = false;
+  document.getElementById('btn-pause').textContent = '⏸ 一時停止';
+
+  let startTime = null;
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    const elapsed = (ts - startTime) / 1000 * animSpeed;
+
+    const {u,v,g} = get();
+    const t1 = 2*(v-u)/g;
+    animT = Math.min(elapsed, t1);
+
+    // 軌跡は物理時刻から正確に計算（dtの誤差が蓄積しない）
+    trail = [];
+    const steps = Math.ceil(animT / t1 * 60);
+    for (let i = 0; i <= steps; i++) {
+      const t = animT * i / steps;
+      trail.push([u*t, v*t - 0.5*g*t*t]);
+    }
+
+    const px = u * animT;
+    const py = v * animT - 0.5*g*animT*animT;
+
+    const vx_now = u;
+    const vy_now = v - g*animT;
+    document.getElementById('vel-val').textContent = `(${vx_now.toFixed(1)}, ${vy_now.toFixed(1)})`;
+
+    draw([px, py]);
+
+    if (animT >= t1) {
+      state = 'done';
+      document.getElementById('btn-start').textContent = '▶ 発射';
+      document.getElementById('btn-pause').disabled = true;
+      document.getElementById('btn-pause').textContent = '⏸ 一時停止';
+      setSliderDisabled(false);
+      onCollision(u,v,g,t1);
+      return;
+    }
+    animId = requestAnimationFrame(step);
+  }
+  animId = requestAnimationFrame(step);
+}
+
+function onCollision(u,v,g,t1) {
+  const xA = u*t1, yA = u*t1;
+  const oa = Math.sqrt(2)*xA;
+  const vx_col = u, vy_col = 2*u-v;
+  const ratio = vy_col/vx_col;
+  const isPerp = Math.abs(ratio+1) < 0.05;
+
+  document.getElementById('t1-val').textContent = t1.toFixed(2);
+  document.getElementById('oa-val').textContent = oa.toFixed(2);
+
+  const perpEl = document.getElementById('perp-val');
+  if (isPerp) {
+    perpEl.textContent = '垂直 ✓';
+    perpEl.className = 'metric-value highlight';
+    document.getElementById('hint-box').textContent =
+      `vᵧ/vₓ = ${ratio.toFixed(3)} ≈ −1\n垂直衝突成立！\nu/v = ${(u/v).toFixed(3)} ≈ 1/3`;
+  } else {
+    perpEl.textContent = ratio.toFixed(2);
+    perpEl.className = 'metric-value warn';
+    document.getElementById('hint-box').textContent =
+      `vᵧ/vₓ = (2u−v)/u = ${ratio.toFixed(3)}\n−1 になれば垂直衝突。\nt₁ = ${t1.toFixed(2)}`;
+  }
+}
+
+function draw(curPos) {
+  const {u,v,g} = get();
+  document.getElementById('u-label').textContent = u.toFixed(1);
+  document.getElementById('v-label').textContent = v.toFixed(1);
+  document.getElementById('g-label').textContent = g.toFixed(1);
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = C.bg; ctx.fillRect(0,0,W,H);
+
+  const t1 = 2*(v-u)/g;
+  const valid = t1 > 0.01;
+  const xA = valid ? u*t1 : 0;
+  const yA = valid ? u*t1 : 0;
+  const peakY = v*v/(2*g);
+  const physMax = valid ? Math.max(xA,yA,peakY)*1.4 : 20;
+  const scale = DRAW/physMax;
+
+  function sc(px,py){ return [PAD+px*scale, H-PAD-py*scale]; }
+  function sv(dx,dy){ return [dx*scale, -dy*scale]; }
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  const gs = physMax/4;
+  for(let i=1;i<=4;i++){
+    const [gx]=sc(gs*i,0); const [,gy]=sc(0,gs*i);
+    ctx.beginPath(); ctx.moveTo(gx,PAD); ctx.lineTo(gx,H-PAD); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD,gy); ctx.lineTo(W-PAD,gy); ctx.stroke();
+  }
+
+  // 軸
+  const [ox,oy]=sc(0,0);
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(ox,PAD-10); ctx.lineTo(ox,oy+10);
+  ctx.moveTo(ox-10,oy); ctx.lineTo(W-PAD+10,oy); ctx.stroke();
+  ctx.fillStyle=C.muted; ctx.font='14px "Noto Sans JP"';
+  ctx.fillText('y',ox-20,PAD-6); ctx.fillText('x',W-PAD+12,oy+5);
+  ctx.fillStyle=C.text; ctx.font='600 13px "JetBrains Mono"';
+  ctx.fillText('O',ox-20,oy+18);
+
+  // 45度斜面
+  const sEnd=physMax*0.9;
+  const [s0x,s0y]=sc(0,0); const [s1x,s1y]=sc(sEnd,sEnd);
+  ctx.strokeStyle=C.green; ctx.lineWidth=2; ctx.setLineDash([8,5]);
+  ctx.beginPath(); ctx.moveTo(s0x,s0y); ctx.lineTo(s1x,s1y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=C.green; ctx.font='12px "Noto Sans JP"';
+  ctx.fillText('45°斜面',s1x-54,s1y-12);
+
+  // idle/done時: 全軌跡をうっすら表示
+  if ((state==='idle' || state==='done') && flags.showTrail) {
+    const tDraw = valid ? t1*1.01 : v/g*1.5;
+    function drawParabola(lw,color) {
+      ctx.strokeStyle=color; ctx.lineWidth=lw;
+      ctx.beginPath(); let started=false;
+      for(let i=0;i<=200;i++){
+        const t=i/200*tDraw;
+        const px=u*t, py=v*t-0.5*g*t*t;
+        if(py<-0.1) break;
+        const [sx,sy]=sc(px,py);
+        if(!started){ctx.moveTo(sx,sy);started=true;}else ctx.lineTo(sx,sy);
+      }
+      ctx.stroke();
+    }
+    drawParabola(6,'rgba(47,129,247,0.1)');
+    drawParabola(1.5,'rgba(47,129,247,0.3)');
+  }
+
+  // running時: 軌跡を描画
+  if (state==='running' && trail.length > 1 && flags.showTrail) {
+    // グロー
+    ctx.strokeStyle='rgba(47,129,247,0.15)'; ctx.lineWidth=6;
+    ctx.beginPath();
+    trail.forEach(([px,py],i)=>{
+      const [sx,sy]=sc(px,py);
+      if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+    });
+    ctx.stroke();
+    // 本線
+    ctx.strokeStyle=C.blue; ctx.lineWidth=2;
+    ctx.beginPath();
+    trail.forEach(([px,py],i)=>{
+      const [sx,sy]=sc(px,py);
+      if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+    });
+    ctx.stroke();
+  }
+
+  // done時: 衝突後の表示
+  if (state==='done' && valid) {
+    const [ax,ay]=sc(xA,yA);
+    const vx_col=u, vy_col=2*u-v;
+    const ratio=vy_col/vx_col;
+    const isPerp=Math.abs(ratio+1)<0.05;
+
+    // 速度ベクトル（衝突後）
+    const velScale = 14.0;
+    if (flags.showVelX) {
+      const arrScaleX = Math.min(150, Math.abs(vx_col) * velScale);
+      drawArrow(ax,ay, ax+arrScaleX, ay, '#f7c948',
+        `vₓ=${vx_col.toFixed(1)}`, 5, -5);
+    }
+    if (flags.showVelY) {
+      const arrScaleY = Math.min(150, Math.abs(vy_col) * velScale);
+      const vyDir = vy_col >= 0 ? -1 : 1;
+      drawArrow(ax,ay, ax, ay+vyDir*arrScaleY, '#e07b39',
+        `vᵧ=${vy_col.toFixed(1)}`, 6, vy_col>=0 ? -5 : 14);
+    }
+    if (flags.showVelComposite) {
+      const vMag = Math.sqrt(vx_col*vx_col + vy_col*vy_col);
+      const arrLen = Math.min(150, vMag * velScale);
+      const [svx,svy] = sv(vx_col/vMag, vy_col/vMag);
+      const sMag = Math.sqrt(svx*svx+svy*svy);
+      drawArrow(ax,ay, ax+svx/sMag*arrLen, ay+svy/sMag*arrLen,
+        C.pink, `v=${vMag.toFixed(1)}`, 6, -4);
+    }
+
+    // 法線
+    const normLen=55;
+    const [rnx,rny]=sv(-1/Math.sqrt(2),1/Math.sqrt(2));
+    const rnMag=Math.sqrt(rnx*rnx+rny*rny);
+    const nx1=ax+rnx/rnMag*normLen, ny1=ay+rny/rnMag*normLen;
+    const normColor=isPerp?C.green:C.dim;
+    ctx.strokeStyle=normColor; ctx.fillStyle=normColor;
+    ctx.lineWidth=isPerp?2.5:1.5; ctx.setLineDash(isPerp?[]:[4,3]);
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(nx1,ny1); ctx.stroke();
+    ctx.setLineDash([]);
+    const na=Math.atan2(ny1-ay,nx1-ax);
+    ctx.beginPath(); ctx.moveTo(nx1,ny1);
+    ctx.lineTo(nx1-8*Math.cos(na-0.35),ny1-8*Math.sin(na-0.35));
+    ctx.lineTo(nx1-8*Math.cos(na+0.35),ny1-8*Math.sin(na+0.35));
+    ctx.closePath(); ctx.fill();
+    ctx.font='11px "JetBrains Mono"'; ctx.fillText('法線',nx1-28,ny1-8);
+
+    if(isPerp){
+      ctx.beginPath(); ctx.arc(ax,ay,16,0,Math.PI*2);
+      ctx.strokeStyle=C.green; ctx.lineWidth=2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(ax,ay,22,0,Math.PI*2);
+      ctx.strokeStyle='rgba(63,185,80,0.25)'; ctx.lineWidth=4; ctx.stroke();
+    }
+
+    // 衝突点A
+    ctx.beginPath(); ctx.arc(ax,ay,7,0,Math.PI*2);
+    ctx.fillStyle=isPerp?C.green:C.orange; ctx.fill();
+    ctx.fillStyle=C.text; ctx.font='600 13px "JetBrains Mono"';
+    ctx.fillText('A',ax+12,ay-8);
+  }
+
+  // 飛翔中の質点
+  if (state==='running' && curPos) {
+    const [px,py]=curPos;
+    const [sx,sy]=sc(px,py);
+
+    // 速度ベクトル（vx・vy）をリアルタイム表示
+    const vx_now = u;
+    const vy_now = v - g*animT;
+    const velScale = 14.0;
+
+    if (flags.showVelX) {
+      const arrScaleX = Math.min(150, Math.abs(vx_now) * velScale);
+      drawArrow(sx, sy, sx + arrScaleX, sy, '#f7c948',
+        `vₓ=${vx_now.toFixed(1)}`, 5, -5);
+    }
+    if (flags.showVelY) {
+      const arrScaleY = Math.min(150, Math.abs(vy_now) * velScale);
+      const vyDir = vy_now >= 0 ? -1 : 1;
+      drawArrow(sx, sy, sx, sy + vyDir * arrScaleY, '#e07b39',
+        `vᵧ=${vy_now.toFixed(1)}`, 6, vy_now >= 0 ? -5 : 14);
+    }
+    if (flags.showVelComposite) {
+      const vMag = Math.sqrt(vx_now*vx_now + vy_now*vy_now);
+      const arrLen = Math.min(150, vMag * velScale);
+      const [svx, svy] = sv(vx_now/vMag, vy_now/vMag);
+      const sMag = Math.sqrt(svx*svx + svy*svy);
+      drawArrow(sx, sy, sx+svx/sMag*arrLen, sy+svy/sMag*arrLen,
+        C.pink, `v=${vMag.toFixed(1)}`, 6, -4);
+    }
+
+    // 後光
+    ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2);
+    ctx.fillStyle='rgba(47,129,247,0.2)'; ctx.fill();
+    // 本体
+    ctx.beginPath(); ctx.arc(sx,sy,6,0,Math.PI*2);
+    ctx.fillStyle=C.blue; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx,sy,3,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+  }
+
+  // idle時の発射点
+  if (state==='idle') {
+    const [sx,sy]=sc(0,0);
+    ctx.beginPath(); ctx.arc(sx,sy,6,0,Math.PI*2);
+    ctx.fillStyle=C.blue; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx,sy,3,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+  }
+
+  // 最高点マーカー
+  if (flags.showPeak && valid && (state==='running' || state==='done' || state==='idle')) {
+    const tPeak = v / g;
+    const xPeak = u * tPeak;
+    const yPeak = peakY;
+    if (state==='idle' || state==='done' || (state==='running' && animT >= tPeak)) {
+      const [px,py] = sc(xPeak, yPeak);
+      ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2);
+      ctx.fillStyle='rgba(215,185,80,0.9)'; ctx.fill();
+      ctx.strokeStyle='#f7c948'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle='#f7c948'; ctx.font='11px "JetBrains Mono"';
+      ctx.fillText('最高点', px+8, py-6);
+      // 水平な補助線
+      ctx.strokeStyle='rgba(247,201,72,0.25)'; ctx.lineWidth=1;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(PAD, py); ctx.lineTo(px, py); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // 経過時間表示
+  if (flags.showTime && state==='running') {
+    ctx.fillStyle='rgba(47,129,247,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(PAD, PAD+8, 82, 30, 6);
+    ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.font='600 13px "JetBrains Mono"';
+    ctx.textAlign='left';
+    ctx.fillText(`t = ${animT.toFixed(2)}s`, PAD+10, PAD+28);
+  }
+}
+
+function drawArrow(x0,y0,x1,y1,color,label,lox,loy){
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  const a=Math.atan2(y1-y0,x1-x0);
+  ctx.beginPath(); ctx.moveTo(x1,y1);
+  ctx.lineTo(x1-9*Math.cos(a-0.35),y1-9*Math.sin(a-0.35));
+  ctx.lineTo(x1-9*Math.cos(a+0.35),y1-9*Math.sin(a+0.35));
+  ctx.closePath(); ctx.fill();
+  if(label){ctx.font='600 14px "JetBrains Mono"'; ctx.fillStyle=color; ctx.fillText(label,x1+(lox||6),y1+(loy||-4));}
+}
+
+['u-slider','v-slider','g-slider'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{ if(state==='idle') draw(null); });
+});
+
+document.getElementById('speed-slider').addEventListener('input', () => {
+  animSpeed = parseFloat(document.getElementById('speed-slider').value);
+  document.getElementById('speed-label').textContent = animSpeed.toFixed(1) + 'x';
+});
+
+draw(null);
+</script>
+</body>
+</html>
