@@ -678,7 +678,7 @@ function drawArrow(x0,y0,x1,y1,color,label,lox,loy){
 
 ['u-slider','v-slider','g-slider'].forEach(id=>{
   ['input','change'].forEach(ev => {
-    document.getElementById(id).addEventListener(ev, ()=>{ if(state==='idle') draw(null); });
+    document.getElementById(id).addEventListener(ev, ()=>{ if(state==='idle' || state==='done') draw(null); });
   });
 });
 
