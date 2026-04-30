@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>運動の表し方 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#2a3441; --blue:#2f81f7; --blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15); --green:#3fb950;
+    --orange:#e07b39; --red:#f85149; --pink:#d2a8ff;
+    --yellow:#f7c948;
+    --text:#e6edf3; --text-muted:#7d8590; --text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--blue-dim);text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .btn-fullscreen{margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;}
+
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+
+  /* 左パネル */
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;transition:color .15s,border-color .15s;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:16px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+
+  .panel-section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;}
+  .slider-group{display:flex;flex-direction:column;gap:14px;}
+  .slider-row{display:flex;flex-direction:column;gap:6px;}
+  .slider-header{display:flex;justify-content:space-between;align-items:baseline;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);font-size:12px;}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  input[type=range]:disabled{opacity:.4;pointer-events:none;}
+
+  .btn-group{display:flex;flex-direction:column;gap:8px;}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s,border-color .15s;}
+  .btn:hover{background:var(--blue-glow);border-color:var(--blue);}
+  .btn:disabled{opacity:.4;pointer-events:none;}
+  .btn-start{background:var(--blue-dim);border-color:var(--blue);justify-content:center;font-weight:700;font-size:14px;padding:11px;}
+  .btn-start:hover{background:var(--blue);}
+  .btn-reset{background:transparent;color:var(--text-muted);border-color:var(--border);font-size:12px;justify-content:center;}
+  .btn-reset:hover{color:var(--text);background:var(--surface2);}
+  .btn-toggle{justify-content:space-between;}
+  .btn-toggle.on{background:var(--blue-glow);border-color:var(--blue);color:var(--text);}
+  .toggle-pip{width:28px;height:16px;border-radius:8px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0;}
+  .btn-toggle.on .toggle-pip{background:var(--blue);}
+  .toggle-pip::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
+  .btn-toggle.on .toggle-pip::after{left:15px;}
+
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);}
+  .metric-value.pos{color:var(--blue);}
+  .metric-value.vel{color:var(--green);}
+  .metric-value.acc{color:var(--orange);}
+
+  .hint-box{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-line;}
+
+  /* 右エリア：上下2分割 */
+  .sim-right{display:grid;grid-template-rows:1fr 1fr;overflow:hidden;}
+  .sim-canvas-area{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;border-bottom:1px solid var(--border);}
+  .sim-graphs{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--bg);}
+  .graph-area{padding:16px;display:flex;flex-direction:column;}
+  .graph-area:first-child{border-right:1px solid var(--border);}
+  .graph-title{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.05em;}
+  canvas{display:block;border-radius:6px;border:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header class="sim-header">
+  <span class="sim-badge">力学 01</span>
+  <h1 class="sim-title">運動の表し方</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button class="btn-fullscreen" onclick="toggleFullscreen()">⛶ 全画面</button>
+</header>
+
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-settings',this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-display',this)">表示</button>
+    </div>
+
+    <!-- 設定タブ -->
+    <div class="tab-content active" id="tab-settings">
+      <div>
+        <div class="panel-section-label">初期条件</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>x₀</em>　初期位置 (m)</span>
+              <span class="slider-value" id="x0-label">0.0</span>
+            </div>
+            <input type="range" id="x0-slider" min="-10" max="10" value="0" step="0.5">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>v₀</em>　初速度 (m/s)</span>
+              <span class="slider-value" id="v0-label">5.0</span>
+            </div>
+            <input type="range" id="v0-slider" min="-15" max="15" value="5" step="0.5">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>a</em>　加速度 (m/s²)</span>
+              <span class="slider-value" id="a-label">2.0</span>
+            </div>
+            <input type="range" id="a-slider" min="-10" max="10" value="2" step="0.5">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-section-label">再生</div>
+        <div class="btn-group">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-start" id="btn-start" onclick="startAnim()" style="justify-content:center;">▶ 開始</button>
+            <button class="btn" id="btn-pause" onclick="togglePause()" disabled style="justify-content:center;">⏸ 停止</button>
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">再生速度</span>
+              <span class="slider-value" id="speed-label">1.0x</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.1" max="3" value="1" step="0.1">
+          </div>
+          <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-section-label">計測値</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">位置 x (m)</div>
+            <div class="metric-value pos" id="m-x">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">変位 Δx (m)</div>
+            <div class="metric-value pos" id="m-dx">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">速度 v (m/s)</div>
+            <div class="metric-value vel" id="m-v">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">加速度 a (m/s²)</div>
+            <div class="metric-value acc" id="m-a">—</div>
+          </div>
+          <div class="metric-card" style="grid-column:1/-1;">
+            <div class="metric-label">経過時間 t (s)</div>
+            <div class="metric-value" id="m-t">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hint-box" id="hint-box">x₀・v₀・a を設定して ▶ 開始 を押してみよう。</div>
+    </div>
+
+    <!-- 表示タブ -->
+    <div class="tab-content" id="tab-display">
+      <div>
+        <div class="panel-section-label">表示切替</div>
+        <div class="btn-group">
+          <button class="btn btn-toggle on" id="btn-show-pos" onclick="toggleFlag('showPos','btn-show-pos')">
+            位置マーカー（青）<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-show-disp" onclick="toggleFlag('showDisp','btn-show-disp')">
+            変位ベクトル（黄）<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-show-vel" onclick="toggleFlag('showVel','btn-show-vel')">
+            速度ベクトル（緑）<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-show-trail" onclick="toggleFlag('showTrail','btn-show-trail')">
+            軌跡<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-show-xt" onclick="toggleFlag('showXT','btn-show-xt')">
+            x-tグラフ<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-show-vt" onclick="toggleFlag('showVT','btn-show-vt')">
+            v-tグラフ<span class="toggle-pip"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sim-right">
+    <!-- メインキャンバス（数直線） -->
+    <div class="sim-canvas-area">
+      <canvas id="main-canvas"></canvas>
+    </div>
+    <!-- グラフエリア -->
+    <div class="sim-graphs">
+      <div class="graph-area">
+        <div class="graph-title">x-t グラフ（位置－時刻）</div>
+        <canvas id="xt-canvas"></canvas>
+      </div>
+      <div class="graph-area">
+        <div class="graph-title">v-t グラフ（速度－時刻）</div>
+        <canvas id="vt-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== キャンバスサイズ設定 =====
+function resizeCanvases() {
+  const right = document.querySelector('.sim-right');
+  const W = right.clientWidth;
+  const H = right.clientHeight;
+
+  const mc = document.getElementById('main-canvas');
+  mc.width = W - 32;
+  mc.height = Math.floor(H/2) - 32;
+
+  const gh = Math.floor(H/2) - 56;
+  const gw = Math.floor(W/2) - 32;
+  document.getElementById('xt-canvas').width = gw;
+  document.getElementById('xt-canvas').height = gh;
+  document.getElementById('vt-canvas').width = gw;
+  document.getElementById('vt-canvas').height = gh;
+}
+resizeCanvases();
+
+const C = {
+  bg:'#0d1117', border:'#2a3441', blue:'#2f81f7', blueDim:'#1a4a8a',
+  green:'#3fb950', orange:'#e07b39', yellow:'#f7c948',
+  text:'#e6edf3', muted:'#7d8590', dim:'#2a3441', axis:'rgba(255,255,255,0.15)',
+};
+
+const flags = { showPos:true, showDisp:true, showVel:true, showTrail:true, showXT:true, showVT:true };
+let state = 'idle';
+let animId = null;
+let paused = false;
+let animT = 0;
+let animSpeed = 1.0;
+let startTime = null;
+let savedT = 0;
+let trail = [];
+const T_MAX = 8;
+
+function get() {
+  return {
+    x0: parseFloat(document.getElementById('x0-slider').value),
+    v0: parseFloat(document.getElementById('v0-slider').value),
+    a:  parseFloat(document.getElementById('a-slider').value),
+  };
+}
+
+function pos(x0, v0, a, t) { return x0 + v0*t + 0.5*a*t*t; }
+function vel(v0, a, t) { return v0 + a*t; }
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function toggleFlag(flag, btnId) {
+  flags[flag] = !flags[flag];
+  document.getElementById(btnId).classList.toggle('on', flags[flag]);
+  if (state !== 'running') drawAll();
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+function resetAll() {
+  if (animId) { cancelAnimationFrame(animId); animId=null; }
+  state='idle'; paused=false; animT=0; savedT=0; startTime=null; trail=[];
+  document.getElementById('btn-start').textContent='▶ 開始';
+  document.getElementById('btn-pause').disabled=true;
+  document.getElementById('btn-pause').textContent='⏸ 停止';
+  setSliderDisabled(false);
+  document.getElementById('hint-box').textContent='x₀・v₀・a を設定して ▶ 開始 を押してみよう。';
+  clearMetrics();
+  drawAll();
+}
+
+function clearMetrics() {
+  ['m-x','m-dx','m-v','m-a','m-t'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+  });
+}
+
+function setSliderDisabled(d) {
+  ['x0-slider','v0-slider','a-slider'].forEach(id=>{
+    document.getElementById(id).disabled=d;
+  });
+}
+
+function startAnim() {
+  if (state==='running') return;
+  const {x0,v0,a} = get();
+  state='running'; paused=false; animT=0; savedT=0; startTime=null; trail=[];
+  setSliderDisabled(true);
+  document.getElementById('btn-start').textContent='実行中...';
+  document.getElementById('btn-pause').disabled=false;
+
+  function step(ts) {
+    if (!startTime) startTime=ts;
+    animT = Math.min(savedT + (ts-startTime)/1000*animSpeed, T_MAX);
+    const x = pos(x0,v0,a,animT);
+    const v = vel(v0,a,animT);
+    trail.push({t:animT, x, v});
+    updateMetrics(x0,x,v,a,animT);
+    drawAll();
+    if (animT >= T_MAX) {
+      state='done';
+      document.getElementById('btn-start').textContent='▶ 開始';
+      document.getElementById('btn-pause').disabled=true;
+      setSliderDisabled(false);
+      document.getElementById('hint-box').textContent=`t=${T_MAX}s で終了。\nv₀ と a の符号を変えて違いを確認してみよう。`;
+      return;
+    }
+    animId = requestAnimationFrame(step);
+  }
+  animId = requestAnimationFrame(step);
+}
+
+function togglePause() {
+  if (state!=='running') return;
+  paused=!paused;
+  const btn=document.getElementById('btn-pause');
+  if (paused) {
+    btn.textContent='▶ 再開';
+    if (animId) { cancelAnimationFrame(animId); animId=null; }
+    savedT=animT; startTime=null;
+  } else {
+    btn.textContent='⏸ 停止';
+    const {x0,v0,a}=get();
+    startTime=null;
+    function resumeStep(ts) {
+      if (!startTime) startTime=ts;
+      animT=Math.min(savedT+(ts-startTime)/1000*animSpeed, T_MAX);
+      const x=pos(x0,v0,a,animT), v=vel(v0,a,animT);
+      trail.push({t:animT,x,v});
+      updateMetrics(x0,x,v,a,animT);
+      drawAll();
+      if (animT>=T_MAX) {
+        state='done';
+        document.getElementById('btn-start').textContent='▶ 開始';
+        document.getElementById('btn-pause').disabled=true;
+        setSliderDisabled(false);
+        return;
+      }
+      animId=requestAnimationFrame(resumeStep);
+    }
+    animId=requestAnimationFrame(resumeStep);
+  }
+}
+
+function updateMetrics(x0,x,v,a,t) {
+  document.getElementById('m-x').textContent  = x.toFixed(2);
+  document.getElementById('m-dx').textContent = (x-x0).toFixed(2);
+  document.getElementById('m-v').textContent  = v.toFixed(2);
+  document.getElementById('m-a').textContent  = a.toFixed(2);
+  document.getElementById('m-t').textContent  = t.toFixed(2);
+}
+
+// ===== メインキャンバス描画（数直線）=====
+function drawMain() {
+  const canvas = document.getElementById('main-canvas');
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const {x0,v0,a}=get();
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const cy = H/2;
+  const viewRange = 20; // 表示幅 viewRange m
+  const scale = (W-80) / viewRange;
+
+  // 現在の質点位置 → カメラ中心
+  const curX = (state==='idle') ? x0 : pos(x0,v0,a,animT);
+  const camCenter = curX;
+
+  function toSX(x) { return W/2 + (x - camCenter)*scale; }
+
+  // 目盛り間隔
+  const tickInterval = 2;
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  const firstTick = Math.ceil((camCenter - viewRange/2) / tickInterval) * tickInterval;
+  for(let x=firstTick; x<=camCenter+viewRange/2+tickInterval; x+=tickInterval){
+    const sx=toSX(x);
+    ctx.beginPath(); ctx.moveTo(sx,30); ctx.lineTo(sx,H-30); ctx.stroke();
+  }
+
+  // 数直線本体
+  ctx.strokeStyle=C.axis; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(40,cy); ctx.lineTo(W-40,cy); ctx.stroke();
+  ctx.fillStyle=C.axis;
+  ctx.beginPath(); ctx.moveTo(W-40,cy); ctx.lineTo(W-52,cy-5); ctx.lineTo(W-52,cy+5); ctx.closePath(); ctx.fill();
+
+  // 目盛りと数値
+  for(let x=firstTick; x<=camCenter+viewRange/2+tickInterval; x+=tickInterval){
+    const sx=toSX(x);
+    if(sx<40||sx>W-40) continue;
+    ctx.strokeStyle=C.axis; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(sx,cy-6); ctx.lineTo(sx,cy+6); ctx.stroke();
+    ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText(x.toFixed(0), sx, cy+20);
+  }
+
+  // 軸ラベル
+  ctx.fillStyle=C.muted; ctx.font='12px "Noto Sans JP"'; ctx.textAlign='left';
+  ctx.fillText('位置 x (m)', W-80, cy+36);
+
+  // 原点マーク
+  const originSX=toSX(0);
+  if(originSX>40&&originSX<W-40){
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.arc(originSX,cy,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText('O', originSX, cy-12);
+  }
+
+  // 初期位置x₀マーカー（常に表示）
+  const sx0=toSX(x0);
+  if(sx0>40&&sx0<W-40){
+    ctx.strokeStyle=C.yellow; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(sx0,30); ctx.lineTo(sx0,H-30); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText('x₀='+x0.toFixed(1), sx0, 22);
+  }
+
+  const x=curX;
+  const v=vel(v0,a,animT);
+  const sx=toSX(x); // 常に中央付近
+
+  // 変位ベクトル
+  if (flags.showDisp && state!=='idle' && Math.abs(x-x0)>0.01) {
+    const dispStart=toSX(x0), dispEnd=toSX(x);
+    ctx.strokeStyle=C.yellow; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(dispStart,cy-22); ctx.lineTo(dispEnd,cy-22); ctx.stroke();
+    const dir=dispEnd>dispStart?1:-1;
+    ctx.fillStyle=C.yellow;
+    ctx.beginPath();
+    ctx.moveTo(dispEnd,cy-22);
+    ctx.lineTo(dispEnd-dir*10,cy-27);
+    ctx.lineTo(dispEnd-dir*10,cy-17);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle=C.yellow; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText('\u0394x='+(x-x0).toFixed(1)+'m', (dispStart+dispEnd)/2, cy-30);
+  }
+
+  // 速度ベクトル
+  if (flags.showVel && Math.abs(v)>0.01) {
+    const vLen=Math.min(100,Math.abs(v)*8);
+    const dir=v>0?1:-1;
+    ctx.strokeStyle=C.green; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(sx,cy+24); ctx.lineTo(sx+dir*vLen,cy+24); ctx.stroke();
+    ctx.fillStyle=C.green;
+    ctx.beginPath();
+    ctx.moveTo(sx+dir*vLen,cy+24);
+    ctx.lineTo(sx+dir*vLen-dir*9,cy+19);
+    ctx.lineTo(sx+dir*vLen-dir*9,cy+29);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle=C.green; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText('v='+v.toFixed(1)+'m/s', sx+dir*vLen/2, cy+42);
+  }
+
+  // 質点（常に画面中央付近）
+  if (flags.showPos) {
+    drawParticle(ctx,sx,cy,state==='idle'?C.blue:v>=0?C.blue:C.orange);
+  }
+
+  // 経過時間
+  if (state==='running'||state==='done') {
+    ctx.fillStyle='rgba(47,129,247,0.85)';
+    ctx.beginPath(); ctx.roundRect(16,12,100,26,5); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText('t = '+animT.toFixed(2)+'s', 24, 30);
+  }
+}
+
+function drawParticle(ctx,sx,cy,color) {
+  ctx.beginPath(); ctx.arc(sx,cy,14,0,Math.PI*2);
+  ctx.fillStyle=color+'33'; ctx.fill();
+  ctx.beginPath(); ctx.arc(sx,cy,8,0,Math.PI*2);
+  ctx.fillStyle=color; ctx.fill();
+  ctx.beginPath(); ctx.arc(sx,cy,3,0,Math.PI*2);
+  ctx.fillStyle='#fff'; ctx.fill();
+}
+
+// ===== x-tグラフ =====
+function drawXT() {
+  const canvas=document.getElementById('xt-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const {x0,v0,a}=get();
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  if (!flags.showXT) return;
+
+  const PAD={l:44,r:16,t:12,b:32};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+
+  // x範囲計算
+  let xMin=x0, xMax=x0;
+  for(let t=0;t<=T_MAX;t+=0.1){
+    const x=pos(x0,v0,a,t);
+    xMin=Math.min(xMin,x); xMax=Math.max(xMax,x);
+  }
+  const xPad=(xMax-xMin)*0.15||5;
+  xMin-=xPad; xMax+=xPad;
+
+  function sx(t){ return PAD.l+t/T_MAX*gW; }
+  function sy(x){ return PAD.t+gH-(x-xMin)/(xMax-xMin)*gH; }
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=PAD.t+i*gH/4;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
+  }
+  for(let i=0;i<=T_MAX;i+=2){
+    const x=sx(i);
+    ctx.beginPath(); ctx.moveTo(x,PAD.t); ctx.lineTo(x,H-PAD.b); ctx.stroke();
+  }
+
+  // 軸
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  // 軸ラベル
+  ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='center';
+  for(let i=0;i<=T_MAX;i+=2) ctx.fillText(i,sx(i),H-PAD.b+14);
+  ctx.fillText('t(s)',W-PAD.r,H-PAD.b+14);
+  ctx.textAlign='right';
+  const xStep=(xMax-xMin)/4;
+  for(let i=0;i<=4;i++){
+    const xVal=xMin+xStep*i;
+    ctx.fillText(xVal.toFixed(0), PAD.l-4, sy(xVal)+4);
+  }
+  ctx.save(); ctx.translate(12,PAD.t+gH/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('x(m)',0,0); ctx.restore();
+
+  // 全体曲線（薄く）
+  ctx.strokeStyle='rgba(47,129,247,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=i/200*T_MAX;
+    const x=pos(x0,v0,a,t);
+    const px=sx(t), py=sy(x);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // 軌跡（実際に描いた部分）
+  if (trail.length>1) {
+    ctx.strokeStyle=C.blue; ctx.lineWidth=2;
+    ctx.beginPath();
+    trail.forEach(({t,x},i)=>{
+      const px=sx(t), py=sy(x);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+
+  // 現在点
+  if (state==='running'||state==='done') {
+    const x=pos(x0,v0,a,animT);
+    ctx.beginPath(); ctx.arc(sx(animT),sy(x),4,0,Math.PI*2);
+    ctx.fillStyle=C.blue; ctx.fill();
+  }
+}
+
+// ===== v-tグラフ =====
+function drawVT() {
+  const canvas=document.getElementById('vt-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const {x0,v0,a}=get();
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  if (!flags.showVT) return;
+
+  const PAD={l:44,r:16,t:12,b:32};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+
+  // v範囲
+  const vEnd=vel(v0,a,T_MAX);
+  let vMin=Math.min(v0,vEnd), vMax=Math.max(v0,vEnd);
+  const vPad=Math.max((vMax-vMin)*0.2,3);
+  vMin-=vPad; vMax+=vPad;
+
+  function sx(t){ return PAD.l+t/T_MAX*gW; }
+  function sy(v){ return PAD.t+gH-(v-vMin)/(vMax-vMin)*gH; }
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=PAD.t+i*gH/4;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
+  }
+  for(let i=0;i<=T_MAX;i+=2){
+    const x=sx(i);
+    ctx.beginPath(); ctx.moveTo(x,PAD.t); ctx.lineTo(x,H-PAD.b); ctx.stroke();
+  }
+
+  // v=0ライン
+  if (vMin<0 && vMax>0) {
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,sy(0)); ctx.lineTo(W-PAD.r,sy(0)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='right';
+    ctx.fillText('0',PAD.l-4,sy(0)+4);
+  }
+
+  // 軸
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='center';
+  for(let i=0;i<=T_MAX;i+=2) ctx.fillText(i,sx(i),H-PAD.b+14);
+  ctx.fillText('t(s)',W-PAD.r,H-PAD.b+14);
+  ctx.textAlign='right';
+  const vStep=(vMax-vMin)/4;
+  for(let i=0;i<=4;i++){
+    const vVal=vMin+vStep*i;
+    ctx.fillText(vVal.toFixed(0),PAD.l-4,sy(vVal)+4);
+  }
+  ctx.save(); ctx.translate(12,PAD.t+gH/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('v(m/s)',0,0); ctx.restore();
+
+  // v-t直線（全体・薄く）
+  ctx.strokeStyle='rgba(63,185,80,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(sx(0),sy(v0)); ctx.lineTo(sx(T_MAX),sy(vEnd));
+  ctx.stroke();
+
+  // 軌跡
+  if (trail.length>1) {
+    ctx.strokeStyle=C.green; ctx.lineWidth=2;
+    ctx.beginPath();
+    trail.forEach(({t,v},i)=>{
+      const px=sx(t), py=sy(v);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+
+  // 現在点
+  if (state==='running'||state==='done') {
+    const v=vel(v0,a,animT);
+    ctx.beginPath(); ctx.arc(sx(animT),sy(v),4,0,Math.PI*2);
+    ctx.fillStyle=C.green; ctx.fill();
+  }
+
+  // 傾き=加速度 ラベル
+  ctx.fillStyle=C.orange; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText(`傾き = a = ${a.toFixed(1)} m/s²`, PAD.l+8, PAD.t+16);
+}
+
+function drawAll() {
+  drawMain();
+  drawXT();
+  drawVT();
+}
+
+// ===== イベント =====
+['x0-slider','v0-slider','a-slider'].forEach(id=>{
+  ['input','change'].forEach(ev=>{
+    document.getElementById(id).addEventListener(ev,()=>{
+      document.getElementById('x0-label').textContent=parseFloat(document.getElementById('x0-slider').value).toFixed(1);
+      document.getElementById('v0-label').textContent=parseFloat(document.getElementById('v0-slider').value).toFixed(1);
+      document.getElementById('a-label').textContent=parseFloat(document.getElementById('a-slider').value).toFixed(1);
+      if(state==='idle'||state==='done') drawAll();
+    });
+  });
+});
+
+['input','change'].forEach(ev=>{
+  document.getElementById('speed-slider').addEventListener(ev,()=>{
+    animSpeed=parseFloat(document.getElementById('speed-slider').value);
+    document.getElementById('speed-label').textContent=animSpeed.toFixed(1)+'x';
+  });
+});
+
+drawAll();
+</script>
+</body>
+</html>
