@@ -677,12 +677,16 @@ function drawArrow(x0,y0,x1,y1,color,label,lox,loy){
 }
 
 ['u-slider','v-slider','g-slider'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', ()=>{ if(state==='idle') draw(null); });
+  ['input','change'].forEach(ev => {
+    document.getElementById(id).addEventListener(ev, ()=>{ if(state==='idle') draw(null); });
+  });
 });
 
-document.getElementById('speed-slider').addEventListener('input', () => {
-  animSpeed = parseFloat(document.getElementById('speed-slider').value);
-  document.getElementById('speed-label').textContent = animSpeed.toFixed(1) + 'x';
+['input','change'].forEach(ev => {
+  document.getElementById('speed-slider').addEventListener(ev, () => {
+    animSpeed = parseFloat(document.getElementById('speed-slider').value);
+    document.getElementById('speed-label').textContent = animSpeed.toFixed(1) + 'x';
+  });
 });
 
 draw(null);
