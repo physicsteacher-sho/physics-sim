@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水平投射・斜方投射 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#2a3441; --blue:#2f81f7; --blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15); --green:#3fb950;
+    --orange:#e07b39; --pink:#d2a8ff; --yellow:#f7c948;
+    --text:#e6edf3; --text-muted:#7d8590; --text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--blue-dim);text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .btn-fullscreen{margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:16px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+  .panel-section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;}
+  .slider-group{display:flex;flex-direction:column;gap:14px;}
+  .slider-row{display:flex;flex-direction:column;gap:6px;}
+  .slider-header{display:flex;justify-content:space-between;align-items:baseline;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);font-size:12px;}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  input[type=range]:disabled{opacity:.4;pointer-events:none;}
+  .btn-group{display:flex;flex-direction:column;gap:8px;}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s,border-color .15s;}
+  .btn:hover{background:var(--blue-glow);border-color:var(--blue);}
+  .btn:disabled{opacity:.4;pointer-events:none;}
+  .btn-start{background:var(--blue-dim);border-color:var(--blue);justify-content:center;font-weight:700;font-size:14px;padding:11px;}
+  .btn-start:hover{background:var(--blue);}
+  .btn-reset{background:transparent;color:var(--text-muted);border-color:var(--border);font-size:12px;justify-content:center;}
+  .btn-reset:hover{color:var(--text);background:var(--surface2);}
+  .btn-toggle{justify-content:space-between;}
+  .btn-toggle.on{background:var(--blue-glow);border-color:var(--blue);}
+  .toggle-pip{width:28px;height:16px;border-radius:8px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0;}
+  .btn-toggle.on .toggle-pip{background:var(--blue);}
+  .toggle-pip::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
+  .btn-toggle.on .toggle-pip::after{left:15px;}
+  .mode-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .mode-btn{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:8px 6px;font-size:12px;cursor:pointer;text-align:center;transition:all .15s;}
+  .mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);}
+  .hint-box{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-line;}
+  .sim-right{overflow:hidden;display:flex;flex-direction:column;}
+  canvas{display:block;}
+</style>
+</head>
+<body>
+<header class="sim-header">
+  <span class="sim-badge">力学 04</span>
+  <h1 class="sim-title">水平投射・斜方投射</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button class="btn-fullscreen" onclick="toggleFullscreen()">⛶ 全画面</button>
+</header>
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-settings',this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-display',this)">表示</button>
+    </div>
+    <div class="tab-content active" id="tab-settings">
+      <div>
+        <div class="panel-section-label">モード</div>
+        <div class="mode-btns">
+          <button class="mode-btn active" id="mode-horizontal" onclick="setMode('horizontal')">水平投射</button>
+          <button class="mode-btn" id="mode-oblique" onclick="setMode('oblique')">斜方投射</button>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">初期条件</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>v₀</em>　初速度 (m/s)</span>
+              <span class="slider-value" id="v0-label">20.0</span>
+            </div>
+            <input type="range" id="v0-slider" min="5" max="40" value="20" step="0.5">
+          </div>
+          <div class="slider-row" id="theta-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>θ</em>　発射角度 (°)</span>
+              <span class="slider-value" id="theta-label">30°</span>
+            </div>
+            <input type="range" id="theta-slider" min="1" max="89" value="30" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>y₀</em>　初期高さ (m)</span>
+              <span class="slider-value" id="y0-label">0</span>
+            </div>
+            <input type="range" id="y0-slider" min="0" max="50" value="0" step="1">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">再生</div>
+        <div class="btn-group">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-start" id="btn-start" onclick="startAnim()">▶ 発射</button>
+            <button class="btn" id="btn-pause" onclick="togglePause()" disabled style="justify-content:center;">⏸ 停止</button>
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">再生速度</span>
+              <span class="slider-value" id="speed-label">1.0x</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.1" max="3" value="1" step="0.1">
+          </div>
+          <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">計測値</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">時刻 t (s)</div>
+            <div class="metric-value" id="m-t">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">水平距離 x (m)</div>
+            <div class="metric-value" id="m-x">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">高さ y (m)</div>
+            <div class="metric-value" id="m-y">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">速さ |v| (m/s)</div>
+            <div class="metric-value" id="m-v">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">vₓ (m/s)</div>
+            <div class="metric-value" id="m-vx">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">vᵧ (m/s)</div>
+            <div class="metric-value" id="m-vy">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="hint-box" id="hint-box">モードと初期条件を設定して\n▶ 発射 を押してみよう。</div>
+    </div>
+    <div class="tab-content" id="tab-display">
+      <div>
+        <div class="panel-section-label">表示切替</div>
+        <div class="btn-group">
+          <button class="btn btn-toggle on" id="btn-vx" onclick="toggleFlag('showVx','btn-vx')">
+            vₓ成分（黄・一定）<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-vy" onclick="toggleFlag('showVy','btn-vy')">
+            vᵧ成分（緑・変化）<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-vc" onclick="toggleFlag('showVc','btn-vc')">
+            合成速度（ピンク）<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-trail" onclick="toggleFlag('showTrail','btn-trail')">
+            軌跡<span class="toggle-pip"></span>
+          </button>
+          <button class="btn btn-toggle on" id="btn-peak" onclick="toggleFlag('showPeak','btn-peak')">
+            最高点マーカー<span class="toggle-pip"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sim-right">
+    <canvas id="main-canvas" style="width:100%;flex:1;border:none;border-radius:0;border-bottom:1px solid var(--border);"></canvas>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+const C = {
+  bg:'#0d1117', border:'#2a3441', blue:'#2f81f7',
+  green:'#3fb950', orange:'#e07b39', yellow:'#f7c948', pink:'#d2a8ff',
+  text:'#e6edf3', muted:'#7d8590', dim:'#2a3441', axis:'rgba(255,255,255,0.15)',
+};
+const flags = {showVx:true, showVy:true, showVc:true, showTrail:true, showPeak:true};
+let mode = 'horizontal';
+let state = 'idle', animId = null, paused = false;
+let animT = 0, animSpeed = 1.0, startTime = null, savedT = 0;
+let trail = [];
+
+function resizeCanvas(){
+  const right = document.querySelector('.sim-right');
+  const canvas = document.getElementById('main-canvas');
+  canvas.width = right.clientWidth;
+  canvas.height = right.clientHeight;
+}
+resizeCanvas();
+
+function get(){
+  const v0 = parseFloat(document.getElementById('v0-slider').value);
+  const thetaDeg = mode==='horizontal' ? 0 : parseFloat(document.getElementById('theta-slider').value);
+  const theta = thetaDeg * Math.PI / 180;
+  const y0 = parseFloat(document.getElementById('y0-slider').value);
+  const vx = v0 * Math.cos(theta);
+  const vy0 = v0 * Math.sin(theta);
+  return {v0, theta, thetaDeg, y0, vx, vy0};
+}
+
+function xAt(vx,t){ return vx*t; }
+function yAt(y0,vy0,t){ return y0 + vy0*t - 0.5*G*t*t; }
+function vyAt(vy0,t){ return vy0 - G*t; }
+function tLand(y0,vy0){
+  const disc = vy0*vy0 + 2*G*y0;
+  if(disc<0) return 0;
+  return (vy0 + Math.sqrt(disc))/G;
+}
+function tPeak(vy0){ return vy0>0 ? vy0/G : 0; }
+
+function setMode(m){
+  mode=m;
+  ['horizontal','oblique'].forEach(id=>{
+    document.getElementById('mode-'+id).classList.toggle('active',id===m);
+  });
+  const thetaRow=document.getElementById('theta-row');
+  thetaRow.style.opacity = m==='horizontal'?'0.3':'1';
+  document.getElementById('theta-slider').disabled = m==='horizontal';
+  resetAll();
+}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleFlag(flag,btnId){
+  flags[flag]=!flags[flag];
+  document.getElementById(btnId).classList.toggle('on',flags[flag]);
+  if(state!=='running') draw();
+}
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+function updateMetrics(vx,vy0,y0,t){
+  const x=xAt(vx,t), y=yAt(y0,vy0,t), vy=vyAt(vy0,t);
+  const v=Math.sqrt(vx*vx+vy*vy);
+  document.getElementById('m-t').textContent=t.toFixed(2);
+  document.getElementById('m-x').textContent=x.toFixed(2);
+  document.getElementById('m-y').textContent=Math.max(0,y).toFixed(2);
+  document.getElementById('m-v').textContent=v.toFixed(2);
+  document.getElementById('m-vx').textContent=vx.toFixed(2);
+  document.getElementById('m-vy').textContent=vy.toFixed(2);
+}
+
+function resetAll(){
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  state='idle'; paused=false; animT=0; savedT=0; startTime=null; trail=[];
+  document.getElementById('btn-start').textContent='▶ 発射';
+  document.getElementById('btn-pause').disabled=true;
+  document.getElementById('btn-pause').textContent='⏸ 停止';
+  setSliderDisabled(false);
+  document.getElementById('hint-box').textContent=
+    mode==='horizontal'?'水平投射：初速度は水平方向のみ。\nvx一定・vy=gtで増加。':'斜方投射：角度θで発射。\nvx=v₀cosθ（一定）\nvy=v₀sinθ-gt（変化）';
+  ['m-t','m-x','m-y','m-v','m-vx','m-vy'].forEach(id=>document.getElementById(id).textContent='—');
+  draw();
+}
+
+function setSliderDisabled(d){
+  ['v0-slider','y0-slider'].forEach(id=>document.getElementById(id).disabled=d);
+  if(mode!=='horizontal') document.getElementById('theta-slider').disabled=d;
+}
+
+function startAnim(){
+  if(state==='running') return;
+  const {vx,vy0,y0}=get();
+  const tEnd=tLand(y0,vy0);
+  state='running'; paused=false; animT=0; savedT=0; startTime=null; trail=[];
+  setSliderDisabled(true);
+  document.getElementById('btn-start').textContent='飛翔中...';
+  document.getElementById('btn-pause').disabled=false;
+
+  function step(ts){
+    if(!startTime) startTime=ts;
+    animT=Math.min(savedT+(ts-startTime)/1000*animSpeed,tEnd);
+    const y=yAt(y0,vy0,animT);
+    trail.push({t:animT, x:xAt(vx,animT), y:Math.max(0,y)});
+    updateMetrics(vx,vy0,y0,animT);
+    draw();
+    if(animT>=tEnd){
+      state='done';
+      document.getElementById('btn-start').textContent='▶ 発射';
+      document.getElementById('btn-pause').disabled=true;
+      setSliderDisabled(false);
+      const xLand=xAt(vx,tEnd);
+      const tp=tPeak(vy0);
+      const yPk=tp>0?yAt(y0,vy0,tp):y0;
+      document.getElementById('hint-box').textContent=
+        `飛距離: ${xLand.toFixed(1)}m\n飛行時間: ${tEnd.toFixed(2)}s`+
+        (tp>0?`\n最高点: ${yPk.toFixed(1)}m`:'');
+      return;
+    }
+    animId=requestAnimationFrame(step);
+  }
+  animId=requestAnimationFrame(step);
+}
+
+function togglePause(){
+  if(state!=='running') return;
+  paused=!paused;
+  const btn=document.getElementById('btn-pause');
+  if(paused){
+    btn.textContent='▶ 再開';
+    if(animId){cancelAnimationFrame(animId);animId=null;}
+    savedT=animT; startTime=null;
+  } else {
+    btn.textContent='⏸ 停止';
+    const {vx,vy0,y0}=get();
+    const tEnd=tLand(y0,vy0);
+    startTime=null;
+    function resumeStep(ts){
+      if(!startTime) startTime=ts;
+      animT=Math.min(savedT+(ts-startTime)/1000*animSpeed,tEnd);
+      const y=yAt(y0,vy0,animT);
+      trail.push({t:animT,x:xAt(vx,animT),y:Math.max(0,y)});
+      updateMetrics(vx,vy0,y0,animT);
+      draw();
+      if(animT>=tEnd){
+        state='done';
+        document.getElementById('btn-start').textContent='▶ 発射';
+        document.getElementById('btn-pause').disabled=true;
+        setSliderDisabled(false);
+        return;
+      }
+      animId=requestAnimationFrame(resumeStep);
+    }
+    animId=requestAnimationFrame(resumeStep);
+  }
+}
+
+function draw(){
+  const canvas=document.getElementById('main-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const {v0,theta,thetaDeg,y0,vx,vy0}=get();
+  const tEnd=tLand(y0,vy0);
+  const xLand=xAt(vx,tEnd);
+  const tp=tPeak(vy0);
+  const yPk=tp>0?yAt(y0,vy0,tp):y0;
+
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const PAD={l:56,r:32,t:24,b:80};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+
+  // スケール計算
+  const physW=Math.max(xLand*1.2,10);
+  const physH=Math.max(yPk*1.4,y0*1.4,10);
+  const scaleX=gW/physW, scaleY=gH/physH;
+  const scale=Math.min(scaleX,scaleY);
+  // 正方形スケールで左揃え
+  function sx(x){ return PAD.l+x*scale; }
+  function sy(y){ return H-PAD.b-y*scale; }
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  const xStep=Math.ceil(physW/6/10)*10||5;
+  const yStep=Math.ceil(physH/4/5)*5||5;
+  for(let x=0;x<=physW+xStep;x+=xStep){
+    ctx.beginPath(); ctx.moveTo(sx(x),PAD.t); ctx.lineTo(sx(x),H-PAD.b); ctx.stroke();
+  }
+  for(let y=0;y<=physH+yStep;y+=yStep){
+    ctx.beginPath(); ctx.moveTo(PAD.l,sy(y)); ctx.lineTo(W-PAD.r,sy(y)); ctx.stroke();
+  }
+
+  // 地面
+  ctx.fillStyle='rgba(63,185,80,0.08)';
+  ctx.fillRect(PAD.l,sy(0),W-PAD.l-PAD.r,H-PAD.b-sy(0)+PAD.b);
+  ctx.strokeStyle=C.green; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(PAD.l,sy(0)); ctx.lineTo(W-PAD.r,sy(0)); ctx.stroke();
+
+  // 軸
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b+8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  // 軸目盛り
+  ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='center';
+  for(let x=0;x<=physW+xStep;x+=xStep){
+    const px=sx(x); if(px>W-PAD.r) break;
+    ctx.strokeStyle=C.axis; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px,H-PAD.b); ctx.lineTo(px,H-PAD.b+5); ctx.stroke();
+    ctx.fillStyle=C.muted; ctx.fillText(x+'m',px,H-PAD.b+18);
+  }
+  ctx.fillText('x(m)',W-PAD.r,H-PAD.b+18);
+  ctx.textAlign='right';
+  for(let y=0;y<=physH+yStep;y+=yStep){
+    const py=sy(y); if(py<PAD.t) break;
+    ctx.strokeStyle=C.axis; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(PAD.l,py); ctx.lineTo(PAD.l-5,py); ctx.stroke();
+    ctx.fillStyle=C.muted; ctx.fillText(y+'m',PAD.l-8,py+4);
+  }
+  ctx.save(); ctx.translate(14,PAD.t+gH/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('y(m)',0,0); ctx.restore();
+
+  // 初期高さ点線
+  if(y0>0){
+    ctx.strokeStyle='rgba(247,201,72,0.3)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,sy(y0)); ctx.lineTo(W-PAD.r,sy(y0)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.yellow; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText('y₀='+y0+'m',PAD.l+6,sy(y0)-6);
+  }
+
+  // 全体軌跡（薄く）
+  ctx.strokeStyle='rgba(47,129,247,0.15)'; ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=tEnd*i/200;
+    const px=sx(xAt(vx,t)), py=sy(Math.max(0,yAt(y0,vy0,t)));
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // 軌跡
+  if(flags.showTrail&&trail.length>1){
+    ctx.strokeStyle=C.blue; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    trail.forEach(({x,y},i)=>{
+      if(i===0) ctx.moveTo(sx(x),sy(y)); else ctx.lineTo(sx(x),sy(y));
+    });
+    ctx.stroke();
+  }
+
+  // 最高点
+  if(flags.showPeak&&tp>0){
+    const show=state==='idle'||state==='done'||(state==='running'&&animT>=tp);
+    if(show){
+      ctx.strokeStyle=C.yellow; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(sx(xAt(vx,tp)),PAD.t); ctx.lineTo(sx(xAt(vx,tp)),H-PAD.b); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PAD.l,sy(yPk)); ctx.lineTo(W-PAD.r,sy(yPk)); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(sx(xAt(vx,tp)),sy(yPk),5,0,Math.PI*2);
+      ctx.fillStyle=C.yellow; ctx.fill();
+      ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+      ctx.fillText('最高点 '+yPk.toFixed(1)+'m',sx(xAt(vx,tp))+8,sy(yPk)-8);
+    }
+  }
+
+  // 現在の質点位置
+  const curX=state==='idle'?0:xAt(vx,animT);
+  const curY=state==='idle'?y0:Math.max(0,yAt(y0,vy0,animT));
+  const curVy=vyAt(vy0,animT);
+  const px=sx(curX), py=sy(curY);
+
+  // 発射角度表示（idle時）
+  if(state==='idle'&&mode==='oblique'){
+    const arcR=40;
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(px,py,arcR,0,-theta,true); ctx.stroke();
+    ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText('θ='+thetaDeg+'°',px+arcR+4,py-8);
+    // 初速度方向矢印
+    ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1.5;
+    const arrX=px+Math.cos(theta)*60, arrY=py-Math.sin(theta)*60;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(arrX,arrY); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    const ang=Math.atan2(arrY-py,arrX-px);
+    ctx.beginPath(); ctx.moveTo(arrX,arrY);
+    ctx.lineTo(arrX-8*Math.cos(ang-0.35),arrY-8*Math.sin(ang-0.35));
+    ctx.lineTo(arrX-8*Math.cos(ang+0.35),arrY-8*Math.sin(ang+0.35));
+    ctx.closePath(); ctx.fill();
+  }
+
+  // 速度ベクトル
+  if(state==='running'||state==='done'){
+    const velScale=6;
+    // vx（黄・水平）
+    if(flags.showVx){
+      const vxLen=Math.abs(vx)*velScale;
+      ctx.strokeStyle=C.yellow; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px+vxLen,py); ctx.stroke();
+      ctx.fillStyle=C.yellow;
+      ctx.beginPath(); ctx.moveTo(px+vxLen,py);
+      ctx.lineTo(px+vxLen-9,py-5); ctx.lineTo(px+vxLen-9,py+5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+      ctx.fillText('vₓ='+vx.toFixed(1),px+vxLen+4,py+4);
+    }
+    // vy（緑・鉛直）
+    if(flags.showVy&&Math.abs(curVy)>0.1){
+      const vyLen=Math.abs(curVy)*velScale;
+      const dir=curVy>=0?-1:1;
+      const maxVyLen=dir<0?H-PAD.b-py-10:py-PAD.t-10;
+      const vyLenClamped=Math.min(vyLen,Math.max(0,maxVyLen));
+      ctx.strokeStyle=C.green; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px,py+dir*vyLenClamped); ctx.stroke();
+      ctx.fillStyle=C.green;
+      if(vyLenClamped>8){
+        ctx.beginPath(); ctx.moveTo(px,py+dir*vyLenClamped);
+        ctx.lineTo(px-5,py+dir*vyLenClamped-dir*8); ctx.lineTo(px+5,py+dir*vyLenClamped-dir*8);
+        ctx.closePath(); ctx.fill();
+      }
+      // vyラベルは地面より上に
+      const vyLabelY=Math.min(py+dir*vyLenClamped/2, sy(0)-20);
+      ctx.fillStyle=C.green; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+      ctx.fillText('vᵧ='+curVy.toFixed(1),px+6,Math.max(PAD.t+12,vyLabelY));
+    }
+    // 合成速度（ピンク）
+    if(flags.showVc){
+      const vMag=Math.sqrt(vx*vx+curVy*curVy);
+      const vLen=vMag*velScale;
+      const angle=Math.atan2(-curVy,vx);
+      const ex=px+Math.cos(angle)*vLen, ey=py+Math.sin(angle)*vLen;
+      ctx.strokeStyle=C.pink; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
+      ctx.fillStyle=C.pink;
+      ctx.beginPath(); ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-9*Math.cos(angle-0.35),ey-9*Math.sin(angle-0.35));
+      ctx.lineTo(ex-9*Math.cos(angle+0.35),ey-9*Math.sin(angle+0.35));
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // 質点
+  ctx.beginPath(); ctx.arc(px,py,14,0,Math.PI*2);
+  ctx.fillStyle=C.blue+'33'; ctx.fill();
+  ctx.beginPath(); ctx.arc(px,py,8,0,Math.PI*2);
+  ctx.fillStyle=C.blue; ctx.fill();
+  ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2);
+  ctx.fillStyle='#fff'; ctx.fill();
+
+  // 経過時間
+  if(state==='running'||state==='done'){
+    ctx.fillStyle='rgba(47,129,247,0.85)';
+    ctx.beginPath(); ctx.roundRect(PAD.l+8,PAD.t+4,100,26,5); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText('t = '+animT.toFixed(2)+'s',PAD.l+16,PAD.t+22);
+  }
+}
+
+['v0-slider','theta-slider','y0-slider'].forEach(id=>{
+  ['input','change'].forEach(ev=>{
+    document.getElementById(id).addEventListener(ev,()=>{
+      document.getElementById('v0-label').textContent=parseFloat(document.getElementById('v0-slider').value).toFixed(1);
+      document.getElementById('theta-label').textContent=document.getElementById('theta-slider').value+'°';
+      document.getElementById('y0-label').textContent=document.getElementById('y0-slider').value;
+      if(state==='idle'||state==='done') draw();
+    });
+  });
+});
+
+['input','change'].forEach(ev=>{
+  document.getElementById('speed-slider').addEventListener(ev,()=>{
+    animSpeed=parseFloat(document.getElementById('speed-slider').value);
+    document.getElementById('speed-label').textContent=animSpeed.toFixed(1)+'x';
+  });
+});
+
+setMode('horizontal');
+draw();
+</script>
+</body>
+</html>
