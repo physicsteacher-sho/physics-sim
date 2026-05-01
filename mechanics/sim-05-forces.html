@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>力のつりあい・合成・分解 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#2a3441; --blue:#2f81f7; --blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15); --green:#3fb950;
+    --orange:#e07b39; --pink:#d2a8ff; --yellow:#f7c948; --red:#f85149;
+    --text:#e6edf3; --text-muted:#7d8590; --text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--blue-dim);text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .btn-fullscreen{margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:12px;cursor:pointer;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:16px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+  .panel-section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;}
+  .slider-group{display:flex;flex-direction:column;gap:14px;}
+  .slider-row{display:flex;flex-direction:column;gap:6px;}
+  .slider-header{display:flex;justify-content:space-between;align-items:baseline;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);font-size:12px;}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  .btn-group{display:flex;flex-direction:column;gap:8px;}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s,border-color .15s;}
+  .btn:hover{background:var(--blue-glow);border-color:var(--blue);}
+  .btn-toggle{justify-content:space-between;}
+  .btn-toggle.on{background:var(--blue-glow);border-color:var(--blue);}
+  .toggle-pip{width:28px;height:16px;border-radius:8px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0;}
+  .btn-toggle.on .toggle-pip{background:var(--blue);}
+  .toggle-pip::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
+  .btn-toggle.on .toggle-pip::after{left:15px;}
+  .mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .mode-btn{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:11px;cursor:pointer;text-align:center;transition:all .15s;}
+  .mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-card.balanced{border-color:var(--green);}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);}
+  .metric-value.ok{color:var(--green);}
+  .metric-value.ng{color:var(--red);}
+  .hint-box{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-line;}
+  .sim-right{overflow:hidden;background:var(--bg);}
+  canvas{display:block;width:100%;height:100%;}
+</style>
+</head>
+<body>
+<header class="sim-header">
+  <span class="sim-badge">力学 05</span>
+  <h1 class="sim-title">力の合成・分解・つりあい</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button class="btn-fullscreen" onclick="toggleFullscreen()">⛶ 全画面</button>
+</header>
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-compose',this)">合成</button>
+      <button class="tab-btn" onclick="switchTab('tab-decompose',this)">分解</button>
+      <button class="tab-btn" onclick="switchTab('tab-balance',this)">つりあい</button>
+    </div>
+
+    <!-- 合成タブ -->
+    <div class="tab-content active" id="tab-compose">
+      <div>
+        <div class="panel-section-label">力 F₁</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">大きさ (N)</span>
+              <span class="slider-value" id="f1-mag-label">40</span>
+            </div>
+            <input type="range" id="f1-mag" min="0" max="80" value="40" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">角度 (°)</span>
+              <span class="slider-value" id="f1-ang-label">30°</span>
+            </div>
+            <input type="range" id="f1-ang" min="0" max="360" value="30" step="1">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">力 F₂</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">大きさ (N)</span>
+              <span class="slider-value" id="f2-mag-label">30</span>
+            </div>
+            <input type="range" id="f2-mag" min="0" max="80" value="30" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">角度 (°)</span>
+              <span class="slider-value" id="f2-ang-label">120°</span>
+            </div>
+            <input type="range" id="f2-ang" min="0" max="360" value="120" step="1">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">合力</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">合力の大きさ</div>
+            <div class="metric-value" id="fr-mag">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">合力の角度</div>
+            <div class="metric-value" id="fr-ang">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="hint-box">2つの力のベクトル和が合力。\n平行四辺形の対角線が合力の向き。</div>
+    </div>
+
+    <!-- 分解タブ -->
+    <div class="tab-content" id="tab-decompose">
+      <div>
+        <div class="panel-section-label">元の力 F</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">大きさ (N)</span>
+              <span class="slider-value" id="fd-mag-label">60</span>
+            </div>
+            <input type="range" id="fd-mag" min="10" max="100" value="60" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">角度 (°)</span>
+              <span class="slider-value" id="fd-ang-label">40°</span>
+            </div>
+            <input type="range" id="fd-ang" min="0" max="90" value="40" step="1">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">分解後の成分</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">水平成分 Fx</div>
+            <div class="metric-value" id="fd-fx">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">鉛直成分 Fy</div>
+            <div class="metric-value" id="fd-fy">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="hint-box">Fx = Fcosθ\nFy = Fsinθ\n\n斜面上の力もθを変えて確認できる。</div>
+    </div>
+
+    <!-- つりあいタブ -->
+    <div class="tab-content" id="tab-balance">
+      <div>
+        <div class="panel-section-label">モード</div>
+        <div class="mode-btns" style="grid-template-columns:1fr 1fr;">
+          <button class="mode-btn active" id="bmode-2" onclick="setBalanceMode(2)">2力のつりあい</button>
+          <button class="mode-btn" id="bmode-3" onclick="setBalanceMode(3)">3力のつりあい</button>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">力 F₁</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">大きさ (N)</span>
+              <span class="slider-value" id="b1-mag-label">50</span>
+            </div>
+            <input type="range" id="b1-mag" min="0" max="80" value="50" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">角度 (°)</span>
+              <span class="slider-value" id="b1-ang-label">90°</span>
+            </div>
+            <input type="range" id="b1-ang" min="0" max="360" value="90" step="0.1">
+            <input type="number" min="0" max="360" value="90" step="0.1" id="b1-ang-num" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 8px;margin-top:4px;">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">力 F₂</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">大きさ (N)</span>
+              <span class="slider-value" id="b2-mag-label">50</span>
+            </div>
+            <input type="range" id="b2-mag" min="0" max="80" value="50" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">角度 (°)</span>
+              <span class="slider-value" id="b2-ang-label">270°</span>
+            </div>
+            <input type="range" id="b2-ang" min="0" max="360" value="270" step="0.1">
+            <input type="number" min="0" max="360" value="270" step="0.1" id="b2-ang-num" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 8px;margin-top:4px;">
+          </div>
+        </div>
+      </div>
+      <!-- 3力のみ表示 -->
+      <div id="b3-section" style="display:none;">
+        <div class="panel-section-label">力 F₃</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">大きさ (N)</span>
+              <span class="slider-value" id="b3-mag-label">40</span>
+            </div>
+            <input type="range" id="b3-mag" min="0" max="80" value="40" step="1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">角度 (°)</span>
+              <span class="slider-value" id="b3-ang-label">0°</span>
+            </div>
+            <input type="range" id="b3-ang" min="0" max="360" value="0" step="0.1">
+            <input type="number" min="0" max="360" value="0" step="0.1" id="b3-ang-num" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 8px;margin-top:4px;">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-section-label">つりあい判定</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">合力 x成分</div>
+            <div class="metric-value" id="b-rx">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">合力 y成分</div>
+            <div class="metric-value" id="b-ry">—</div>
+          </div>
+          <div class="metric-card" style="grid-column:1/-1;">
+            <div class="metric-label">状態</div>
+            <div class="metric-value" id="b-state">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="hint-box">つりあい条件：\nΣFx = 0 かつ ΣFy = 0\n\n合力がゼロになるよう調整してみよう。</div>
+    </div>
+  </aside>
+
+  <div class="sim-right">
+    <canvas id="main-canvas"></canvas>
+  </div>
+</div>
+
+<script>
+const C = {
+  bg:'#0d1117', border:'#2a3441', blue:'#2f81f7',
+  green:'#3fb950', orange:'#e07b39', yellow:'#f7c948',
+  pink:'#d2a8ff', red:'#f85149',
+  text:'#e6edf3', muted:'#7d8590', dim:'#2a3441', axis:'rgba(255,255,255,0.2)',
+};
+
+let currentTab = 'compose';
+let balanceMode = 2;
+
+function resizeCanvas(){
+  const right = document.querySelector('.sim-right');
+  const canvas = document.getElementById('main-canvas');
+  canvas.width = right.clientWidth;
+  canvas.height = right.clientHeight;
+}
+resizeCanvas();
+
+function setBalanceMode(n){
+  balanceMode=n;
+  document.getElementById('bmode-2').classList.toggle('active',n===2);
+  document.getElementById('bmode-3').classList.toggle('active',n===3);
+  document.getElementById('b3-section').style.display=n===3?'block':'none';
+  draw();
+}
+
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  currentTab = id.replace('tab-','');
+  draw();
+}
+
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+function deg2rad(d){ return d*Math.PI/180; }
+function rad2deg(r){ return r*180/Math.PI; }
+
+function drawArrow(ctx, x0, y0, x1, y1, color, label, labelSide='right'){
+  const dx=x1-x0, dy=y1-y0;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2) return;
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  const ang=Math.atan2(dy,dx);
+  ctx.beginPath(); ctx.moveTo(x1,y1);
+  ctx.lineTo(x1-11*Math.cos(ang-0.35),y1-11*Math.sin(ang-0.35));
+  ctx.lineTo(x1-11*Math.cos(ang+0.35),y1-11*Math.sin(ang+0.35));
+  ctx.closePath(); ctx.fill();
+  if(label){
+    ctx.font='600 13px "JetBrains Mono"';
+    const mx=(x0+x1)/2, my=(y0+y1)/2;
+    const nx=-dy/len, ny=dx/len;
+    const offset=16;
+    ctx.fillText(label, mx+nx*offset+(labelSide==='right'?4:-ctx.measureText(label).width-4), my+ny*offset+4);
+  }
+}
+
+function drawGrid(ctx, W, H, cx, cy){
+  const step=60;
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for(let x=cx%step;x<W;x+=step){
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+  for(let y=cy%step;y<H;y+=step){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+  // 軸
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+  // 軸ラベル
+  ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText('x',W-20,cy-8);
+  ctx.textAlign='center';
+  ctx.fillText('y',cx+10,14);
+}
+
+// ===== 合成 =====
+function drawCompose(){
+  const canvas=document.getElementById('main-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const cx=W/2, cy=H/2;
+  drawGrid(ctx,W,H,cx,cy);
+
+  const f1mag=parseFloat(document.getElementById('f1-mag').value);
+  const f1ang=deg2rad(parseFloat(document.getElementById('f1-ang').value));
+  const f2mag=parseFloat(document.getElementById('f2-mag').value);
+  const f2ang=deg2rad(parseFloat(document.getElementById('f2-ang').value));
+
+  const scale=2.5;
+  const f1x=f1mag*Math.cos(f1ang)*scale, f1y=-f1mag*Math.sin(f1ang)*scale;
+  const f2x=f2mag*Math.cos(f2ang)*scale, f2y=-f2mag*Math.sin(f2ang)*scale;
+  const frx=f1x+f2x, fry=f1y+f2y;
+  const frMag=Math.sqrt(frx*frx+fry*fry)/scale;
+  const frAng=rad2deg(Math.atan2(-fry,frx));
+
+  // 平行四辺形（補助線）
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  ctx.moveTo(cx+f1x,cy+f1y);
+  ctx.lineTo(cx+frx,cy+fry);
+  ctx.moveTo(cx+f2x,cy+f2y);
+  ctx.lineTo(cx+frx,cy+fry);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // F1
+  drawArrow(ctx,cx,cy,cx+f1x,cy+f1y,C.blue,'F₁='+f1mag+'N');
+  // F2
+  drawArrow(ctx,cx,cy,cx+f2x,cy+f2y,C.yellow,'F₂='+f2mag+'N');
+  // 合力
+  drawArrow(ctx,cx,cy,cx+frx,cy+fry,C.red,'F='+frMag.toFixed(1)+'N');
+
+  // 原点
+  ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2);
+  ctx.fillStyle=C.text; ctx.fill();
+
+  // 計測値更新
+  document.getElementById('fr-mag').textContent=frMag.toFixed(1)+' N';
+  document.getElementById('fr-ang').textContent=(frAng<0?frAng+360:frAng).toFixed(1)+'°';
+}
+
+// ===== 分解 =====
+function drawDecompose(){
+  const canvas=document.getElementById('main-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const cx=W/2, cy=H/2;
+  drawGrid(ctx,W,H,cx,cy);
+
+  const fmag=parseFloat(document.getElementById('fd-mag').value);
+  const fang=deg2rad(parseFloat(document.getElementById('fd-ang').value));
+  const scale=3.0;
+  const fx=fmag*Math.cos(fang)*scale;
+  const fy=fmag*Math.sin(fang)*scale;
+
+  // x成分（黄）
+  drawArrow(ctx,cx,cy,cx+fx,cy,C.yellow,'Fx='+(fmag*Math.cos(fang)).toFixed(1)+'N');
+  // y成分（緑）- 原点から上向き
+  drawArrow(ctx,cx,cy,cx,cy-fy,C.green,'Fy='+(fmag*Math.sin(fang)).toFixed(1)+'N','left');
+  // 元の力（ピンク）
+  drawArrow(ctx,cx,cy,cx+fx,cy-fy,C.pink,'F='+fmag+'N');
+
+  // 直角マーク（Fx の先端）
+  const s=12;
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(cx+fx-s,cy);
+  ctx.lineTo(cx+fx-s,cy-s);
+  ctx.lineTo(cx+fx,cy-s);
+  ctx.stroke();
+
+  // Fyの先端からFxの先端への補助線
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(cx,cy-fy); ctx.lineTo(cx+fx,cy-fy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+fx,cy); ctx.lineTo(cx+fx,cy-fy); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // θ弧
+  const arcR=50;
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(cx,cy,arcR,0,-fang,true); ctx.stroke();
+  ctx.fillStyle=C.muted; ctx.font='12px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText('θ='+Math.round(parseFloat(document.getElementById('fd-ang').value))+'°', cx+arcR+6,cy-8);
+
+  // 原点
+  ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2);
+  ctx.fillStyle=C.text; ctx.fill();
+
+  document.getElementById('fd-fx').textContent=(fmag*Math.cos(fang)).toFixed(1)+' N';
+  document.getElementById('fd-fy').textContent=(fmag*Math.sin(fang)).toFixed(1)+' N';
+}
+
+// ===== つりあい =====
+function drawBalance(){
+  const canvas=document.getElementById('main-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const cx=W/2, cy=H/2;
+  drawGrid(ctx,W,H,cx,cy);
+
+  const b1mag=parseFloat(document.getElementById('b1-mag').value);
+  const b1ang=deg2rad(parseFloat(document.getElementById('b1-ang').value));
+  const b2mag=parseFloat(document.getElementById('b2-mag').value);
+  const b2ang=deg2rad(parseFloat(document.getElementById('b2-ang').value));
+
+  const scale=2.5;
+  const f1x=b1mag*Math.cos(b1ang)*scale, f1y=-b1mag*Math.sin(b1ang)*scale;
+  const f2x=b2mag*Math.cos(b2ang)*scale, f2y=-b2mag*Math.sin(b2ang)*scale;
+
+  let f3x=0, f3y=0;
+  if(balanceMode===3){
+    const b3mag=parseFloat(document.getElementById('b3-mag').value);
+    const b3ang=deg2rad(parseFloat(document.getElementById('b3-ang').value));
+    f3x=b3mag*Math.cos(b3ang)*scale;
+    f3y=-b3mag*Math.sin(b3ang)*scale;
+  }
+
+  const rx=(f1x+f2x+f3x)/scale, ry=(f1y+f2y+f3y)/scale;
+  const balanced=Math.abs(rx)<0.5&&Math.abs(ry)<0.5;
+
+  drawArrow(ctx,cx,cy,cx+f1x,cy+f1y,C.blue,'F₁='+b1mag+'N');
+  drawArrow(ctx,cx,cy,cx+f2x,cy+f2y,C.yellow,'F₂='+b2mag+'N');
+  if(balanceMode===3){
+    const b3mag=parseFloat(document.getElementById('b3-mag').value);
+    drawArrow(ctx,cx,cy,cx+f3x,cy+f3y,C.pink,'F₃='+b3mag+'N');
+  }
+
+  // 合力
+  if(!balanced){
+    drawArrow(ctx,cx,cy,cx+(f1x+f2x+f3x),cy+(f1y+f2y+f3y),C.red,'合力');
+  }
+
+  // 物体
+  if(balanced){
+    ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2);
+    ctx.fillStyle='rgba(63,185,80,0.2)'; ctx.fill();
+    ctx.strokeStyle=C.green; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=C.green; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText('つりあい',cx,cy+40);
+  } else {
+    ctx.beginPath(); ctx.arc(cx,cy,14,0,Math.PI*2);
+    ctx.fillStyle='rgba(248,81,73,0.2)'; ctx.fill();
+    ctx.strokeStyle=C.red; ctx.lineWidth=2; ctx.stroke();
+  }
+
+  const rxEl=document.getElementById('b-rx');
+  const ryEl=document.getElementById('b-ry');
+  const stEl=document.getElementById('b-state');
+  rxEl.textContent=rx.toFixed(1)+' N';
+  ryEl.textContent=ry.toFixed(1)+' N';
+  rxEl.className='metric-value '+(Math.abs(rx)<0.5?'ok':'ng');
+  ryEl.className='metric-value '+(Math.abs(ry)<0.5?'ok':'ng');
+  stEl.textContent=balanced?'✓ つりあっている':'✗ つりあっていない';
+  stEl.className='metric-value '+(balanced?'ok':'ng');
+}
+
+function draw(){
+  if(currentTab==='compose') drawCompose();
+  else if(currentTab==='decompose') drawDecompose();
+  else drawBalance();
+}
+
+// イベント
+const allSliders=[
+  'f1-mag','f1-ang','f2-mag','f2-ang',
+  'fd-mag','fd-ang',
+  'b1-mag','b1-ang','b2-mag','b2-ang','b3-mag','b3-ang'
+];
+const labelMap={
+  'f1-mag':'f1-mag-label','f1-ang':'f1-ang-label',
+  'f2-mag':'f2-mag-label','f2-ang':'f2-ang-label',
+  'fd-mag':'fd-mag-label','fd-ang':'fd-ang-label',
+  'b1-mag':'b1-mag-label','b1-ang':'b1-ang-label',
+  'b2-mag':'b2-mag-label','b2-ang':'b2-ang-label',
+  'b3-mag':'b3-mag-label','b3-ang':'b3-ang-label',
+};
+const angSliders=['f1-ang','f2-ang','fd-ang','b1-ang','b2-ang','b3-ang'];
+
+allSliders.forEach(id=>{
+  ['input','change'].forEach(ev=>{
+    document.getElementById(id).addEventListener(ev,()=>{
+      const val=parseFloat(document.getElementById(id).value);
+      const suffix=angSliders.includes(id)?'°':' ';
+      document.getElementById(labelMap[id]).textContent=
+        angSliders.includes(id)?Math.round(val)+'°':val;
+      draw();
+    });
+  });
+});
+
+// つりあい角度：数値入力↔スライダー連動
+['b1','b2','b3'].forEach(prefix=>{
+  const slider=document.getElementById(prefix+'-ang');
+  const numInput=document.getElementById(prefix+'-ang-num');
+  const label=document.getElementById(prefix+'-ang-label');
+  ['input','change'].forEach(ev=>{
+    slider.addEventListener(ev,()=>{
+      numInput.value=parseFloat(slider.value).toFixed(1);
+      label.textContent=parseFloat(slider.value).toFixed(1)+'°';
+      draw();
+    });
+    numInput.addEventListener(ev,()=>{
+      let v=parseFloat(numInput.value);
+      if(isNaN(v)) return;
+      v=Math.max(0,Math.min(360,v));
+      slider.value=v;
+      label.textContent=v.toFixed(1)+'°';
+      draw();
+    });
+  });
+});
+
+draw();
+</script>
+</body>
+</html>
