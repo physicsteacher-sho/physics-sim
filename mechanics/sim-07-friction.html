@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>摩擦力 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+    --border:#2a3441; --blue:#2f81f7; --blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15); --green:#3fb950;
+    --orange:#e07b39; --pink:#d2a8ff; --yellow:#f7c948; --red:#f85149;
+    --text:#e6edf3; --text-muted:#7d8590; --text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace; --sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--blue-dim);text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .btn-fullscreen{margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:16px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+  .panel-section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;}
+  .slider-group{display:flex;flex-direction:column;gap:14px;}
+  .slider-row{display:flex;flex-direction:column;gap:6px;}
+  .slider-header{display:flex;justify-content:space-between;align-items:baseline;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);font-size:12px;}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  input[type=range]:disabled{opacity:.4;pointer-events:none;}
+  .btn-group{display:flex;flex-direction:column;gap:8px;}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s,border-color .15s;}
+  .btn:hover{background:var(--blue-glow);border-color:var(--blue);}
+  .btn:disabled{opacity:.4;pointer-events:none;}
+  .btn-start{background:var(--blue-dim);border-color:var(--blue);justify-content:center;font-weight:700;font-size:14px;padding:11px;}
+  .btn-start:hover{background:var(--blue);}
+  .btn-reset{background:transparent;color:var(--text-muted);border-color:var(--border);font-size:12px;justify-content:center;}
+  .btn-reset:hover{color:var(--text);background:var(--surface2);}
+  .status-card{border-radius:6px;padding:12px 14px;text-align:center;font-family:var(--mono);font-weight:700;font-size:14px;}
+  .status-static{background:rgba(47,129,247,0.15);border:1px solid var(--blue);color:var(--blue);}
+  .status-moving{background:rgba(248,81,73,0.15);border:1px solid var(--red);color:var(--red);}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);}
+  .hint-box{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--text-muted);line-height:1.8;white-space:pre-line;}
+  .sim-right{display:grid;grid-template-rows:1fr 1fr;overflow:hidden;}
+  .sim-canvas-area{background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;border-bottom:1px solid var(--border);}
+  .graph-area{padding:16px;display:flex;flex-direction:column;background:var(--bg);}
+  .graph-title{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:8px;}
+  canvas{display:block;border-radius:6px;border:1px solid var(--border);}
+
+        .formula-section { margin-bottom: 14px; }
+        .formula-section-title {
+          font-size: 12px; color: var(--text-muted);
+          margin-bottom: 6px; font-family: var(--sans);
+        }
+        .formula-box {
+          background: rgba(247,201,72,0.1);
+          border: 1px solid rgba(247,201,72,0.4);
+          border-radius: 6px;
+          padding: 10px 14px;
+          font-family: var(--mono);
+          font-size: 14px;
+          font-weight: 600;
+          color: #f7c948;
+          margin-bottom: 4px;
+        }
+        .formula-note {
+          font-family: var(--mono);
+          font-size: 11px;
+          color: var(--text-muted);
+          padding: 0 4px;
+        }
+        .formula-section { margin-bottom: 14px; }
+        .formula-section-title { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-family: var(--sans); }
+        .formula-box { background: rgba(247,201,72,0.1); border: 1px solid rgba(247,201,72,0.4); border-radius: 6px; padding: 10px 14px; font-family: var(--mono); font-size: 14px; font-weight: 600; color: #f7c948; margin-bottom: 4px; }
+        .formula-note { font-family: var(--mono); font-size: 11px; color: var(--text-muted); padding: 0 4px; }
+      
+      </style>
+</head>
+<body>
+<header class="sim-header">
+  <span class="sim-badge">力学 07</span>
+  <h1 class="sim-title">摩擦力</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button class="btn-fullscreen" onclick="toggleFullscreen()">⛶ 全画面</button>
+</header>
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-settings',this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-info',this)">解説</button>
+    </div>
+    <div class="tab-content active" id="tab-settings">
+
+      <div>
+        <div class="panel-section-label">物体・面の設定</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>m</em>　質量 (kg)</span>
+              <span class="slider-value" id="m-label">3.0</span>
+            </div>
+            <input type="range" id="m-slider" min="0.5" max="10" value="3" step="0.5">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>μ</em>　静止摩擦係数</span>
+              <span class="slider-value" id="us-label">0.50</span>
+            </div>
+            <input type="range" id="us-slider" min="0.1" max="1.0" value="0.5" step="0.01">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>μ'</em>　動摩擦係数</span>
+              <span class="slider-value" id="uk-label">0.35</span>
+            </div>
+            <input type="range" id="uk-slider" min="0.05" max="0.9" value="0.35" step="0.01">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-section-label">外力 F（水平）</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>F</em>　外力 (N)</span>
+              <span class="slider-value" id="F-label">0.0</span>
+            </div>
+            <input type="range" id="F-slider" min="0" max="100" value="0" step="0.5">
+          </div>
+        </div>
+      </div>
+
+      <div id="status-card" class="status-card status-static">静止中</div>
+
+      <div>
+        <div class="panel-section-label">計測値</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">垂直抗力 N (N)</div>
+            <div class="metric-value" id="m-N">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">F₀ = μN (N)</div>
+            <div class="metric-value" id="m-fs-max">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">摩擦力 F₀またはF' (N)</div>
+            <div class="metric-value" id="m-f">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">加速度 a (m/s²)</div>
+            <div class="metric-value" id="m-a">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">速度 v (m/s)</div>
+            <div class="metric-value" id="m-v">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">変位 x (m)</div>
+            <div class="metric-value" id="m-x">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-section-label">再生</div>
+        <div class="btn-group">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-start" id="btn-start" onclick="startAnim()">▶ 開始</button>
+            <button class="btn" id="btn-pause" onclick="togglePause()" disabled style="justify-content:center;">⏸ 停止</button>
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label">再生速度</span>
+              <span class="slider-value" id="speed-label">1.0x</span>
+            </div>
+            <input type="range" id="speed-slider" min="0.1" max="3" value="1" step="0.1">
+          </div>
+          <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-info">
+
+      <div class="formula-section">
+        <div class="formula-section-title">静止摩擦力</div>
+        <div class="formula-box">f = F（外力とつりあう）</div>
+        <div class="formula-note">外力が小さいうちは f = F でつりあう</div>
+      </div>
+
+      <div class="formula-section">
+        <div class="formula-section-title">最大静止摩擦力</div>
+        <div class="formula-box">F₀ = μN</div>
+        <div class="formula-note">μ：静止摩擦係数　N：垂直抗力</div>
+      </div>
+
+      <div class="formula-section">
+        <div class="formula-section-title">動摩擦力</div>
+        <div class="formula-box">F' = μ'N</div>
+        <div class="formula-note">μ'：動摩擦係数（通常 μ' &lt; μ）</div>
+      </div>
+
+      <div class="formula-section">
+        <div class="formula-section-title">運動方程式（動いているとき）</div>
+        <div class="formula-box">ma = F - F'</div>
+        <div class="formula-note">a = (F - μ'N) / m</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sim-right">
+    <div class="sim-canvas-area">
+      <canvas id="main-canvas"></canvas>
+    </div>
+    <div class="graph-area">
+      <div class="graph-title">F-f グラフ（外力と摩擦力の関係）</div>
+      <canvas id="ff-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+const C = {
+  bg:'#0d1117', border:'#2a3441', blue:'#2f81f7',
+  green:'#3fb950', orange:'#e07b39', yellow:'#f7c948',
+  pink:'#d2a8ff', red:'#f85149',
+  text:'#e6edf3', muted:'#7d8590', dim:'#2a3441', axis:'rgba(255,255,255,0.15)',
+};
+
+let state='idle', animId=null, paused=false;
+let animT=0, animSpeed=1.0, startTime=null, savedT=0;
+let curV=0, curX=0;
+const T_MAX=8;
+
+function resizeCanvases(){
+  const right=document.querySelector('.sim-right');
+  const W=right.clientWidth, H=right.clientHeight;
+  const mc=document.getElementById('main-canvas');
+  mc.width=W-32; mc.height=Math.floor(H/2)-32;
+  const fc=document.getElementById('ff-canvas');
+  fc.width=W-32; fc.height=Math.floor(H/2)-56;
+}
+resizeCanvases();
+
+function get(){
+  const m=parseFloat(document.getElementById('m-slider').value);
+  const us=parseFloat(document.getElementById('us-slider').value);
+  const uk=parseFloat(document.getElementById('uk-slider').value);
+  const F=parseFloat(document.getElementById('F-slider').value);
+  const N=m*G;
+  const fsMax=us*N;
+  const fk=uk*N;
+  const moving=F>fsMax;
+  const f=moving?fk:F;
+  const a=moving?(F-fk)/m:0;
+  return {m,us,uk,F,N,fsMax,fk,moving,f,a};
+}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+function updateUI(){
+  const {m,us,uk,F,N,fsMax,fk,moving,f,a}=get();
+  document.getElementById('m-N').textContent=N.toFixed(1)+' N';
+  document.getElementById('m-fs-max').textContent=fsMax.toFixed(1)+' N';
+  document.getElementById('m-f').textContent=f.toFixed(1)+' N';
+  document.getElementById('m-a').textContent=a.toFixed(2)+' m/s²';
+  document.getElementById('m-v').textContent=curV.toFixed(2)+' m/s';
+  document.getElementById('m-x').textContent=curX.toFixed(2)+' m';
+
+  const card=document.getElementById('status-card');
+  if(moving){
+    card.textContent='動摩擦（滑っている）';
+    card.className='status-card status-moving';
+  } else {
+    card.textContent=F>=fsMax*0.99?'最大静止摩擦（動き出す直前）':'静止中';
+    card.className='status-card status-static';
+  }
+}
+
+function resetAll(){
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  state='idle'; paused=false; animT=0; savedT=0; startTime=null;
+  curV=0; curX=0;
+  document.getElementById('btn-start').textContent='▶ 開始';
+  document.getElementById('btn-pause').disabled=true;
+  document.getElementById('btn-pause').textContent='⏸ 停止';
+  setSliderDisabled(false);
+  updateUI();
+  drawAll();
+}
+
+function setSliderDisabled(d){
+  ['m-slider','us-slider','uk-slider','F-slider'].forEach(id=>document.getElementById(id).disabled=d);
+}
+
+function startAnim(){
+  if(state==='running') return;
+  state='running'; paused=false; animT=0; savedT=0; startTime=null;
+  curV=0; curX=0;
+  setSliderDisabled(true);
+  document.getElementById('btn-start').textContent='実行中...';
+  document.getElementById('btn-pause').disabled=false;
+  runStep();
+}
+
+function runStep(){
+  const {a}=get();
+  function step(ts){
+    if(!startTime) startTime=ts;
+    const dt=(ts-startTime)/1000*animSpeed - (savedT>0?0:0);
+    animT=Math.min(savedT+(ts-startTime)/1000*animSpeed, T_MAX);
+    const elapsed=(ts-startTime)/1000*animSpeed;
+    const {F,N,fsMax,fk,moving,f,m}=get();
+    // 積分：小刻みに計算
+    const steps=5;
+    const rawDt=animSpeed/60/steps;
+    for(let i=0;i<steps;i++){
+      if(moving||curV>0){
+        const acc=(F-fk)/m;
+        curV=Math.max(0,curV+acc*(1/60/steps));
+      }
+      curX+=curV*(1/60/steps);
+    }
+    updateUI();
+    drawAll();
+    if(animT>=T_MAX){
+      state='done';
+      document.getElementById('btn-start').textContent='▶ 開始';
+      document.getElementById('btn-pause').disabled=true;
+      setSliderDisabled(false);
+      return;
+    }
+    animId=requestAnimationFrame(step);
+  }
+  animId=requestAnimationFrame(step);
+}
+
+function togglePause(){
+  if(state!=='running') return;
+  paused=!paused;
+  const btn=document.getElementById('btn-pause');
+  if(paused){
+    btn.textContent='▶ 再開';
+    if(animId){cancelAnimationFrame(animId);animId=null;}
+    savedT=animT; startTime=null;
+  } else {
+    btn.textContent='⏸ 停止';
+    startTime=null;
+    runStep();
+  }
+}
+
+// ===== メインキャンバス =====
+function drawMain(){
+  const canvas=document.getElementById('main-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const {m,F,N,fsMax,fk,moving,f,a}=get();
+
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const groundY=H*0.62;
+  const boxW=80, boxH=60;
+
+  // 追従カメラ
+  const viewRange=20, scale=(W-80)/viewRange;
+  const camCenter=curX;
+  function toSX(x){return W/2+(x-camCenter)*scale;}
+
+  // 目盛りグリッド
+  const tickInterval=2;
+  const firstTick=Math.ceil((camCenter-viewRange/2)/tickInterval)*tickInterval;
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for(let x=firstTick;x<=camCenter+viewRange/2+tickInterval;x+=tickInterval){
+    const sx=toSX(x);
+    ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,groundY); ctx.stroke();
+  }
+
+  // 地面
+  ctx.fillStyle='rgba(63,185,80,0.12)';
+  ctx.fillRect(0,groundY,W,H-groundY);
+  ctx.strokeStyle=C.green; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,groundY); ctx.lineTo(W,groundY); ctx.stroke();
+
+  // 数直線目盛り
+  ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='center';
+  for(let x=firstTick;x<=camCenter+viewRange/2+tickInterval;x+=tickInterval){
+    const sx=toSX(x);
+    if(sx<40||sx>W-40) continue;
+    ctx.strokeStyle=C.axis; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(sx,groundY); ctx.lineTo(sx,groundY+6); ctx.stroke();
+    ctx.fillStyle=C.muted;
+    ctx.fillText(x.toFixed(0),sx,groundY+18);
+  }
+  ctx.fillStyle=C.muted; ctx.font='12px "Noto Sans JP"'; ctx.textAlign='left';
+  ctx.fillText('x (m)',W-50,groundY+18);
+
+  const bx=toSX(curX);
+  const bLeft=bx-boxW/2, bTop=groundY-boxH;
+
+  // 物体（箱）：グレー固定（力の色と被らない）
+  ctx.fillStyle='rgba(180,180,200,0.15)';
+  ctx.fillRect(bLeft,bTop,boxW,boxH);
+  ctx.strokeStyle='rgba(180,180,200,0.6)'; ctx.lineWidth=2;
+  ctx.strokeRect(bLeft,bTop,boxW,boxH);
+  // 質量ラベルは箱の上
+  ctx.fillStyle=C.text; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText(m+'kg', bx, bTop-8);
+
+  const boxCenterY = bTop+boxH/2;
+  const boxBottomY = groundY;
+  const boxLeftX   = bLeft;
+
+  function arrowH(x0,y0,len,dir,color,label){
+    ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0+dir*len,y0); ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.beginPath(); ctx.moveTo(x0+dir*len,y0);
+    ctx.lineTo(x0+dir*len-dir*11,y0-5);
+    ctx.lineTo(x0+dir*len-dir*11,y0+5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle=color; ctx.font='600 12px "JetBrains Mono"';
+    ctx.textAlign=dir>0?'left':'right';
+    ctx.fillText(label, x0+dir*len+dir*6, y0+4);
+  }
+
+  function arrowV(x0,y0,len,dir,color,label,side){
+    ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y0+dir*len); ctx.stroke();
+    ctx.fillStyle=color;
+    ctx.beginPath(); ctx.moveTo(x0,y0+dir*len);
+    ctx.lineTo(x0-5,y0+dir*len-dir*9);
+    ctx.lineTo(x0+5,y0+dir*len-dir*9);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle=color; ctx.font='600 12px "JetBrains Mono"';
+    ctx.textAlign=side==='left'?'right':'left';
+    ctx.fillText(label, x0+(side==='left'?-8:8), y0+dir*len/2+4);
+  }
+
+  // F（赤）：右側面中央から右向き（引っ張るイメージ）
+  if(F>0.01){
+    const fLen=F*2.5;
+    arrowH(bLeft+boxW, boxCenterY, fLen, 1, '#ff4444', 'F='+F.toFixed(1)+'N');
+  }
+
+  // f：底面中央から左向き
+  if(f>0.01){
+    const fLen=f*2.5;
+    const label=moving?("F'="+fk.toFixed(1)+"N"):("F0="+f.toFixed(1)+"N");
+    const fColor='#0099cc';
+    ctx.strokeStyle=fColor; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(bx,boxBottomY); ctx.lineTo(bx-fLen,boxBottomY); ctx.stroke();
+    ctx.fillStyle=fColor;
+    ctx.beginPath(); ctx.moveTo(bx-fLen,boxBottomY);
+    ctx.lineTo(bx-fLen+11,boxBottomY-5);
+    ctx.lineTo(bx-fLen+11,boxBottomY+5);
+    ctx.closePath(); ctx.fill();
+    // ラベルは矢印の先端の左外側・高さは地面より上
+    ctx.fillStyle=fColor; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='right';
+    ctx.fillText(label, bx-fLen-8, boxBottomY-6);
+  }
+
+  // N（明るい緑）：底面左寄りから上向き
+  {
+    const nLen=Math.max(50, Math.min(100,N*1.2));
+    arrowV(bx-18, boxBottomY, nLen, -1, '#00dd66', 'N='+N.toFixed(1)+'N', 'left');
+  }
+
+  // mg（明るいピンク）：重心右寄りから下向き
+  {
+    const mgLen=Math.max(50, Math.min(100,m*G*1.2));
+    arrowV(bx+18, boxCenterY, mgLen, 1, '#ff66cc', 'mg='+(m*G).toFixed(1)+'N', 'right');
+  }
+
+  // v（黄）：物体のさらに上
+  if(curV>0.01){
+    const vLen=Math.max(30, Math.min(120,curV*12));
+    const vy=bTop-36;
+    ctx.strokeStyle=C.yellow; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(bx,vy); ctx.lineTo(bx+vLen,vy); ctx.stroke();
+    ctx.fillStyle=C.yellow;
+    ctx.beginPath(); ctx.moveTo(bx+vLen,vy);
+    ctx.lineTo(bx+vLen-9,vy-5); ctx.lineTo(bx+vLen-9,vy+5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText('v='+curV.toFixed(2)+'m/s', bx+vLen+4, vy+4);
+  }
+
+  // 経過時間
+  if(state==='running'||state==='done'){
+    ctx.fillStyle='rgba(47,129,247,0.85)';
+    ctx.beginPath(); ctx.roundRect(16,12,100,26,5); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText('t = '+animT.toFixed(2)+'s',24,30);
+  }
+
+  // 状態ラベル
+  const stateLabel=moving?'動摩擦':'静止摩擦';
+  const stateColor=moving?C.red:C.blue;
+  ctx.fillStyle=stateColor+'33';
+  ctx.beginPath(); ctx.roundRect(W-130,12,118,28,5); ctx.fill();
+  ctx.fillStyle=stateColor; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText(stateLabel,W-71,30);
+}
+
+// ===== F-fグラフ =====
+function drawFF(){
+  const canvas=document.getElementById('ff-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const {m,us,uk,F,N,fsMax,fk,moving,f}=get();
+
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+
+  const PAD={l:56,r:24,t:16,b:36};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+  const Fmax=Math.max(fsMax*1.8, F*1.2, 20);
+  const fmax=Math.max(fsMax*1.3, 10);
+
+  function sx(f){return PAD.l+f/Fmax*gW;}
+  function sy(f){return PAD.t+gH-f/fmax*gH;}
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t+i*gH/4); ctx.lineTo(W-PAD.r,PAD.t+i*gH/4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.l+i*gW/4,PAD.t); ctx.lineTo(PAD.l+i*gW/4,H-PAD.b); ctx.stroke();
+  }
+
+  // 軸
+  ctx.strokeStyle=C.axis; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  // 軸ラベル
+  ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('F(N)',W-PAD.r,H-PAD.b+16);
+  ctx.save(); ctx.translate(16,PAD.t+gH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('f(N)',0,0); ctx.restore();
+
+  // 静止摩擦領域（f=F の直線）
+  ctx.strokeStyle=C.blue; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(sx(0),sy(0)); ctx.lineTo(sx(fsMax),sy(fsMax)); ctx.stroke();
+
+  // 最大静止摩擦点
+  ctx.beginPath(); ctx.arc(sx(fsMax),sy(fsMax),5,0,Math.PI*2);
+  ctx.fillStyle=C.yellow; ctx.fill();
+
+  // 動摩擦領域（f=fk の水平線）
+  ctx.strokeStyle=C.orange; ctx.lineWidth=2.5;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(sx(fsMax),sy(fk)); ctx.lineTo(sx(Fmax),sy(fk)); ctx.stroke();
+
+  // 垂直点線（最大静止摩擦点）
+  ctx.strokeStyle='rgba(247,201,72,0.4)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(sx(fsMax),PAD.t); ctx.lineTo(sx(fsMax),H-PAD.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,sy(fk)); ctx.lineTo(W-PAD.r,sy(fk)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ラベル
+  ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('F₀='+fsMax.toFixed(1),sx(fsMax),PAD.t+12);
+  ctx.fillStyle=C.orange; ctx.textAlign='left';
+  ctx.fillText("F'="+fk.toFixed(1),sx(fsMax)+6,sy(fk)-6);
+
+  // 現在のF・f点
+  ctx.beginPath(); ctx.arc(sx(F),sy(f),7,0,Math.PI*2);
+  ctx.fillStyle=moving?C.red:C.blue; ctx.fill();
+  ctx.fillStyle=moving?C.red:C.blue; ctx.font='600 11px "JetBrains Mono"';
+  ctx.textAlign='left';
+  ctx.fillText('現在',sx(F)+10,sy(f)+4);
+
+  // 静止/動摩擦ラベル
+  ctx.fillStyle=C.blue; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText('静止摩擦',sx(fsMax/4),sy(fsMax/4)-10);
+  ctx.fillStyle=C.orange;
+  ctx.fillText('動摩擦',sx((fsMax+Fmax)/2),sy(fk)+16);
+}
+
+function drawAll(){drawMain();drawFF();}
+
+['m-slider','us-slider','uk-slider','F-slider'].forEach(id=>{
+  ['input','change'].forEach(ev=>{
+    document.getElementById(id).addEventListener(ev,()=>{
+      document.getElementById('m-label').textContent=parseFloat(document.getElementById('m-slider').value).toFixed(1);
+      document.getElementById('us-label').textContent=parseFloat(document.getElementById('us-slider').value).toFixed(2);
+      document.getElementById('uk-label').textContent=parseFloat(document.getElementById('uk-slider').value).toFixed(2);
+      document.getElementById('F-label').textContent=parseFloat(document.getElementById('F-slider').value).toFixed(1);
+      updateUI();
+      if(state==='idle'||state==='done') drawAll();
+    });
+  });
+});
+
+['input','change'].forEach(ev=>{
+  document.getElementById('speed-slider').addEventListener(ev,()=>{
+    animSpeed=parseFloat(document.getElementById('speed-slider').value);
+    document.getElementById('speed-label').textContent=animSpeed.toFixed(1)+'x';
+  });
+});
+
+updateUI();
+drawAll();
+</script>
+</body>
+</html>
