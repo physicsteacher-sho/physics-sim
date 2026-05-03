@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>単振動 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117;--surface:#161b22;--surface2:#1c2330;
+    --border:#2a3441;--blue:#2f81f7;--blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15);--green:#3fb950;
+    --orange:#e07b39;--pink:#d2a8ff;--yellow:#f7c948;--red:#f85149;
+    --text:#e6edf3;--text-muted:#7d8590;--text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:14px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+  .section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;}
+  .slider-group{display:flex;flex-direction:column;gap:12px;}
+  .slider-row{display:flex;flex-direction:column;gap:5px;}
+  .slider-header{display:flex;justify-content:space-between;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .btn-start{background:var(--blue-dim);border-color:var(--blue);font-weight:700;font-size:14px;padding:11px;}
+  .mode-btn{font-size:12px;color:var(--text-muted);}
+  .mode-btn.active{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);}
+  .btn-toggle{justify-content:space-between;}
+  .btn-toggle.on{background:var(--blue-glow);border-color:var(--blue);}
+  .toggle-pip{width:28px;height:16px;border-radius:8px;background:var(--border);position:relative;flex-shrink:0;transition:background .2s;}
+  .btn-toggle.on .toggle-pip{background:var(--blue);}
+  .toggle-pip::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
+  .btn-toggle.on .toggle-pip::after{left:15px;}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-card.full{grid-column:1/-1;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:14px;font-weight:600;}
+  .formula-box{background:rgba(247,201,72,0.1);border:1px solid rgba(247,201,72,0.4);border-radius:6px;padding:9px 13px;font-family:var(--mono);font-size:13px;font-weight:600;color:#f7c948;margin-bottom:3px;}
+  .formula-note{font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:0 4px;margin-bottom:8px;}
+  .formula-title{font-size:12px;color:var(--text-muted);margin-bottom:4px;margin-top:8px;}
+  .sim-right{display:grid;grid-template-rows:1fr 1fr;overflow:hidden;background:var(--bg);}
+  .canvas-top{display:flex;align-items:center;justify-content:center;padding:16px;border-bottom:1px solid var(--border);}
+  .canvas-bottom{display:flex;align-items:center;justify-content:center;padding:16px;}
+  canvas{display:block;border-radius:6px;border:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header class="sim-header">
+  <span class="sim-badge">力学 12</span>
+  <h1 class="sim-title">単振動</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button style="margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;" onclick="document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()">⛶ 全画面</button>
+</header>
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-s',this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-f',this)">公式</button>
+    </div>
+    <div class="tab-content active" id="tab-s">
+      <div>
+        <div class="section-label">モード</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
+          <button class="btn mode-btn active" id="mode-shm" onclick="setMode('shm')">単振動</button>
+          <button class="btn mode-btn" id="mode-circle" onclick="setMode('circle')">円運動との関係</button>
+        </div>
+        <div id="circle-sub" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px;">
+          <button class="btn mode-btn active" id="csub-x" onclick="setCircleSub('x')" style="font-size:10px;color:#2f81f7;border-color:#2f81f7;">変位 x</button>
+          <button class="btn mode-btn" id="csub-v" onclick="setCircleSub('v')" style="font-size:10px;">速度 v</button>
+          <button class="btn mode-btn" id="csub-a" onclick="setCircleSub('a')" style="font-size:10px;">加速度 a</button>
+        </div>
+        <div class="section-label">パラメータ</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>A</em> 振幅 (m)</span>
+              <span class="slider-value" id="lbl-A">2.0</span>
+            </div>
+            <input type="range" id="sl-A" min="0.5" max="4" value="2" step="0.5">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>ω</em> 角振動数 (rad/s)</span>
+              <span class="slider-value" id="lbl-w">1.0</span>
+            </div>
+            <input type="range" id="sl-w" min="0.2" max="4" value="1" step="0.1">
+          </div>
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>m</em> 質量 (kg)</span>
+              <span class="slider-value" id="lbl-m">1.0</span>
+            </div>
+            <input type="range" id="sl-m" min="0.5" max="5" value="1" step="0.5">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">再생</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button class="btn btn-start" id="btn-play" onclick="togglePlay()">▶ 開始</button>
+          <button class="btn" onclick="t=0;trail=[];if(!playing)drawAll();" style="font-size:12px;color:var(--text-muted);">リセット</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">表示</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-toggle on" id="tog-v" onclick="tog('showV','tog-v')">速度 v（黄）<span class="toggle-pip"></span></button>
+          <button class="btn btn-toggle on" id="tog-a" onclick="tog('showA','tog-a')">加速度 a（赤）<span class="toggle-pip"></span></button>
+          <button class="btn btn-toggle on" id="tog-F" onclick="tog('showF','tog-F')">復元力 F（ピンク）<span class="toggle-pip"></span></button>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">計測値</div>
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">周期 T (s)</div>
+            <div class="metric-value" id="mv-T" style="color:var(--blue);">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">変位 x (m)</div>
+            <div class="metric-value" id="mv-x">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">速度 v (m/s)</div>
+            <div class="metric-value" id="mv-v" style="color:var(--yellow);">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">加速度 a (m/s²)</div>
+            <div class="metric-value" id="mv-a" style="color:var(--red);">—</div>
+          </div>
+          <div class="metric-card full">
+            <div class="metric-label">ばね定数 k = mω² (N/m)</div>
+            <div class="metric-value" id="mv-k" style="color:var(--green);">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-f">
+      <div class="formula-title">変位</div>
+      <div class="formula-box">x = A sin ωt</div>
+      <div class="formula-title">速度</div>
+      <div class="formula-box">v = Aω cos ωt</div>
+      <div class="formula-title">加速度</div>
+      <div class="formula-box">a = -Aω² sin ωt = -ω²x</div>
+      <div class="formula-note">加速度は変位に比例し逆向き</div>
+      <div class="formula-title">周期</div>
+      <div class="formula-box">T = 2π/ω</div>
+      <div class="formula-title">運動方程式（ばね）</div>
+      <div class="formula-box">ma = -kx</div>
+      <div class="formula-note">k = mω²</div>
+    </div>
+  </aside>
+  <div class="sim-right" id="sim-right">
+    <div class="canvas-top"><canvas id="cv-main"></canvas></div>
+    <div class="canvas-bottom"><canvas id="cv-graph"></canvas></div>
+  </div>
+</div>
+<script>
+const G=9.8;
+const C={blue:'#2f81f7',green:'#3fb950',orange:'#e07b39',yellow:'#f7c948',red:'#f85149',pink:'#d2a8ff',text:'#e6edf3',muted:'#7d8590'};
+const flags={showV:true,showA:true,showF:true};
+let playing=false,animId=null,t=0,lastTs=null,trail=[];
+let simMode='shm', circleSub='x';
+
+function setCircleSub(s){
+  circleSub=s;
+  ['x','v','a'].forEach(id=>{
+    const btn=document.getElementById('csub-'+id);
+    const color=id==='x'?'#2f81f7':id==='v'?'#f7c948':'#f85149';
+    btn.classList.toggle('active',id===s);
+    btn.style.color=id===s?color:'var(--text-muted)';
+    btn.style.borderColor=id===s?color:'var(--border)';
+    btn.style.background=id===s?'rgba('+( id==='x'?'47,129,247':id==='v'?'247,201,72':'248,81,73')+',0.15)':'var(--surface2)';
+  });
+  trail=[];
+  if(!playing) drawAll();
+}
+
+function setMode(m){
+  simMode=m;
+  document.getElementById('mode-shm').classList.toggle('active',m==='shm');
+  document.getElementById('mode-circle').classList.toggle('active',m==='circle');
+  document.getElementById('circle-sub').style.display=m==='circle'?'grid':'none';
+  t=0;trail=[];
+  if(!playing) drawAll();
+}
+
+function resize(){
+  const el=document.getElementById('sim-right');
+  const W=el.clientWidth-32, H=el.clientHeight/2-32;
+  document.getElementById('cv-main').width=W;
+  document.getElementById('cv-main').height=H;
+  document.getElementById('cv-graph').width=W;
+  document.getElementById('cv-graph').height=H;
+  drawAll();
+}
+setTimeout(resize,100);
+
+function get(){
+  return {
+    A:parseFloat(document.getElementById('sl-A').value),
+    w:parseFloat(document.getElementById('sl-w').value),
+    m:parseFloat(document.getElementById('sl-m').value),
+  };
+}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function tog(flag,btnId){
+  flags[flag]=!flags[flag];
+  document.getElementById(btnId).classList.toggle('on',flags[flag]);
+  if(!playing) drawAll();
+}
+
+function togglePlay(){
+  playing=!playing;
+  const btn=document.getElementById('btn-play');
+  btn.textContent=playing?'⏸ 停止':'▶ 開始';
+  btn.style.background=playing?'var(--surface2)':'var(--blue-dim)';
+  if(playing){lastTs=null;animId=requestAnimationFrame(loop);}
+  else{cancelAnimationFrame(animId);animId=null;}
+}
+
+function loop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=Math.min((ts-lastTs)/1000,0.05);
+  lastTs=ts;
+  t+=dt;
+  const {A,w}=get();
+  const x=A*Math.sin(w*t);
+  trail.push({t,x});
+  if(trail.length>6000) trail.shift();
+  drawAll();
+  animId=requestAnimationFrame(loop);
+}
+
+function drawSpring(ctx,x0,y0,x1,y1,color){
+  const dx=x1-x0,dy=y1-y0,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2) return;
+  const nx=dx/len,ny=dy/len,px=-ny,py=nx;
+  const amp=10,margin=10,coils=8,steps=coils*24;
+  ctx.strokeStyle=color;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+nx*margin,y0+ny*margin);
+  for(let i=0;i<=steps;i++){
+    const t2=i/steps;
+    ctx.lineTo(x0+nx*margin+(dx-nx*margin*2)*t2+px*amp*Math.sin(t2*coils*Math.PI*2),
+               y0+ny*margin+(dy-ny*margin*2)*t2+py*amp*Math.sin(t2*coils*Math.PI*2));
+  }
+  ctx.lineTo(x1,y1);ctx.stroke();
+}
+
+function aH(ctx,x0,y0,len,dir,color,label){
+  if(Math.abs(len)<3) return;
+  ctx.strokeStyle=color;ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+dir*len,y0);ctx.stroke();
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.moveTo(x0+dir*len,y0);
+  ctx.lineTo(x0+dir*len-dir*9,y0-5);ctx.lineTo(x0+dir*len-dir*9,y0+5);
+  ctx.closePath();ctx.fill();
+  if(label){ctx.fillStyle=color;ctx.font='600 11px "JetBrains Mono"';ctx.textAlign=dir>0?'left':'right';ctx.fillText(label,x0+dir*len+dir*5,y0+4);}
+}
+
+function drawMain(){
+  const cv=document.getElementById('cv-main');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const {A,w,m}=get();
+  const cx=W/2,cy=H/2;
+  const scale=(W*0.35)/Math.max(A,0.5);
+  const bw=40,bh=40;
+
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
+
+  const x=A*Math.sin(w*t);
+  const v=A*w*Math.cos(w*t);
+  const a=-A*w*w*Math.sin(w*t);
+  const k=m*w*w;
+  const F=-k*x;
+
+  // 壁（左）
+  const wallX=40;
+  ctx.fillStyle='rgba(150,160,180,0.2)';ctx.fillRect(wallX-14,cy-50,14,100);
+  ctx.strokeStyle='rgba(150,160,180,0.5)';ctx.lineWidth=2;ctx.strokeRect(wallX-14,cy-50,14,100);
+
+  // 壁（右）
+  ctx.fillStyle='rgba(150,160,180,0.2)';ctx.fillRect(W-40,cy-50,14,100);
+  ctx.strokeStyle='rgba(150,160,180,0.5)';ctx.lineWidth=2;ctx.strokeRect(W-40,cy-50,14,100);
+
+  // ばね（左壁〜物体）
+  const px=cx+x*scale;
+  const bLeft=px-bw/2;
+  drawSpring(ctx,wallX,cy,bLeft,cy,C.blue);
+
+  // ばね（物体〜右壁）
+  drawSpring(ctx,bLeft+bw,cy,W-40,cy,C.blue);
+
+  // 釣り合い位置（点線）
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(cx,cy-50);ctx.lineTo(cx,cy+50);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=C.muted;ctx.font='10px "JetBrains Mono"';ctx.textAlign='center';
+  ctx.fillText('O（釣り合い位置）',cx,cy-56);
+
+  // 振幅点線
+  [-1,1].forEach(d=>{
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.moveTo(cx+d*A*scale,cy-40);ctx.lineTo(cx+d*A*scale,cy+40);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=C.muted;ctx.font='10px "JetBrains Mono"';ctx.textAlign='center';
+    ctx.fillText((d>0?'+':'-')+'A',cx+d*A*scale,cy-46);
+  });
+
+  // 物体
+  ctx.fillStyle='rgba(180,180,200,0.15)';ctx.fillRect(bLeft,cy-bh/2,bw,bh);
+  ctx.strokeStyle='rgba(180,180,200,0.6)';ctx.lineWidth=2;ctx.strokeRect(bLeft,cy-bh/2,bw,bh);
+  ctx.fillStyle=C.text;ctx.font='600 10px "JetBrains Mono"';ctx.textAlign='center';
+  ctx.fillText(m+'kg',px,cy+5);
+
+  // x矢印（変位）：物体上端から
+  if(Math.abs(x)>0.05){
+    const dir=x>0?1:-1;
+    ctx.strokeStyle=C.blue;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(cx,cy-bh/2-16);ctx.lineTo(px,cy-bh/2-16);ctx.stroke();
+    ctx.fillStyle=C.blue;
+    ctx.beginPath();ctx.moveTo(px,cy-bh/2-16);
+    ctx.lineTo(px-dir*8,cy-bh/2-21);ctx.lineTo(px-dir*8,cy-bh/2-11);ctx.closePath();ctx.fill();
+    ctx.fillStyle=C.blue;ctx.font='600 11px "JetBrains Mono"';ctx.textAlign='center';
+    ctx.fillText('x='+x.toFixed(2)+'m',(cx+px)/2,cy-bh/2-28);
+  }
+
+  // v（黄）：物体の上から
+  if(flags.showV&&Math.abs(v)>0.05){
+    const vLen=Math.abs(v)*20;
+    aH(ctx,px,cy-bh/2-46,vLen,v>0?1:-1,C.yellow,'v='+v.toFixed(2));
+  }
+
+  // a（赤）：物体の中心から
+  if(flags.showA&&Math.abs(a)>0.05){
+    const aLen=Math.abs(a)*12;
+    aH(ctx,px,cy,aLen,a>0?1:-1,C.red,'a='+a.toFixed(2));
+  }
+
+  // F（ピンク）：物体の右or左側面から（復元力）
+  if(flags.showF&&Math.abs(F)>0.05){
+    const fLen=Math.abs(F)*8;
+    const fDir=F>0?1:-1;
+    const fStartX=fDir>0?bLeft+bw:bLeft;
+    aH(ctx,fStartX,cy+bh/2+10,fLen,fDir,C.pink,'F='+F.toFixed(2)+'N');
+  }
+
+  // 計測値更新
+  const T=2*Math.PI/w;
+  document.getElementById('mv-T').textContent=T.toFixed(2)+' s';
+  document.getElementById('mv-x').textContent=x.toFixed(3)+' m';
+  document.getElementById('mv-v').textContent=v.toFixed(3)+' m/s';
+  document.getElementById('mv-a').textContent=a.toFixed(3)+' m/s²';
+  document.getElementById('mv-k').textContent=k.toFixed(2)+' N/m';
+  document.getElementById('lbl-A').textContent=A.toFixed(1);
+  document.getElementById('lbl-w').textContent=w.toFixed(1);
+  document.getElementById('lbl-m').textContent=m.toFixed(1);
+}
+
+function drawGraph(){
+  const cv=document.getElementById('cv-graph');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const {A,w,m}=get();
+  const PAD={l:44,r:16,t:16,b:32};
+  const gW=W-PAD.l-PAD.r,gH=H-PAD.t-PAD.b;
+  const T=2*Math.PI/w;
+
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
+
+  // グリッド
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(PAD.l,PAD.t+i*gH/4);ctx.lineTo(W-PAD.r,PAD.t+i*gH/4);ctx.stroke();}
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t+gH/2);ctx.lineTo(W-PAD.r,PAD.t+gH/2);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 軸
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PAD.l,H-PAD.b);ctx.lineTo(W-PAD.r,H-PAD.b);ctx.stroke();
+  ctx.fillStyle=C.muted;ctx.font='10px "JetBrains Mono"';ctx.textAlign='center';
+  ctx.fillText('t(s)',W-PAD.r,H-PAD.b+14);
+  ctx.textAlign='right';
+  ctx.fillText('+A',PAD.l-4,PAD.t+16);
+  ctx.fillText('-A',PAD.l-4,H-PAD.b-4);
+
+  const Amax=A;
+  const tNow=trail.length>0?trail[trail.length-1].t:0;
+  const tWindow=T*2.5;
+  const tStart=Math.max(0, tNow-tWindow);
+
+  // tStartを左端、tStart+tWindowを右端に固定
+  function txToSx(tt){ return PAD.l+(tt-tStart)/tWindow*gW; }
+  function valToSy(val){ return PAD.t+gH/2-val*gH/2*0.9; }
+
+  // 理論曲線（薄く）
+  [[C.blue+'44','x'],[C.yellow+'44','v'],[C.red+'44','a']].forEach(([color,type])=>{
+    ctx.strokeStyle=color;ctx.lineWidth=1;
+    ctx.beginPath();
+    for(let i=0;i<=300;i++){
+      const tt=tStart+i/300*tWindow;
+      let val;
+      if(type==='x') val=A*Math.sin(w*tt)/Amax;
+      else if(type==='v') val=A*w*Math.cos(w*tt)/(A*w);
+      else val=-A*w*w*Math.sin(w*tt)/(A*w*w);
+      const sx2=txToSx(tt), sy2=valToSy(val);
+      if(i===0) ctx.moveTo(sx2,sy2); else ctx.lineTo(sx2,sy2);
+    }
+    ctx.stroke();
+  });
+
+  // 実績トレイル
+  if(trail.length>1){
+    [[C.blue,'x'],[C.yellow,'v'],[C.red,'a']].forEach(([color,type])=>{
+      if(type==='v'&&!flags.showV) return;
+      if(type==='a'&&!flags.showA) return;
+      ctx.strokeStyle=color;ctx.lineWidth=2;
+      ctx.beginPath();
+      let first=true;
+      trail.forEach(({t:tt,x})=>{
+        if(tt<tStart) return;
+        const v2=A*w*Math.cos(w*tt);
+        const a2=-A*w*w*Math.sin(w*tt);
+        let val;
+        if(type==='x') val=x/Amax;
+        else if(type==='v') val=v2/(A*w);
+        else val=a2/(A*w*w);
+        const px2=txToSx(tt), py2=valToSy(val);
+        if(first){ctx.moveTo(px2,py2);first=false;}else ctx.lineTo(px2,py2);
+      });
+      ctx.stroke();
+    });
+  }
+
+  // 現在時刻の縦線（右端）
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(txToSx(tNow),PAD.t);ctx.lineTo(txToSx(tNow),H-PAD.b);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 凡例
+  [[C.blue,'x=Asinωt'],[C.yellow,'v=Aωcosωt'],[C.red,'a=-Aω²sinωt']].forEach(([c,l],i)=>{
+    ctx.fillStyle=c;ctx.font='10px "JetBrains Mono"';ctx.textAlign='left';
+    ctx.fillText(l,PAD.l+4,PAD.t+14+i*14);
+  });
+}
+
+function drawAll(){
+  if(simMode==='shm'){ drawMain(); drawGraph(); }
+  else drawCircleMode();
+}
+
+function drawCircleMode(){
+  if(circleSub==='x') drawCircleX();
+  else if(circleSub==='v') drawCircleV();
+  else drawCircleA();
+  drawGraphSingle();
+}
+function drawCircleX(){
+  const cvM=document.getElementById('cv-main');
+  const ctxM=cvM.getContext('2d');
+  const W=cvM.width, H=cvM.height;
+  const {A,w,m}=get();
+
+  ctxM.clearRect(0,0,W,H); ctxM.fillStyle='#0d1117'; ctxM.fillRect(0,0,W,H);
+
+  const theta=w*t;
+  const x=A*Math.sin(theta); // 単振動の変位
+
+  // レイアウト：左半分=円、右半分=x軸投影
+  const circR=Math.min(W*0.28, H*0.38);
+  const circCx=W*0.3, circCy=H/2;
+  const scale=circR/A;
+
+  // 参照円
+  ctxM.strokeStyle='rgba(255,255,255,0.12)'; ctxM.lineWidth=1.5;
+  ctxM.beginPath(); ctxM.arc(circCx,circCy,circR,0,Math.PI*2); ctxM.stroke();
+
+  // 軸
+  ctxM.strokeStyle='rgba(255,255,255,0.2)'; ctxM.lineWidth=1;
+  ctxM.beginPath(); ctxM.moveTo(circCx-circR-20,circCy); ctxM.lineTo(circCx+circR+20,circCy); ctxM.stroke();
+  ctxM.beginPath(); ctxM.moveTo(circCx,circCy-circR-20); ctxM.lineTo(circCx,circCy+circR+20); ctxM.stroke();
+
+  // 等間隔の点（1周期12等分）
+  for(let i=0;i<12;i++){
+    const ang=-Math.PI/2+i*Math.PI*2/12; // 上から時計回り
+    const px=circCx+circR*Math.cos(ang);
+    const py=circCy+circR*Math.sin(ang);
+    ctxM.beginPath(); ctxM.arc(px,py,3,0,Math.PI*2);
+    ctxM.fillStyle='rgba(255,255,255,0.2)'; ctxM.fill();
+    ctxM.fillStyle='rgba(255,255,255,0.3)'; ctxM.font='9px "JetBrains Mono"'; ctxM.textAlign='center';
+    const lx=circCx+(circR+16)*Math.cos(ang);
+    const ly=circCy+(circR+16)*Math.sin(ang);
+    ctxM.fillText(i,lx,ly+3);
+  }
+
+  // θ=0で右端スタート、反時計回り
+  const circAngle = -theta; // 反時計回りは角度を減らす
+  const cpx=circCx+circR*Math.cos(circAngle);
+  const cpy=circCy+circR*Math.sin(circAngle);
+
+  // 半径ベクトル（赤）
+  ctxM.strokeStyle=C.red; ctxM.lineWidth=2;
+  ctxM.beginPath(); ctxM.moveTo(circCx,circCy); ctxM.lineTo(cpx,cpy); ctxM.stroke();
+
+  // θ弧（右向きθ=0から反時計回り）
+  ctxM.strokeStyle='rgba(248,81,73,0.5)'; ctxM.lineWidth=1;
+  ctxM.beginPath(); ctxM.arc(circCx,circCy,28,0,circAngle,true); ctxM.stroke();
+  ctxM.fillStyle=C.red; ctxM.font='11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('θ=ωt',circCx+34,circCy-8);
+
+  // y軸への正射影（点線）→ これがsinθ = 単振動の変位
+  ctxM.strokeStyle='rgba(47,129,247,0.5)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(circCx,cpy); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // sinθを表す縦線（円上の点から中心の高さまで垂直に）青で統一
+  if(Math.abs(cpy-circCy)>2){
+    ctxM.strokeStyle=C.blue; ctxM.lineWidth=2.5;
+    ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(cpx,circCy); ctxM.stroke();
+    ctxM.beginPath(); ctxM.arc(cpx,circCy,4,0,Math.PI*2);
+    ctxM.fillStyle=C.blue; ctxM.fill();
+    ctxM.fillStyle=C.blue; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+    ctxM.fillText('A sinθ',cpx+8,(circCy+cpy)/2+4);
+  }
+
+  // 円上の物体
+  ctxM.beginPath(); ctxM.arc(cpx,cpy,10,0,Math.PI*2);
+  ctxM.fillStyle='rgba(47,129,247,0.3)'; ctxM.fill();
+  ctxM.beginPath(); ctxM.arc(cpx,cpy,7,0,Math.PI*2);
+  ctxM.fillStyle=C.blue; ctxM.fill();
+
+  // 右側：縦軸上の単振動（x=Asinθ）
+  const vibCx=W*0.72, vibCy=circCy;
+  const vibY=vibCy+cpy-circCy; // y軸正射影：円のy座標と同じ（A sinθ）
+
+  // ±A点線
+  ctxM.strokeStyle='rgba(255,255,255,0.1)'; ctxM.lineWidth=1; ctxM.setLineDash([3,4]);
+  ctxM.beginPath(); ctxM.moveTo(W*0.58,circCy-circR); ctxM.lineTo(W-20,circCy-circR); ctxM.stroke();
+  ctxM.beginPath(); ctxM.moveTo(W*0.58,circCy+circR); ctxM.lineTo(W-20,circCy+circR); ctxM.stroke();
+  ctxM.setLineDash([]);
+  ctxM.fillStyle=C.muted; ctxM.font='10px "JetBrains Mono"'; ctxM.textAlign='right';
+  ctxM.fillText('+A',W-24,circCy-circR-4);
+  ctxM.fillText('-A',W-24,circCy+circR+14);
+
+  // 縦軸
+  ctxM.strokeStyle='rgba(255,255,255,0.2)'; ctxM.lineWidth=1.5;
+  ctxM.beginPath(); ctxM.moveTo(vibCx,circCy-circR-20); ctxM.lineTo(vibCx,circCy+circR+20); ctxM.stroke();
+  ctxM.fillStyle=C.muted; ctxM.font='10px "JetBrains Mono"'; ctxM.textAlign='center';
+  ctxM.fillText('x',vibCx,circCy-circR-26);
+  // 零線
+  ctxM.strokeStyle='rgba(255,255,255,0.1)'; ctxM.lineWidth=1; ctxM.setLineDash([3,3]);
+  ctxM.beginPath(); ctxM.moveTo(W*0.58,circCy); ctxM.lineTo(W-20,circCy); ctxM.stroke();
+  ctxM.setLineDash([]);
+  ctxM.fillStyle=C.muted; ctxM.textAlign='right';
+  ctxM.fillText('0',W-24,circCy+4);
+
+  // 振動する物体（縦軸上）
+  ctxM.beginPath(); ctxM.arc(vibCx,vibY,10,0,Math.PI*2);
+  ctxM.fillStyle='rgba(47,129,247,0.3)'; ctxM.fill();
+  ctxM.beginPath(); ctxM.arc(vibCx,vibY,7,0,Math.PI*2);
+  ctxM.fillStyle=C.blue; ctxM.fill();
+
+  // 物体からx=0まで青線
+  if(Math.abs(vibY-vibCy)>2){
+    ctxM.strokeStyle=C.blue; ctxM.lineWidth=2.5;
+    ctxM.beginPath(); ctxM.moveTo(vibCx,vibY); ctxM.lineTo(vibCx,vibCy); ctxM.stroke();
+    ctxM.beginPath(); ctxM.arc(vibCx,vibCy,4,0,Math.PI*2);
+    ctxM.fillStyle=C.blue; ctxM.fill();
+  }
+
+  // 投影の横線（円y軸投影→右側縦軸）
+  ctxM.strokeStyle='rgba(47,129,247,0.3)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(circCx,cpy); ctxM.lineTo(vibCx,vibY); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // ラベル
+  ctxM.fillStyle=C.blue; ctxM.font='600 12px "JetBrains Mono"'; ctxM.textAlign='center';
+  ctxM.fillText('x = A sinθ = A sin ωt',vibCx,circCy-circR-44);
+  ctxM.fillText('x='+x.toFixed(2)+'m',vibCx+40,vibY+4);
+
+  // 凡例
+  ctxM.fillStyle=C.red; ctxM.font='11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('← 参照円（半径A、反時計回り）',circCx-circR,circCy+circR+28);
+  ctxM.fillStyle=C.muted;
+  ctxM.fillText('y軸への正射影 = 単振動の変位x',circCx-circR,circCy+circR+44);
+
+  // 投影の横線（円y軸投影→右側縦軸）
+  ctxM.strokeStyle='rgba(47,129,247,0.3)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(circCx,cpy); ctxM.lineTo(vibCx,vibY); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // ラベル
+  ctxM.fillStyle=C.blue; ctxM.font='600 12px "JetBrains Mono"'; ctxM.textAlign='center';
+  ctxM.fillText('x = A sinθ = A sin ωt',vibCx,circCy-circR-44);
+  ctxM.fillText('x='+x.toFixed(2)+'m',vibCx+40,vibY+4);
+
+  // 凡例
+  ctxM.fillStyle=C.red; ctxM.font='11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('← 参照円（半径A、反時計回り）',circCx-circR,circCy+circR+28);
+  ctxM.fillStyle=C.muted;
+  ctxM.fillText('y軸への正射影 = 単振動の変位x',circCx-circR,circCy+circR+44);
+}
+
+// ===== 共通の円描画ベース =====
+function drawCircleBase(ctxM,W,H,circCx,circCy,circR,theta){
+  const {A,w}=get();
+  ctxM.clearRect(0,0,W,H); ctxM.fillStyle='#0d1117'; ctxM.fillRect(0,0,W,H);
+
+  // 参照円
+  ctxM.strokeStyle='rgba(255,255,255,0.12)'; ctxM.lineWidth=1.5;
+  ctxM.beginPath(); ctxM.arc(circCx,circCy,circR,0,Math.PI*2); ctxM.stroke();
+
+  // 軸
+  ctxM.strokeStyle='rgba(255,255,255,0.2)'; ctxM.lineWidth=1;
+  ctxM.beginPath(); ctxM.moveTo(circCx-circR-20,circCy); ctxM.lineTo(circCx+circR+20,circCy); ctxM.stroke();
+  ctxM.beginPath(); ctxM.moveTo(circCx,circCy-circR-20); ctxM.lineTo(circCx,circCy+circR+20); ctxM.stroke();
+
+  // 等間隔の点
+  for(let i=0;i<12;i++){
+    const ang=-i*Math.PI*2/12;
+    ctxM.beginPath(); ctxM.arc(circCx+circR*Math.cos(ang),circCy+circR*Math.sin(ang),3,0,Math.PI*2);
+    ctxM.fillStyle='rgba(255,255,255,0.2)'; ctxM.fill();
+  }
+
+  // 半径ベクトル
+  const circAngle=-theta;
+  const cpx=circCx+circR*Math.cos(circAngle);
+  const cpy=circCy+circR*Math.sin(circAngle);
+  ctxM.strokeStyle="rgba(200,200,200,0.5)"; ctxM.lineWidth=2;
+  ctxM.beginPath(); ctxM.moveTo(circCx,circCy); ctxM.lineTo(cpx,cpy); ctxM.stroke();
+
+  // θ弧
+  ctxM.strokeStyle='rgba(248,81,73,0.5)'; ctxM.lineWidth=1;
+  ctxM.beginPath(); ctxM.arc(circCx,circCy,28,0,circAngle,true); ctxM.stroke();
+  ctxM.fillStyle=C.red; ctxM.font='11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('θ=ωt',circCx+34,circCy-8);
+
+  // 円上の物体
+  ctxM.beginPath(); ctxM.arc(cpx,cpy,10,0,Math.PI*2);
+  ctxM.fillStyle='rgba(47,129,247,0.3)'; ctxM.fill();
+  ctxM.beginPath(); ctxM.arc(cpx,cpy,7,0,Math.PI*2);
+  ctxM.fillStyle=C.blue; ctxM.fill();
+
+  // 中心点
+  ctxM.beginPath(); ctxM.arc(circCx,circCy,4,0,Math.PI*2);
+  ctxM.fillStyle=C.muted; ctxM.fill();
+
+  return {cpx,cpy,circAngle};
+}
+
+// ===== 速度モード（接線方向速度ベクトルのx成分 = cosθ）=====
+function drawCircleV(){
+  const cvM=document.getElementById('cv-main');
+  const ctxM=cvM.getContext('2d');
+  const W=cvM.width, H=cvM.height;
+  const {A,w}=get();
+  const circCx=W*0.3, circCy=H/2;
+  const circR=Math.min(W*0.28,H*0.38);
+  const theta=w*t;
+  const {cpx,cpy,circAngle}=drawCircleBase(ctxM,W,H,circCx,circCy,circR,theta);
+
+  // 接線方向の速度ベクトル
+  // circAngle = -theta、位置ベクトル方向 = circAngle
+  // 反時計回りの接線 = circAngleから90°反時計 = circAngle - π/2
+  const tanAngle = circAngle - Math.PI/2;
+  const vScale = circR * 0.6; // 短くして見切れないように
+  const vEx = cpx + Math.cos(tanAngle) * vScale;
+  const vEy = cpy + Math.sin(tanAngle) * vScale;
+  // 右側板の位置はvのy成分から正しく計算
+  const vYcomp = Math.sin(tanAngle) * vScale; // ベクトルのy成分（スクリーン座標）
+
+  // 速度ベクトル（赤・接線方向）
+  ctxM.strokeStyle=C.red; ctxM.lineWidth=2.5;
+  ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(vEx,vEy); ctxM.stroke();
+  ctxM.fillStyle=C.red;
+  const vang=Math.atan2(vEy-cpy,vEx-cpx);
+  ctxM.beginPath(); ctxM.moveTo(vEx,vEy);
+  ctxM.lineTo(vEx-10*Math.cos(vang-0.35),vEy-10*Math.sin(vang-0.35));
+  ctxM.lineTo(vEx-10*Math.cos(vang+0.35),vEy-10*Math.sin(vang+0.35));
+  ctxM.closePath(); ctxM.fill();
+  ctxM.fillStyle=C.red; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('Aω',vEx+4,vEy-6);
+
+  // 点線（速度ベクトル先端から水平軸まで垂直に下ろす）
+  ctxM.strokeStyle='rgba(247,201,72,0.4)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(vEx,vEy); ctxM.lineTo(vEx,cpy); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // y成分（黄・上下）：円上の点からvEyまで縦方向 = Aωcosθ
+  const v=A*w*Math.cos(w*t);
+  if(Math.abs(vEy-cpy)>2){
+    ctxM.strokeStyle=C.yellow; ctxM.lineWidth=2.5;
+    ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(cpx,vEy); ctxM.stroke();
+    const dir=vEy<cpy?-1:1;
+    ctxM.fillStyle=C.yellow;
+    ctxM.beginPath(); ctxM.moveTo(cpx,vEy);
+    ctxM.lineTo(cpx-5,vEy-dir*10); ctxM.lineTo(cpx+5,vEy-dir*10);
+    ctxM.closePath(); ctxM.fill();
+    ctxM.fillStyle=C.yellow; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+    ctxM.fillText('Aω cosθ',cpx+8,(cpy+vEy)/2+4);
+  }
+
+  // 右側：縦軸上に青い●（単振動の物体）+ 黄色の線（速度）
+  const wallX=W*0.75;
+
+  // 縦軸
+  ctxM.strokeStyle='rgba(255,255,255,0.2)'; ctxM.lineWidth=1.5;
+  ctxM.beginPath(); ctxM.moveTo(wallX,circCy-circR-20); ctxM.lineTo(wallX,circCy+circR+20); ctxM.stroke();
+  ctxM.fillStyle=C.muted; ctxM.font='10px "JetBrains Mono"'; ctxM.textAlign='center';
+  ctxM.fillText('x',wallX,circCy-circR-28);
+
+  // ±A点線
+  ctxM.strokeStyle='rgba(255,255,255,0.1)'; ctxM.lineWidth=1; ctxM.setLineDash([3,4]);
+  ctxM.beginPath(); ctxM.moveTo(wallX-16,circCy-circR); ctxM.lineTo(wallX+16,circCy-circR); ctxM.stroke();
+  ctxM.beginPath(); ctxM.moveTo(wallX-16,circCy+circR); ctxM.lineTo(wallX+16,circCy+circR); ctxM.stroke();
+  ctxM.setLineDash([]);
+  ctxM.fillStyle=C.muted; ctxM.textAlign='left';
+  ctxM.fillText('A',wallX+8,circCy-circR+4);
+  ctxM.fillText('-A',wallX+8,circCy+circR+4);
+
+  // 単振動の位置（x = Asinθ → 変位モードと同じy座標）
+  const xPos=A*Math.sin(w*t);
+  const objY=circCy - xPos/A*circR;
+
+  // 点線（円上の点→縦軸上の物体）
+  ctxM.strokeStyle='rgba(47,129,247,0.3)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(wallX,objY); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // 青い●（単振動の物体）
+  ctxM.beginPath(); ctxM.arc(wallX,objY,10,0,Math.PI*2);
+  ctxM.fillStyle='rgba(47,129,247,0.3)'; ctxM.fill();
+  ctxM.beginPath(); ctxM.arc(wallX,objY,7,0,Math.PI*2);
+  ctxM.fillStyle=C.blue; ctxM.fill();
+
+  // 黄色の線（物体の上から速度Aωcosθの長さ分）
+  // 右側の線の長さ = 速度ベクトルのy成分（スクリーン座標）
+  const vLen = cpy - vEy; // vEy < cpy なら上向き正
+  if(Math.abs(vLen)>2){
+    ctxM.strokeStyle=C.yellow; ctxM.lineWidth=2.5;
+    ctxM.beginPath(); ctxM.moveTo(wallX,objY); ctxM.lineTo(wallX,objY-vLen); ctxM.stroke();
+    const dir=vLen>0?1:-1;
+    ctxM.fillStyle=C.yellow;
+    ctxM.beginPath(); ctxM.moveTo(wallX,objY-vLen);
+    ctxM.lineTo(wallX-5,objY-vLen+dir*9); ctxM.lineTo(wallX+5,objY-vLen+dir*9);
+    ctxM.closePath(); ctxM.fill();
+    ctxM.fillStyle=C.yellow; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+    ctxM.fillText('v='+v.toFixed(2),wallX+8,objY-vLen/2+4);
+  }
+
+  ctxM.fillStyle=C.muted; ctxM.font='11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('速度ベクトルのy成分 = v',circCx-circR,circCy+circR+28);
+}
+  const cvM=document.getElementById('cv-main');
+  const ctxM=cvM.getContext('2d');
+  const W=cvM.width, H=cvM.height;
+  const {A,w}=get();
+  const circCx=W*0.3, circCy=H/2;
+  const circR=Math.min(W*0.28,H*0.38);
+  const theta=w*t;
+  const {cpx,cpy,circAngle}=drawCircleBase(ctxM,W,H,circCx,circCy,circR,theta);
+
+
+
+// ===== 加速度モード（-sinθ = 変位の逆）=====
+function drawCircleA(){
+  const cvM=document.getElementById('cv-main');
+  const ctxM=cvM.getContext('2d');
+  const W=cvM.width, H=cvM.height;
+  const {A,w}=get();
+  const circCx=W*0.3, circCy=H/2;
+  const circR=Math.min(W*0.28,H*0.38);
+  const theta=w*t;
+  const {cpx,cpy,circAngle}=drawCircleBase(ctxM,W,H,circCx,circCy,circR,theta);
+
+  const aVal=-A*w*w*Math.sin(w*t);
+
+  // 加速度ベクトル（中心向き・赤）
+  const aScale=circR*0.6/(A*w*w);
+  const aEx=cpx+(circCx-cpx)*0.6;
+  const aEy=cpy+(circCy-cpy)*0.6;
+
+  ctxM.strokeStyle=C.red; ctxM.lineWidth=2.5;
+  ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(aEx,aEy); ctxM.stroke();
+  const aang=Math.atan2(aEy-cpy,aEx-cpx);
+  ctxM.fillStyle=C.red;
+  ctxM.beginPath(); ctxM.moveTo(aEx,aEy);
+  ctxM.lineTo(aEx-10*Math.cos(aang-0.35),aEy-10*Math.sin(aang-0.35));
+  ctxM.lineTo(aEx-10*Math.cos(aang+0.35),aEy-10*Math.sin(aang+0.35));
+  ctxM.closePath(); ctxM.fill();
+  ctxM.fillStyle=C.red; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('Aω²',aEx+4,aEy-6);
+
+  // 点線（加速度ベクトル先端から水平に）
+  ctxM.strokeStyle='rgba(248,81,73,0.4)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(aEx,aEy); ctxM.lineTo(aEx,cpy); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // y成分（赤・上下）：円上の点からaEyまで縦方向
+  if(Math.abs(aEy-cpy)>2){
+    ctxM.strokeStyle=C.red; ctxM.lineWidth=2.5;
+    ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(cpx,aEy); ctxM.stroke();
+    const dir=aEy<cpy?-1:1;
+    ctxM.fillStyle=C.red;
+    ctxM.beginPath(); ctxM.moveTo(cpx,aEy);
+    ctxM.lineTo(cpx-5,aEy-dir*10); ctxM.lineTo(cpx+5,aEy-dir*10);
+    ctxM.closePath(); ctxM.fill();
+    ctxM.fillStyle=C.red; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+    ctxM.fillText('-Aω²sinθ',cpx+8,(cpy+aEy)/2+4);
+  }
+
+  // 右側：縦軸上に青い●と赤い線
+  const wallX=W*0.75;
+  ctxM.strokeStyle='rgba(255,255,255,0.2)'; ctxM.lineWidth=1.5;
+  ctxM.beginPath(); ctxM.moveTo(wallX,circCy-circR-20); ctxM.lineTo(wallX,circCy+circR+20); ctxM.stroke();
+  ctxM.fillStyle=C.muted; ctxM.font='10px "JetBrains Mono"'; ctxM.textAlign='center';
+  ctxM.fillText('x',wallX,circCy-circR-28);
+
+  ctxM.strokeStyle='rgba(255,255,255,0.1)'; ctxM.lineWidth=1; ctxM.setLineDash([3,4]);
+  ctxM.beginPath(); ctxM.moveTo(wallX-16,circCy-circR); ctxM.lineTo(wallX+16,circCy-circR); ctxM.stroke();
+  ctxM.beginPath(); ctxM.moveTo(wallX-16,circCy+circR); ctxM.lineTo(wallX+16,circCy+circR); ctxM.stroke();
+  ctxM.setLineDash([]);
+  ctxM.fillStyle=C.muted; ctxM.textAlign='left';
+  ctxM.fillText('A',wallX+8,circCy-circR+4);
+  ctxM.fillText('-A',wallX+8,circCy+circR+4);
+
+  // 単振動の位置
+  const xPos=A*Math.sin(w*t);
+  const objY=circCy-xPos/A*circR;
+
+  // 点線（円上の点→縦軸）
+  ctxM.strokeStyle='rgba(47,129,247,0.3)'; ctxM.lineWidth=1; ctxM.setLineDash([4,3]);
+  ctxM.beginPath(); ctxM.moveTo(cpx,cpy); ctxM.lineTo(wallX,objY); ctxM.stroke();
+  ctxM.setLineDash([]);
+
+  // 青い●
+  ctxM.beginPath(); ctxM.arc(wallX,objY,10,0,Math.PI*2);
+  ctxM.fillStyle='rgba(47,129,247,0.3)'; ctxM.fill();
+  ctxM.beginPath(); ctxM.arc(wallX,objY,7,0,Math.PI*2);
+  ctxM.fillStyle=C.blue; ctxM.fill();
+
+  // 赤い線（●から加速度の長さ分）
+  // 右側の線の長さ = 加速度ベクトルのy成分（スクリーン座標）
+  const aLen = cpy - aEy; // aEy < cpy なら上向き正
+  if(Math.abs(aLen)>2){
+    ctxM.strokeStyle=C.red; ctxM.lineWidth=2.5;
+    ctxM.beginPath(); ctxM.moveTo(wallX,objY); ctxM.lineTo(wallX,objY-aLen); ctxM.stroke();
+    const dir=aLen>0?1:-1;
+    ctxM.fillStyle=C.red;
+    ctxM.beginPath(); ctxM.moveTo(wallX,objY-aLen);
+    ctxM.lineTo(wallX-5,objY-aLen+dir*9); ctxM.lineTo(wallX+5,objY-aLen+dir*9);
+    ctxM.closePath(); ctxM.fill();
+    ctxM.fillStyle=C.red; ctxM.font='600 11px "JetBrains Mono"'; ctxM.textAlign='left';
+    ctxM.fillText('a='+aVal.toFixed(2),wallX+8,objY-aLen/2+4);
+  }
+
+  ctxM.fillStyle=C.muted; ctxM.font='11px "JetBrains Mono"'; ctxM.textAlign='left';
+  ctxM.fillText('加速度ベクトルのy成分 = a',circCx-circR,circCy+circR+28);
+}
+
+function drawGraphSingle(){
+  const cv=document.getElementById('cv-graph');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const {A,w}=get();
+  const PAD={l:44,r:16,t:16,b:32};
+  const gW=W-PAD.l-PAD.r,gH=H-PAD.t-PAD.b;
+  const T=2*Math.PI/w;
+  const tNow=trail.length>0?trail[trail.length-1].t:0;
+  const tWindow=T*2.5;
+  const tStart=Math.max(0,tNow-tWindow);
+
+  // t=0から tWindow分スクロール表示
+  function txToSx(tt){return PAD.l+(tt-tStart)/tWindow*gW;}
+  const color=circleSub==='x'?C.blue:circleSub==='v'?C.yellow:C.red;
+  const lbl=circleSub==='x'?'x=Asinωt':circleSub==='v'?'v=Aωcosωt':'a=-Aω²sinωt';
+  function getVal(tt){
+    if(circleSub==='x') return A*Math.sin(w*tt)/A;
+    if(circleSub==='v') return A*w*Math.cos(w*tt)/(A*w);
+    return -A*w*w*Math.sin(w*tt)/(A*w*w);
+  }
+  function valToSy(val){return PAD.t+gH/2-val*gH/2*0.9;}
+
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(PAD.l,PAD.t+i*gH/4);ctx.lineTo(W-PAD.r,PAD.t+i*gH/4);ctx.stroke();}
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t+gH/2);ctx.lineTo(W-PAD.r,PAD.t+gH/2);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PAD.l,H-PAD.b);ctx.lineTo(W-PAD.r,H-PAD.b);ctx.stroke();
+  ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('t(s)',W-PAD.r,H-PAD.b+14);
+
+  // 理論曲線
+  ctx.strokeStyle=color+'44'; ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let i=0;i<=300;i++){
+    const tt=tStart+i/300*tWindow;
+    if(i===0) ctx.moveTo(txToSx(tt),valToSy(getVal(tt)));
+    else ctx.lineTo(txToSx(tt),valToSy(getVal(tt)));
+  }
+  ctx.stroke();
+
+  // 実績（tStart以降）
+  if(trail.length>1){
+    ctx.strokeStyle=color; ctx.lineWidth=2;
+    ctx.beginPath();
+    let first=true;
+    trail.forEach(({t:tt})=>{
+      if(tt<tStart) return;
+      const sx2=txToSx(tt), sy2=valToSy(getVal(tt));
+      if(first){ctx.moveTo(sx2,sy2);first=false;}else ctx.lineTo(sx2,sy2);
+    });
+    ctx.stroke();
+  }
+
+  // 現在時刻縦線
+  if(tNow>0){
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(txToSx(tNow),PAD.t);ctx.lineTo(txToSx(tNow),H-PAD.b);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.fillStyle=color; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText(lbl,PAD.l+4,PAD.t+14);
+}
+
+['sl-A','sl-w','sl-m'].forEach(id=>{
+  ['input','change'].forEach(ev=>{
+    document.getElementById(id).addEventListener(ev,()=>{trail=[];if(!playing)drawAll();});
+  });
+});
+</script>
+</body>
+</html>
