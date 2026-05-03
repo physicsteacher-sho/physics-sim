@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ばね・フックの法則 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117;--surface:#161b22;--surface2:#1c2330;
+    --border:#2a3441;--blue:#2f81f7;--blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15);--green:#3fb950;
+    --orange:#e07b39;--pink:#d2a8ff;--yellow:#f7c948;--red:#f85149;
+    --text:#e6edf3;--text-muted:#7d8590;--text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;text-transform:uppercase;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:14px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+  .section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;}
+  .slider-group{display:flex;flex-direction:column;gap:12px;}
+  .slider-row{display:flex;flex-direction:column;gap:5px;}
+  .slider-header{display:flex;justify-content:space-between;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  .mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .dir-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .mode-btn{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:11px;cursor:pointer;text-align:center;transition:all .15s;}
+  .mode-btn.active{background:var(--blue-dim);color:var(--blue);border-color:var(--blue);}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-card.full{grid-column:1/-1;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);}
+  .formula-box{background:rgba(247,201,72,0.1);border:1px solid rgba(247,201,72,0.4);border-radius:6px;padding:9px 13px;font-family:var(--mono);font-size:13px;font-weight:600;color:#f7c948;margin-bottom:3px;}
+  .formula-note{font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:0 4px;margin-bottom:8px;}
+  .formula-title{font-size:12px;color:var(--text-muted);margin-bottom:4px;margin-top:8px;}
+  .sim-right{overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;border-radius:8px;border:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header class="sim-header">
+  <span class="sim-badge">力学 08b</span>
+  <h1 class="sim-title">ばね・フックの法則</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button style="margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;" onclick="document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()">⛶ 全画面</button>
+</header>
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-s',this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-f',this)">公式</button>
+    </div>
+    <div class="tab-content active" id="tab-s">
+      <div>
+        <div class="section-label">接続</div>
+        <div class="mode-btns">
+          <button class="mode-btn active" id="mode-single" onclick="setMode('single')">1本</button>
+          <button class="mode-btn" id="mode-series" onclick="setMode('series')">直列</button>
+          <button class="mode-btn" id="mode-parallel" onclick="setMode('parallel')">並列</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">向き</div>
+        <div class="dir-btns">
+          <button class="mode-btn active" id="dir-h" onclick="setDir('h')">水平</button>
+          <button class="mode-btn" id="dir-v" onclick="setDir('v')">鉛直（重力あり）</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">パラメータ</div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span class="slider-label"><em>k₁</em> ばね定数 (N/m)</span>
+              <span class="slider-value" id="lbl-k1">40</span>
+            </div>
+            <input type="range" id="sl-k1" min="5" max="100" value="40" step="5">
+          </div>
+          <div class="slider-row" id="row-k2" style="display:none;">
+            <div class="slider-header">
+              <span class="slider-label"><em>k₂</em> ばね定数 (N/m)</span>
+              <span class="slider-value" id="lbl-k2">60</span>
+            </div>
+            <input type="range" id="sl-k2" min="5" max="100" value="60" step="5">
+          </div>
+          <div class="slider-row" id="row-F">
+            <div class="slider-header">
+              <span class="slider-label"><em>F</em> 外力 (N)</span>
+              <span class="slider-value" id="lbl-F">20</span>
+            </div>
+            <input type="range" id="sl-F" min="0" max="80" value="20" step="1">
+          </div>
+          <div class="slider-row" id="row-m" style="display:none;">
+            <div class="slider-header">
+              <span class="slider-label"><em>m</em> 質量 (kg)</span>
+              <span class="slider-value" id="lbl-m">1.0</span>
+            </div>
+            <input type="range" id="sl-m" min="0.1" max="5" value="1" step="0.1">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">計測値</div>
+        <div class="metrics">
+          <div class="metric-card full">
+            <div class="metric-label">合成ばね定数 k (N/m)</div>
+            <div class="metric-value" id="mv-k" style="color:var(--yellow);">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">伸び x (m)</div>
+            <div class="metric-value" id="mv-x">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">弾性力 kx (N)</div>
+            <div class="metric-value" id="mv-kx">—</div>
+          </div>
+          <div class="metric-card full">
+            <div class="metric-label">弾性エネルギー U = ½kx² (J)</div>
+            <div class="metric-value" id="mv-U" style="color:var(--green);">—</div>
+          </div>
+          <div class="metric-card" id="card-sub1" style="display:none;">
+            <div class="metric-label" id="lbl-sub1">—</div>
+            <div class="metric-value" id="mv-sub1">—</div>
+          </div>
+          <div class="metric-card" id="card-sub2" style="display:none;">
+            <div class="metric-label" id="lbl-sub2">—</div>
+            <div class="metric-value" id="mv-sub2">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-f">
+      <div class="formula-title">フックの法則</div>
+      <div class="formula-box">F = kx</div>
+      <div class="formula-note">k：ばね定数　x：伸び（または縮み）</div>
+      <div class="formula-title">弾性力による位置エネルギー</div>
+      <div class="formula-box">U = ½kx²</div>
+      <div class="formula-title">鉛直つりあい（重力あり）</div>
+      <div class="formula-box">kx = mg</div>
+      <div class="formula-note">つりあい位置：x = mg/k</div>
+      <div class="formula-title">直列の合成ばね定数</div>
+      <div class="formula-box">1/k = 1/k₁ + 1/k₂</div>
+      <div class="formula-title">並列の合成ばね定数</div>
+      <div class="formula-box">k = k₁ + k₂</div>
+    </div>
+  </aside>
+  <div class="sim-right" id="sim-right">
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+<script>
+const CV = document.getElementById('cv');
+const ctx = CV.getContext('2d');
+const G = 9.8;
+const C = {
+  red:'#f85149', orange:'#e07b39', yellow:'#f7c948',
+  green:'#3fb950', blue:'#2f81f7', pink:'#d2a8ff',
+  text:'#e6edf3', muted:'#7d8590',
+};
+let mode='single', dir='h';
+
+function resize(){
+  const el=document.getElementById('sim-right');
+  CV.width=el.clientWidth-32; CV.height=el.clientHeight-32;
+  draw();
+}
+setTimeout(resize,100);
+
+function get(){
+  return {
+    k1:parseFloat(document.getElementById('sl-k1').value),
+    k2:parseFloat(document.getElementById('sl-k2').value),
+    F:parseFloat(document.getElementById('sl-F').value),
+    m:parseFloat(document.getElementById('sl-m').value),
+  };
+}
+
+function calcK(k1,k2){
+  if(mode==='single') return k1;
+  if(mode==='series') return 1/(1/k1+1/k2);
+  return k1+k2;
+}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setMode(m){
+  mode=m;
+  ['single','series','parallel'].forEach(id=>
+    document.getElementById('mode-'+id).classList.toggle('active',id===m));
+  const multi=m!=='single';
+  document.getElementById('row-k2').style.display=multi?'flex':'none';
+  document.getElementById('card-sub1').style.display=multi?'block':'none';
+  document.getElementById('card-sub2').style.display=multi?'block':'none';
+  draw();
+}
+
+function setDir(d){
+  dir=d;
+  ['h','v'].forEach(id=>document.getElementById('dir-'+id).classList.toggle('active',id===d));
+  document.getElementById('row-m').style.display=d==='v'?'flex':'none';
+  document.getElementById('row-F').style.display=d==='h'?'flex':'none';
+  draw();
+}
+
+function updateMetrics(k,x,kx,U,sub1lbl,sub1val,sub2lbl,sub2val){
+  document.getElementById('mv-k').textContent=k.toFixed(2)+' N/m';
+  document.getElementById('mv-x').textContent=x.toFixed(4)+' m';
+  document.getElementById('mv-kx').textContent=kx.toFixed(2)+' N';
+  document.getElementById('mv-U').textContent=U.toFixed(4)+' J';
+  if(sub1lbl){
+    document.getElementById('lbl-sub1').textContent=sub1lbl;
+    document.getElementById('mv-sub1').textContent=sub1val;
+  }
+  if(sub2lbl){
+    document.getElementById('lbl-sub2').textContent=sub2lbl;
+    document.getElementById('mv-sub2').textContent=sub2val;
+  }
+  document.getElementById('lbl-k1').textContent=get().k1;
+  document.getElementById('lbl-k2').textContent=get().k2;
+  document.getElementById('lbl-F').textContent=get().F;
+  document.getElementById('lbl-m').textContent=get().m.toFixed(1);
+}
+
+// ばね描画
+function drawSpring(x0,y0,x1,y1,color,coils){
+  const dx=x1-x0,dy=y1-y0;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2) return;
+  const nx=dx/len,ny=dy/len;
+  const px=-ny,py=nx;
+  const amp=14, margin=12, steps=coils*24;
+  ctx.strokeStyle=color; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  ctx.moveTo(x0,y0);
+  ctx.lineTo(x0+nx*margin,y0+ny*margin);
+  for(let i=0;i<=steps;i++){
+    const t=i/steps;
+    ctx.lineTo(
+      x0+nx*margin+(dx-nx*margin*2)*t+px*amp*Math.sin(t*coils*Math.PI*2),
+      y0+ny*margin+(dy-ny*margin*2)*t+py*amp*Math.sin(t*coils*Math.PI*2)
+    );
+  }
+  ctx.lineTo(x1,y1);
+  ctx.stroke();
+}
+
+// 水平矢印
+function aH(x0,y0,len,dir2,color,label,labelY){
+  if(len<2) return;
+  ctx.strokeStyle=color; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0+dir2*len,y0); ctx.stroke();
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.moveTo(x0+dir2*len,y0);
+  ctx.lineTo(x0+dir2*len-dir2*10,y0-5); ctx.lineTo(x0+dir2*len-dir2*10,y0+5);
+  ctx.closePath(); ctx.fill();
+  if(label){
+    ctx.fillStyle=color; ctx.font='600 11px "JetBrains Mono"';
+    ctx.textAlign=dir2>0?'left':'right';
+    ctx.fillText(label, x0+dir2*len+dir2*6, labelY||y0+4);
+  }
+}
+
+// 鉛直矢印
+function aV(x0,y0,len,dir2,color,label,labelX){
+  if(len<2) return;
+  ctx.strokeStyle=color; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0,y0+dir2*len); ctx.stroke();
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.moveTo(x0,y0+dir2*len);
+  ctx.lineTo(x0-5,y0+dir2*len-dir2*10); ctx.lineTo(x0+5,y0+dir2*len-dir2*10);
+  ctx.closePath(); ctx.fill();
+  if(label){
+    ctx.fillStyle=color; ctx.font='600 11px "JetBrains Mono"';
+    ctx.textAlign=labelX>0?'left':'right';
+    ctx.fillText(label, x0+(labelX>0?labelX:-(-labelX)), y0+dir2*len/2+4);
+  }
+}
+
+function label(x,y,text,color,align){
+  ctx.fillStyle=color||C.muted;
+  ctx.font='600 11px "JetBrains Mono"';
+  ctx.textAlign=align||'left';
+  ctx.fillText(text,x,y);
+}
+
+function wallH(x,yc,h){ // 垂直壁
+  ctx.fillStyle='rgba(150,160,180,0.2)'; ctx.fillRect(x-14,yc-h/2,14,h);
+  ctx.strokeStyle='rgba(150,160,180,0.5)'; ctx.lineWidth=2; ctx.strokeRect(x-14,yc-h/2,14,h);
+  ctx.strokeStyle='rgba(150,160,180,0.18)'; ctx.lineWidth=1;
+  for(let y=yc-h/2;y<yc+h/2;y+=10){ ctx.beginPath(); ctx.moveTo(x-14,y); ctx.lineTo(x,y+10); ctx.stroke(); }
+}
+
+function wallV(xc,y,w){ // 水平天井
+  ctx.fillStyle='rgba(150,160,180,0.2)'; ctx.fillRect(xc-w/2,y-14,w,14);
+  ctx.strokeStyle='rgba(150,160,180,0.5)'; ctx.lineWidth=2; ctx.strokeRect(xc-w/2,y-14,w,14);
+  ctx.strokeStyle='rgba(150,160,180,0.18)'; ctx.lineWidth=1;
+  for(let x=xc-w/2;x<xc+w/2;x+=10){ ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x+10,y); ctx.stroke(); }
+}
+
+function block(x,y,w,h){
+  ctx.fillStyle='rgba(180,180,200,0.15)'; ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle='rgba(180,180,200,0.6)'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,h);
+}
+
+function dot(x,y){
+  ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+}
+
+function natLine(x0,y0,x1,y1,txt,txtX,txtY){
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  ctx.setLineDash([]);
+  if(txt) label(txtX,txtY,txt,C.muted,'left');
+}
+
+// x矢印（伸び表示）
+function xArrow(x0,y0,x1,y1,txt,color){
+  color=color||C.yellow;
+  ctx.strokeStyle=color; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  // 矢印頭
+  const dx=x1-x0,dy=y1-y0,len=Math.sqrt(dx*dx+dy*dy);
+  if(len>8){
+    const ang=Math.atan2(dy,dx);
+    ctx.fillStyle=color;
+    ctx.beginPath(); ctx.moveTo(x1,y1);
+    ctx.lineTo(x1-8*Math.cos(ang-0.4),y1-8*Math.sin(ang-0.4));
+    ctx.lineTo(x1-8*Math.cos(ang+0.4),y1-8*Math.sin(ang+0.4));
+    ctx.closePath(); ctx.fill();
+  }
+  if(txt){
+    ctx.fillStyle=color; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+    ctx.fillText(txt,(x0+x1)/2,(y0+y1)/2-8);
+  }
+}
+
+function draw(){
+  const W=CV.width, H=CV.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#0d1117'; ctx.fillRect(0,0,W,H);
+  const {k1,k2,F,m}=get();
+  const k=calcK(k1,k2);
+  if(dir==='h') drawH(W,H,k1,k2,k,F);
+  else drawV(W,H,k1,k2,k,m);
+}
+
+// ==================== 水平 ====================
+function drawH(W,H,k1,k2,k,F){
+  const cy=H/2, wallX=48;
+  const natL=100, sc=Math.min(W*0.5,H*0.4)/Math.max(F/Math.min(k1,k2||k1),0.1);
+  const bw=50, bh=50;
+
+  // F→xの変換スケール（見やすい範囲に収める）
+  const maxX=F/Math.min(k1,k2||k1);
+  const availW=W-wallX-bw-120;
+  const pixPerM=Math.min(300,availW/(mode==='series'?maxX*2.2:maxX*1.4)||100);
+
+  if(mode==='single'){
+    const x=F/k1, xpx=x*pixPerM;
+    const springEnd=wallX+natL+xpx;
+    const bx=springEnd;
+    wallH(wallX,cy,80);
+    drawSpring(wallX,cy,springEnd,cy,C.blue,8);
+    block(bx,cy-bh/2,bw,bh);
+
+    // ばね定数ラベル（ばねの上）
+    label(wallX+8,cy-26,'k='+k1+'N/m',C.blue,'left');
+
+    // F（赤）：右側面から右向き
+    aH(bx+bw,cy,Math.max(F*2,30),1,C.red,'F='+F+'N');
+
+    // kx（オレンジ）：左側面から左向き
+    aH(bx,cy,Math.max(F*2,30),-1,C.orange,'kx='+F.toFixed(1)+'N');
+
+    // 自然長点線・xラベル
+    natLine(wallX+natL,cy-32,wallX+natL,cy+32,'','','');
+    label(wallX+natL+4,cy-36,'自然長',C.muted,'left');
+    if(x>0.001) xArrow(wallX+natL,cy+38,springEnd,cy+38,'x='+x.toFixed(3)+'m',C.yellow);
+
+    updateMetrics(k1,x,F,0.5*k1*x*x,null,null,null,null);
+
+  } else if(mode==='series'){
+    const x1=F/k1, x2=F/k2;
+    const xt=x1+x2;
+    const x1px=x1*pixPerM, x2px=x2*pixPerM;
+    const s1end=wallX+natL+x1px;
+    const s2end=s1end+natL+x2px;
+    const bx=s2end;
+
+    wallH(wallX,cy,80);
+    drawSpring(wallX,cy,s1end,cy,C.blue,8);
+    dot(s1end,cy);
+    drawSpring(s1end,cy,s2end,cy,C.pink,8);
+    block(bx,cy-bh/2,bw,bh);
+
+    // ラベル（ばねの上）
+    label((wallX+s1end)/2,cy-26,'k₁='+k1+'N/m',C.blue,'center');
+    label((s1end+s2end)/2,cy-26,'k₂='+k2+'N/m',C.pink,'center');
+
+    // 合成ばね定数（上部）
+    label(wallX,cy-52,'k='+calcK(k1,k2).toFixed(1)+'N/m  (1/k=1/k₁+1/k₂)',C.yellow,'left');
+
+    // F・kx
+    aH(bx+bw,cy,Math.max(F*2,30),1,C.red,'F='+F+'N');
+    aH(bx,cy,Math.max(F*2,30),-1,C.orange,'kx='+F.toFixed(1)+'N');
+
+    // 作用反作用（結合点）：上側にまとめる
+    const jx=s1end;
+    aH(jx,cy-22,Math.max(F*1.8,20),-1,C.blue,null,null);
+    aH(jx,cy-22,Math.max(F*1.8,20),1,C.pink,null,null);
+    // ラベルは結合点の真上
+    label(jx-Math.max(F*1.8,20)-4,cy-34,'k₁が引く力 '+F.toFixed(1)+'N',C.blue,'right');
+    label(jx+Math.max(F*1.8,20)+4,cy-34,'k₂が引く力 '+F.toFixed(1)+'N',C.pink,'left');
+
+    // 自然長点線
+    natLine(wallX+natL,cy+24,wallX+natL,cy+46,'','','');
+    natLine(s1end+natL,cy+24,s1end+natL,cy+46,'','','');
+
+    // x1・x2（ばねの下）
+    if(xt>0.001){
+      xArrow(wallX+natL,cy+36,s1end,cy+36,'x₁='+x1.toFixed(3)+'m',C.blue);
+      xArrow(s1end+natL,cy+36,s2end,cy+36,'x₂='+x2.toFixed(3)+'m',C.pink);
+    }
+
+    updateMetrics(calcK(k1,k2),xt,F,0.5*calcK(k1,k2)*xt*xt,
+      'x₁ (m)',x1.toFixed(4),'x₂ (m)',x2.toFixed(4));
+
+  } else { // parallel
+    const k=k1+k2, x=F/k, xpx=x*pixPerM;
+    const springEnd=wallX+natL+xpx;
+    const bx=springEnd, gap=28;
+
+    wallH(wallX,cy,90);
+    drawSpring(wallX,cy-gap,springEnd,cy-gap,C.blue,8);
+    drawSpring(wallX,cy+gap,springEnd,cy+gap,C.pink,8);
+    // 右側連結棒
+    ctx.strokeStyle='rgba(180,180,200,0.5)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(springEnd,cy-gap-14); ctx.lineTo(springEnd,cy+gap+14); ctx.stroke();
+    block(bx,cy-40,bw,80);
+
+    // ラベル（ばねの外側）
+    label((wallX+springEnd)/2,cy-gap-20,'k₁='+k1+'N/m',C.blue,'center');
+    label((wallX+springEnd)/2,cy+gap+24,'k₂='+k2+'N/m',C.pink,'center');
+    label(wallX,cy-60,'k='+k.toFixed(1)+'N/m  (k=k₁+k₂)',C.yellow,'left');
+
+    // F（右側面）・kx（左側面）
+    aH(bx+bw,cy,Math.max(F*2,30),1,C.red,'F='+F+'N');
+    aH(bx,cy,Math.max(F*2,30),-1,C.orange,'kx='+F.toFixed(1)+'N');
+
+    // 各ばねの力（物体の接続端）
+    label(bx-4,cy-gap-8,'k₁x='+( k1*x).toFixed(1)+'N',C.blue,'right');
+    label(bx-4,cy+gap+14,'k₂x='+(k2*x).toFixed(1)+'N',C.pink,'right');
+
+    // 自然長・x
+    natLine(wallX+natL,cy+52,wallX+natL,cy+68,'','','');
+    if(x>0.001) xArrow(wallX+natL,cy+60,springEnd,cy+60,'x='+x.toFixed(3)+'m',C.yellow);
+
+    updateMetrics(k,x,F,0.5*k*x*x,
+      'k₁x (N)',(k1*x).toFixed(4),'k₂x (N)',(k2*x).toFixed(4));
+  }
+}
+
+// ==================== 鉛直 ====================
+function drawV(W,H,k1,k2,k,m){
+  const cx=W/2, ceilY=50;
+  const natL=80, bw=60, bh=60;
+  const mg=m*G;
+  const k_eff=calcK(k1,k2);
+
+  // スケール：つりあいの伸びが画面の一定割合に収まるよう
+  const maxX=mg/Math.min(k1,k2||k1);
+  const availH=H-ceilY-bh-100;
+  const pixPerM=Math.min(300,availH/(maxX*1.5)||80);
+
+  if(mode==='single'){
+    const x=mg/k1, xpx=x*pixPerM;
+    const springEnd=ceilY+natL+xpx;
+    const by=springEnd;
+
+    wallV(cx,ceilY,90);
+    drawSpring(cx,ceilY,cx,springEnd,C.blue,8);
+    block(cx-bw/2,by,bw,bh);
+
+    // ばね定数ラベル（ばねの右）
+    label(cx+22,(ceilY+springEnd)/2,'k='+k1+'N/m',C.blue,'left');
+
+    // kx（オレンジ）：物体上端（接触面）の中心から上向き
+    const fLen=Math.max(mg*3,30);
+    aV(cx,by,fLen,-1,C.orange,null,0);
+    label(cx+8,by-fLen/2,'kx='+mg.toFixed(1)+'N',C.orange,'left');
+    // mg（赤）：重心の中心から下向き
+    aV(cx,by+bh/2,fLen,1,C.red,null,0);
+    label(cx+8,by+bh/2+fLen/2,'mg='+mg.toFixed(1)+'N',C.red,'left');
+
+    // 自然長点線・xラベル
+    natLine(cx-32,ceilY+natL,cx+32,ceilY+natL,'自然長',cx+6,ceilY+natL-6);
+    if(x>0.001) xArrow(cx+36,ceilY+natL,cx+36,springEnd,'x='+x.toFixed(3)+'m',C.yellow);
+
+    // つりあい条件
+    label(cx-bw/2,by+bh+24,'つりあい：kx = mg',C.yellow,'left');
+
+    updateMetrics(k1,x,mg,0.5*k1*x*x,null,null,null,null);
+
+  } else if(mode==='series'){
+    const x1=mg/k1, x2=mg/k2, xt=x1+x2;
+    const x1px=x1*pixPerM, x2px=x2*pixPerM;
+    const s1end=ceilY+natL+x1px;
+    const s2end=s1end+natL+x2px;
+    const by=s2end;
+
+    wallV(cx,ceilY,90);
+    drawSpring(cx,ceilY,cx,s1end,C.blue,8);
+    dot(cx,s1end);
+    drawSpring(cx,s1end,cx,s2end,C.pink,8);
+    block(cx-bw/2,by,bw,bh);
+
+    // ラベル（ばねの右）
+    label(cx+22,(ceilY+s1end)/2,'k₁='+k1+'N/m',C.blue,'left');
+    label(cx+22,(s1end+s2end)/2,'k₂='+k2+'N/m',C.pink,'left');
+    label(cx-bw/2,ceilY-2,'k='+calcK(k1,k2).toFixed(1)+'N/m  (1/k=1/k₁+1/k₂)',C.yellow,'left');
+
+    // 作用反作用（結合点の右）
+    const jy=s1end;
+    aV(cx+36,jy,Math.max(mg*2.5,20),-1,C.blue,null,0);
+    aV(cx+36,jy,Math.max(mg*2.5,20),1,C.pink,null,0);
+    label(cx+50,jy-Math.max(mg*2.5,20)-4,'k₁が引く力 '+mg.toFixed(1)+'N',C.blue,'left');
+    label(cx+50,jy+Math.max(mg*2.5,20)+14,'k₂が引く力 '+mg.toFixed(1)+'N',C.pink,'left');
+
+    // kx・mg（物体）
+    // kx（オレンジ）：物体上端（接触面）の中心から上向き
+    const fLen=Math.max(mg*3,30);
+    aV(cx,by,fLen,-1,C.orange,null,0);
+    label(cx+8,by-fLen/2,'kx='+mg.toFixed(1)+'N',C.orange,'left');
+    // mg（赤）：重心の中心から下向き
+    aV(cx,by+bh/2,fLen,1,C.red,null,0);
+    label(cx+8,by+bh/2+fLen/2,'mg='+mg.toFixed(1)+'N',C.red,'left');
+
+    // x1・x2（左側）
+    natLine(cx-36,ceilY+natL,cx-26,ceilY+natL,'','','');
+    natLine(cx-36,s1end+natL,cx-26,s1end+natL,'','','');
+    if(xt>0.001){
+      xArrow(cx-32,ceilY+natL,cx-32,s1end,'x₁='+x1.toFixed(3)+'m',C.blue);
+      xArrow(cx-32,s1end+natL,cx-32,s2end,'x₂='+x2.toFixed(3)+'m',C.pink);
+    }
+    label(cx-bw/2,by+bh+24,'k='+calcK(k1,k2).toFixed(1)+'N/m  つりあい：kx=mg',C.yellow,'left');
+
+    updateMetrics(calcK(k1,k2),xt,mg,0.5*calcK(k1,k2)*xt*xt,
+      'x₁ (m)',x1.toFixed(4),'x₂ (m)',x2.toFixed(4));
+
+  } else { // parallel vertical
+    const k=k1+k2, x=mg/k, xpx=x*pixPerM;
+    const springEnd=ceilY+natL+xpx;
+    const by=springEnd, gap=28;
+
+    wallV(cx,ceilY,100);
+    drawSpring(cx-gap,ceilY,cx-gap,springEnd,C.blue,8);
+    drawSpring(cx+gap,ceilY,cx+gap,springEnd,C.pink,8);
+    // 下側連結棒
+    ctx.strokeStyle='rgba(180,180,200,0.5)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(cx-gap-14,springEnd); ctx.lineTo(cx+gap+14,springEnd); ctx.stroke();
+    block(cx-bw/2,by,bw,bh);
+
+    // ラベル
+    label(cx-gap-12,(ceilY+springEnd)/2,'k₁='+k1,C.blue,'right');
+    label(cx+gap+12,(ceilY+springEnd)/2,'k₂='+k2,C.pink,'left');
+    label(cx-bw/2,ceilY-2,'k='+k.toFixed(1)+'N/m  (k=k₁+k₂)',C.yellow,'left');
+
+    // kx・mg（物体）
+    // kx（オレンジ）：物体上端（接触面）の中心から上向き
+    const fLen=Math.max(mg*3,30);
+    aV(cx,by,fLen,-1,C.orange,null,0);
+    label(cx+8,by-fLen/2,'kx='+mg.toFixed(1)+'N',C.orange,'left');
+    // mg（赤）：重心の中心から下向き
+    aV(cx,by+bh/2,fLen,1,C.red,null,0);
+    label(cx+8,by+bh/2+fLen/2,'mg='+mg.toFixed(1)+'N',C.red,'left');
+
+    // 各ばねの力
+    label(cx-gap-12,by-8,'k₁x='+(k1*x).toFixed(1)+'N',C.blue,'right');
+    label(cx+gap+12,by-8,'k₂x='+(k2*x).toFixed(1)+'N',C.pink,'left');
+
+    // 自然長・x
+    natLine(cx-gap,ceilY+natL,cx+gap,ceilY+natL,'自然長',cx+gap+6,ceilY+natL-6);
+    if(x>0.001) xArrow(cx+gap+22,ceilY+natL,cx+gap+22,springEnd,'x='+x.toFixed(3)+'m',C.yellow);
+    label(cx-bw/2,by+bh+24,'つりあい：kx = mg',C.yellow,'left');
+
+    updateMetrics(k,x,mg,0.5*k*x*x,
+      'k₁x (N)',(k1*x).toFixed(4),'k₂x (N)',(k2*x).toFixed(4));
+  }
+}
+
+['sl-k1','sl-k2','sl-F','sl-m'].forEach(id=>{
+  ['input','change'].forEach(ev=>{
+    document.getElementById(id).addEventListener(ev,draw);
+  });
+});
+
+setDir('h');
+draw();
+</script>
+</body>
+</html>
