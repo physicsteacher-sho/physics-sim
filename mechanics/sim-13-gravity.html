@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>万有引力・惑星の運動 | 物理シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117;--surface:#161b22;--surface2:#1c2330;
+    --border:#2a3441;--blue:#2f81f7;--blue-dim:#1a4a8a;
+    --blue-glow:rgba(47,129,247,0.15);--green:#3fb950;
+    --orange:#e07b39;--pink:#d2a8ff;--yellow:#f7c948;--red:#f85149;
+    --text:#e6edf3;--text-muted:#7d8590;--text-dim:#2a3441;
+    --mono:'JetBrains Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+  .sim-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;}
+  .sim-badge{background:var(--blue-dim);color:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;padding:4px 10px;border-radius:4px;}
+  .sim-title{font-size:18px;font-weight:700;}
+  .sim-subtitle{font-size:12px;color:var(--text-muted);margin-left:auto;font-family:var(--mono);}
+  .sim-body{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 53px);}
+  .sim-panel{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .tab-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .tab-btn{background:transparent;color:var(--text-muted);border:none;border-bottom:2px solid transparent;padding:12px 0;font-family:var(--sans);font-size:13px;cursor:pointer;}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-content{display:none;padding:20px;flex-direction:column;gap:14px;overflow-y:auto;flex:1;}
+  .tab-content.active{display:flex;}
+  .section-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;}
+  .slider-row{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+  .slider-header{display:flex;justify-content:space-between;}
+  .slider-label{font-size:13px;color:var(--text-muted);}
+  .slider-label em{font-style:normal;font-family:var(--mono);color:var(--text);}
+  .slider-value{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px var(--blue-glow);}
+  .btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px 14px;font-family:var(--sans);font-size:13px;cursor:pointer;text-align:center;}
+  .btn-primary{background:var(--blue-dim);border-color:var(--blue);font-weight:700;font-size:14px;padding:11px;}
+  .mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .mode-btn{font-size:11px;color:var(--text-muted);padding:8px 4px;}
+  .mode-btn.active{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .metric-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .metric-card.full{grid-column:1/-1;}
+  .metric-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:4px;}
+  .metric-value{font-family:var(--mono);font-size:13px;font-weight:600;}
+  .formula-box{background:rgba(247,201,72,0.1);border:1px solid rgba(247,201,72,0.4);border-radius:6px;padding:9px 13px;font-family:var(--mono);font-size:13px;font-weight:600;color:#f7c948;margin-bottom:3px;}
+  .formula-note{font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:0 4px;margin-bottom:8px;}
+  .formula-title{font-size:12px;color:var(--text-muted);margin-bottom:4px;margin-top:10px;}
+  .sim-right{overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;border-radius:8px;border:1px solid var(--border);}
+</style>
+</head>
+<body>
+<header class="sim-header">
+  <span class="sim-badge">力学 13</span>
+  <h1 class="sim-title">万有引力・惑星の運動</h1>
+  <span class="sim-subtitle">Physics Simulation</span>
+  <button style="margin-left:12px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;" onclick="document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()">⛶ 全画面</button>
+</header>
+<div class="sim-body">
+  <aside class="sim-panel">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('tab-s',this)">設定</button>
+      <button class="tab-btn" onclick="switchTab('tab-f',this)">公式</button>
+    </div>
+
+    <!-- 設定タブ -->
+    <div class="tab-content active" id="tab-s">
+      <div>
+        <div class="section-label">モード</div>
+        <div class="mode-grid" style="grid-template-columns:1fr 1fr;">
+          <button class="btn mode-btn active" id="mode-orbit" onclick="setMode('orbit')">惑星の軌道</button>
+          <button class="btn mode-btn" id="mode-gravity" onclick="setMode('gravity')">万有引力</button>
+          <button class="btn mode-btn" id="mode-kepler" onclick="setMode('kepler')">ケプラー第3法則</button>
+          <button class="btn mode-btn" id="mode-escape" onclick="setMode('escape')">第1・第2宇宙速度</button>
+        </div>
+      </div>
+
+      <!-- 惑星の軌道パラメータ -->
+      <div id="p-orbit">
+        <div class="section-label">軌道パラメータ</div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>a</em> 長半径（AU）</span>
+            <span class="slider-value" id="lbl-a">1.5</span>
+          </div>
+          <input type="range" id="sl-a" min="0.5" max="4" value="1.5" step="0.1" oninput="onSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>e</em> 離心率</span>
+            <span class="slider-value" id="lbl-e">0.30</span>
+          </div>
+          <input type="range" id="sl-e" min="0" max="0.9" value="0.3" step="0.05" oninput="onSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">再生速度</span>
+            <span class="slider-value" id="lbl-spd">1.0x</span>
+          </div>
+          <input type="range" id="sl-spd" min="0.1" max="5" value="1" step="0.1" oninput="onSlider()">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button class="btn btn-primary" id="btn-play" onclick="togglePlay()">▶ 開始</button>
+          <button class="btn" onclick="resetSim()">リセット</button>
+        </div>
+      </div>
+
+      <!-- 万有引力パラメータ -->
+      <div id="p-gravity" style="display:none;">
+        <div class="section-label">パラメータ</div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>M</em> 天体1の質量</span>
+            <span class="slider-value" id="lbl-M">1.0</span>
+          </div>
+          <input type="range" id="sl-M" min="0.1" max="3" value="1" step="0.1" oninput="onSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>m</em> 天体2の質量</span>
+            <span class="slider-value" id="lbl-m2">1.0</span>
+          </div>
+          <input type="range" id="sl-m2" min="0.1" max="3" value="1" step="0.1" oninput="onSlider()">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>r</em> 距離（AU）</span>
+            <span class="slider-value" id="lbl-r">2.0</span>
+          </div>
+          <input type="range" id="sl-r" min="0.5" max="5" value="2" step="0.1" oninput="onSlider()">
+        </div>
+      </div>
+
+      <!-- 第1・第2宇宙速度パラメータ -->
+      <div id="p-escape" style="display:none;">
+        <div class="section-label">パラメータ</div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label"><em>v</em> 初速度（相対）</span>
+            <span class="slider-value" id="lbl-esc">1.00</span>
+          </div>
+          <input type="range" id="sl-esc" min="0.1" max="2.0" value="1.0" step="0.01" oninput="onSlider()">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+          <button class="btn btn-primary" id="btn-esc-play" onclick="toggleEscape()">▶ 発射</button>
+          <button class="btn" onclick="resetEscape()">リセット</button>
+        </div>
+        <div style="margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+          <div class="metric-label">第1宇宙速度 v₁</div>
+          <div class="metric-value" id="esc-v1" style="color:var(--green);">—</div>
+          <div class="metric-label" style="margin-top:6px;">第2宇宙速度 v₂</div>
+          <div class="metric-value" id="esc-v2" style="color:var(--yellow);">—</div>
+          <div class="metric-label" style="margin-top:6px;">現在の速度</div>
+          <div class="metric-value" id="esc-vcur" style="color:var(--blue);">—</div>
+          <div class="metric-label" style="margin-top:6px;">判定</div>
+          <div class="metric-value" id="esc-judge" style="font-size:12px;">—</div>
+        </div>
+      </div>
+
+      <!-- ケプラースライダー -->
+      <div id="p-kepler" style="display:none;">
+        <div class="section-label">グラフ範囲（a³最大値）</div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">最大スケール</span>
+            <span class="slider-value" id="lbl-zoom">28000</span>
+          </div>
+          <input type="range" id="sl-zoom" min="10" max="28000" value="28000" step="10" oninput="onSlider()">
+        </div>
+      </div>
+
+      <!-- 計測値 -->
+      <div>
+        <div class="section-label">計測値</div>
+        <div class="metrics">
+          <div class="metric-card"><div class="metric-label" id="ml1">長半径 a (AU)</div><div class="metric-value" id="mv1">—</div></div>
+          <div class="metric-card"><div class="metric-label" id="ml2">周期 T (年)</div><div class="metric-value" id="mv2" style="color:var(--yellow);">—</div></div>
+          <div class="metric-card"><div class="metric-label" id="ml3">T² (年²)</div><div class="metric-value" id="mv3">—</div></div>
+          <div class="metric-card"><div class="metric-label" id="ml4">a³ (AU³)</div><div class="metric-value" id="mv4">—</div></div>
+          <div class="metric-card full" style="border-color:rgba(63,185,80,0.4);"><div class="metric-label" id="ml5">T²/a³</div><div class="metric-value" id="mv5" style="color:var(--green);">—</div></div>
+          <div class="metric-card"><div class="metric-label" id="ml6">速さ</div><div class="metric-value" id="mv6">—</div></div>
+          <div class="metric-card"><div class="metric-label" id="ml7">距離 r</div><div class="metric-value" id="mv7">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 公式タブ -->
+    <div class="tab-content" id="tab-f">
+      <div class="formula-title">万有引力の法則</div>
+      <div class="formula-box">F = GMm/r²</div>
+      <div class="formula-note">G：万有引力定数　r：距離</div>
+      <div class="formula-title">万有引力による位置エネルギー</div>
+      <div class="formula-box">U = -GMm/r</div>
+      <div class="formula-note">無限遠を基準（U < 0）</div>
+      <div class="formula-title">第1宇宙速度</div>
+      <div class="formula-box">v₁ = √(GM/r)</div>
+      <div class="formula-note">円軌道に必要な最小速度</div>
+      <div class="formula-title">第2宇宙速度（脱出速度）</div>
+      <div class="formula-box">v₂ = √(2GM/r) = √2 v₁</div>
+      <div class="formula-note">重力圏を脱出するのに必要な速度</div>
+      <div class="formula-title">ケプラーの第1法則</div>
+      <div class="formula-box">惑星は太陽を焦点とする楕円軌道を描く</div>
+      <div class="formula-title">ケプラーの第2法則</div>
+      <div class="formula-box">面積速度一定（等面積の法則）</div>
+      <div class="formula-note">近日点で速く、遠日点で遅い</div>
+      <div class="formula-title">ケプラーの第3法則</div>
+      <div class="formula-box">T²/a³ = k（一定）</div>
+      <div class="formula-note">T：周期　a：長半径</div>
+    </div>
+  </aside>
+
+  <div class="sim-right" id="sim-right">
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<script>
+const CV=document.getElementById('cv');
+const ctx=CV.getContext('2d');
+const C={blue:'#2f81f7',green:'#3fb950',orange:'#e07b39',yellow:'#f7c948',red:'#f85149',pink:'#d2a8ff',text:'#e6edf3',muted:'#7d8590'};
+
+let simMode='orbit', playing=false, animId=null, lastTs=null;
+let orbitAngle=0, trail=[];
+
+const planets=[
+  {name:'水星',a:0.387,e:0.206,color:'#aaaaaa',r:4},
+  {name:'金星',a:0.723,e:0.007,color:'#e8c87a',r:5},
+  {name:'地球',a:1.000,e:0.017,color:'#2f81f7',r:6},
+  {name:'火星',a:1.524,e:0.093,color:'#e07b39',r:5},
+  {name:'木星',a:5.203,e:0.048,color:'#c8a87a',r:10},
+  {name:'土星',a:9.537,e:0.054,color:'#e8d87a',r:8},
+  {name:'天王星',a:19.19,e:0.047,color:'#7ae8e8',r:7},
+  {name:'海王星',a:30.07,e:0.009,color:'#4a7ae8',r:7},
+];
+
+function resize(){
+  const el=document.getElementById('sim-right');
+  const W=el.clientWidth-32, H=el.clientHeight-32;
+  CV.width=W; CV.height=H;
+  draw();
+}
+setTimeout(resize,100);
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setMode(m){
+  simMode=m;
+  ['orbit','gravity','kepler','escape'].forEach(id=>{
+    document.getElementById('mode-'+id).classList.toggle('active',id===m);
+    document.getElementById('p-'+id).style.display=id===m?'block':'none';
+  });
+  resetSim();
+  if(m==='escape') resetEscape();
+}
+
+function onSlider(){
+  trail=[];
+  if(simMode==='escape') resetEscape();
+  else if(!playing) draw();
+}
+
+function togglePlay(){
+  playing=!playing;
+  const btn=document.getElementById('btn-play');
+  btn.textContent=playing?'⏸ 停止':'▶ 開始';
+  btn.style.background=playing?'var(--surface2)':'var(--blue-dim)';
+  if(playing){lastTs=null;animId=requestAnimationFrame(loop);}
+  else{cancelAnimationFrame(animId);animId=null;}
+}
+
+function resetSim(){
+  orbitAngle=0; trail=[];
+  if(!playing) draw();
+}
+
+function orbitPos(a,e,nu){
+  const r=a*(1-e*e)/(1+e*Math.cos(nu));
+  return {x:r*Math.cos(nu), y:r*Math.sin(nu), r};
+}
+
+function angVel(a,e,nu){
+  const r=a*(1-e*e)/(1+e*Math.cos(nu));
+  const T=Math.pow(a,1.5);
+  const h=2*Math.PI*a*a*Math.sqrt(1-e*e)/T;
+  return h/(r*r);
+}
+
+function loop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=Math.min((ts-lastTs)/1000,0.05);
+  lastTs=ts;
+  const a=parseFloat(document.getElementById('sl-a').value);
+  const e=parseFloat(document.getElementById('sl-e').value);
+  const spd=parseFloat(document.getElementById('sl-spd').value);
+  orbitAngle+=angVel(a,e,orbitAngle)*dt*spd;
+  if(orbitAngle>Math.PI*2) orbitAngle-=Math.PI*2;
+  trail.push(orbitPos(a,e,orbitAngle));
+  if(trail.length>800) trail.shift();
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+
+function draw(){
+  const W=CV.width, H=CV.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a0d14'; ctx.fillRect(0,0,W,H);
+  // 星
+  [[50,30],[120,80],[200,40],[300,20],[400,60],[80,150],[350,120],[W-50,30],[W-150,200],[W-80,80]].forEach(([sx,sy])=>{
+    ctx.beginPath(); ctx.arc(sx,sy,1,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fill();
+  });
+  if(simMode==='orbit') drawOrbit(W,H);
+  else if(simMode==='gravity') drawGravity(W,H);
+  else if(simMode==='escape') drawEscape(W,H);
+  else drawKepler(W,H);
+}
+
+// ===== 惑星の軌道 =====
+function drawOrbit(W,H){
+  const a=parseFloat(document.getElementById('sl-a').value);
+  const e=parseFloat(document.getElementById('sl-e').value);
+  const cx=W/2, cy=H/2;
+  const scale=(Math.min(W,H)/2-50)/4.5;
+
+  // 目盛り
+  [1,2,3,4].forEach(rv=>{
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(cx,cy,rv*scale,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='left';
+    ctx.fillText(rv+'AU',cx+rv*scale+3,cy-3);
+  });
+  ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(40,cy); ctx.lineTo(W-40,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,40); ctx.lineTo(cx,H-40); ctx.stroke();
+
+  // 楕円軌道（薄）
+  const b=a*Math.sqrt(1-e*e);
+  const f=a*e;
+  ctx.strokeStyle='rgba(47,129,247,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.ellipse(cx-f*scale,cy,a*scale,b*scale,0,0,Math.PI*2); ctx.stroke();
+
+  // 近日点・遠日点
+  ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('近日点',cx+(a*(1-e)-f)*scale,cy+16);
+  ctx.fillText('遠日点',cx-(a*(1+e)+f)*scale+cx*0,cy+16);
+  // 遠日点の正しい位置
+  ctx.fillText('遠日点',cx-(a*(1+e)-f)*scale,cy+16);
+
+  // 太陽（焦点=原点）
+  ctx.beginPath(); ctx.arc(cx,cy,14,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,200,50,0.25)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,9,0,Math.PI*2);
+  ctx.fillStyle='#ffc832'; ctx.fill();
+
+  // 軌跡
+  if(trail.length>1){
+    ctx.strokeStyle='rgba(47,129,247,0.35)'; ctx.lineWidth=1.5;
+    ctx.beginPath();
+    trail.forEach(({x,y},i)=>{
+      const px=cx+x*scale, py=cy-y*scale;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+
+  // 現在位置
+  const pos=orbitPos(a,e,orbitAngle);
+  const px=cx+pos.x*scale, py=cy-pos.y*scale;
+
+  // 太陽〜惑星の線（r）
+  ctx.strokeStyle='rgba(248,81,73,0.35)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(px,py); ctx.stroke();
+  ctx.fillStyle=C.red; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('r',(cx+px)/2-6,(cy+py)/2-6);
+
+  // 面積扇形
+  if(playing&&trail.length>20){
+    const steps=Math.min(60,trail.length);
+    ctx.fillStyle='rgba(247,201,72,0.06)';
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    for(let i=trail.length-steps;i<trail.length;i++)
+      ctx.lineTo(cx+trail[i].x*scale,cy-trail[i].y*scale);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // 速度ベクトル
+  if(playing){
+    const p2=a*(1-e*e);
+    const h=2*Math.PI*a*a*Math.sqrt(1-e*e)/Math.pow(a,1.5);
+    const vr=h/p2*e*Math.sin(orbitAngle);
+    const vt=h/p2*(1+e*Math.cos(orbitAngle));
+    const vsx=vr*Math.cos(orbitAngle)-vt*Math.sin(orbitAngle);
+    const vsy=vr*Math.sin(orbitAngle)+vt*Math.cos(orbitAngle);
+    const vmag=Math.sqrt(vsx*vsx+vsy*vsy);
+    const vLen=vmag*scale*0.3;
+    const vnx=vsx/vmag, vny=vsy/vmag;
+    const ex=px+vnx*vLen, ey=py-vny*vLen;
+    ctx.strokeStyle=C.yellow; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(ex,ey); ctx.stroke();
+    const ang=Math.atan2(ey-py,ex-px);
+    ctx.fillStyle=C.yellow;
+    ctx.beginPath(); ctx.moveTo(ex,ey);
+    ctx.lineTo(ex-9*Math.cos(ang-0.4),ey-9*Math.sin(ang-0.4));
+    ctx.lineTo(ex-9*Math.cos(ang+0.4),ey-9*Math.sin(ang+0.4));
+    ctx.closePath(); ctx.fill();
+  }
+
+  // 惑星
+  ctx.beginPath(); ctx.arc(px,py,10,0,Math.PI*2);
+  ctx.fillStyle='rgba(47,129,247,0.3)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
+  ctx.fillStyle=C.blue; ctx.fill();
+
+  // 計測値
+  const T=Math.pow(a,1.5);
+  const omega=angVel(a,e,orbitAngle);
+  document.getElementById('ml1').textContent='長半径 a (AU)';
+  document.getElementById('mv1').textContent=a.toFixed(2)+' AU';
+  document.getElementById('ml2').textContent='周期 T (年)';
+  document.getElementById('mv2').textContent=T.toFixed(3)+' 年';
+  document.getElementById('ml3').textContent='T² (年²)';
+  document.getElementById('mv3').textContent=(T*T).toFixed(3);
+  document.getElementById('ml4').textContent='a³ (AU³)';
+  document.getElementById('mv4').textContent=(a*a*a).toFixed(3);
+  document.getElementById('ml5').textContent='T²/a³（一定？）';
+  document.getElementById('mv5').textContent=(T*T/(a*a*a)).toFixed(4)+' ≒ 1.000';
+  document.getElementById('ml6').textContent='現在の速さ';
+  document.getElementById('mv6').textContent=(pos.r*omega).toFixed(3)+' AU/年';
+  document.getElementById('ml7').textContent='距離 r (AU)';
+  document.getElementById('mv7').textContent=pos.r.toFixed(3)+' AU';
+  document.getElementById('lbl-a').textContent=a.toFixed(1);
+  document.getElementById('lbl-e').textContent=e.toFixed(2);
+  document.getElementById('lbl-spd').textContent=parseFloat(document.getElementById('sl-spd').value).toFixed(1)+'x';
+}
+
+// ===== 万有引力 =====
+function drawGravity(W,H){
+  const M=parseFloat(document.getElementById('sl-M').value);
+  const m=parseFloat(document.getElementById('sl-m2').value);
+  const r=parseFloat(document.getElementById('sl-r').value);
+  const G=1.0;
+  const F=G*M*m/(r*r);
+  const U=-G*M*m/r;
+
+  const topH=H*0.52, botH=H*0.48;
+  const cx=W/2, cy=topH/2;
+  const scale=(W*0.36)/5;
+
+  // 区切り線
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,topH); ctx.lineTo(W,topH); ctx.stroke();
+
+  // 天体の位置
+  const x1=cx-r/2*scale, x2=cx+r/2*scale;
+
+  // r矢印
+  ctx.strokeStyle=C.muted; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x1,cy+50); ctx.lineTo(x2,cy+50); ctx.stroke();
+  ctx.fillStyle=C.muted;
+  [[x1,1],[x2,-1]].forEach(([x,d])=>{
+    ctx.beginPath(); ctx.moveTo(x,cy+50);
+    ctx.lineTo(x+d*8,cy+45); ctx.lineTo(x+d*8,cy+55); ctx.closePath(); ctx.fill();
+  });
+  ctx.fillStyle=C.muted; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('r = '+r.toFixed(1)+' AU',cx,cy+66);
+
+  // 天体1（左・オレンジ）
+  const r1=Math.max(10,M*14);
+  ctx.beginPath(); ctx.arc(x1,cy,r1+4,0,Math.PI*2);
+  ctx.fillStyle='rgba(224,123,57,0.2)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(x1,cy,r1,0,Math.PI*2);
+  ctx.fillStyle=C.orange; ctx.fill();
+  ctx.fillStyle=C.text; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('M='+M.toFixed(1),x1,cy+r1+18);
+
+  // 天体2（右・青）
+  const r2=Math.max(8,m*10);
+  ctx.beginPath(); ctx.arc(x2,cy,r2+4,0,Math.PI*2);
+  ctx.fillStyle='rgba(47,129,247,0.2)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(x2,cy,r2,0,Math.PI*2);
+  ctx.fillStyle=C.blue; ctx.fill();
+  ctx.fillStyle=C.text; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('m='+m.toFixed(1),x2,cy+r2+18);
+
+  // 引力矢印（作用反作用）
+  const fLen=Math.min(130,F*60);
+  // 天体1へ向かう力（右向き）
+  ctx.strokeStyle=C.red; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(x1,cy-24); ctx.lineTo(x1+fLen,cy-24); ctx.stroke();
+  ctx.fillStyle=C.red;
+  ctx.beginPath(); ctx.moveTo(x1+fLen,cy-24);
+  ctx.lineTo(x1+fLen-9,cy-29); ctx.lineTo(x1+fLen-9,cy-19); ctx.closePath(); ctx.fill();
+  // 天体2へ向かう力（左向き）
+  ctx.beginPath(); ctx.moveTo(x2,cy-24); ctx.lineTo(x2-fLen,cy-24); ctx.stroke();
+  ctx.fillStyle=C.red;
+  ctx.beginPath(); ctx.moveTo(x2-fLen,cy-24);
+  ctx.lineTo(x2-fLen+9,cy-29); ctx.lineTo(x2-fLen+9,cy-19); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=C.red; ctx.font='600 12px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('F = GMm/r² = '+F.toFixed(3),cx,cy-38);
+
+  // ===== 下半分：U-rグラフ =====
+  const PAD={l:60,r:24,t:topH+18,b:20};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+  const rMax=5.5;
+  const Umin=-G*M*m/0.5*1.15; // 最小値（一番負）
+  const Umax=0; // 最大値（0）
+
+  function sx(rv){return PAD.l+((rv-0.5)/(rMax-0.5))*gW;}
+  function sy(u){return PAD.t+(u-Umax)/(Umin-Umax)*gH;} // U=0が上端、Uminが下端
+
+  // グリッド（縦）
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=1;i<=5;i++){
+    ctx.beginPath(); ctx.moveTo(sx(i),PAD.t); ctx.lineTo(sx(i),H-PAD.b); ctx.stroke();
+  }
+  // U=0ライン（上端）
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(W-PAD.r,PAD.t); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 軸
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  // 軸ラベル
+  ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.fillText('r (AU)',W-PAD.r+4,H-PAD.b+14);
+  ctx.textAlign='right';
+  ctx.fillText('0',PAD.l-6,PAD.t+10);
+  ctx.fillText('U',PAD.l-6,PAD.t+22);
+  [1,2,3,4,5].forEach(v=>{
+    ctx.textAlign='center';
+    ctx.fillText(v,sx(v),H-PAD.b+14);
+  });
+
+  // U=-GMm/r のグラフ（緑）：r小→U大きく負→グラフ下
+  ctx.strokeStyle=C.green; ctx.lineWidth=2;
+  ctx.beginPath();
+  let first=true;
+  for(let i=0;i<=300;i++){
+    const rv=0.5+i/300*(rMax-0.5);
+    const u=-G*M*m/rv;
+    const px2=sx(rv), py2=sy(u);
+    if(py2>H-PAD.b||py2<PAD.t){first=true;continue;}
+    if(first){ctx.moveTo(px2,py2);first=false;}else ctx.lineTo(px2,py2);
+  }
+  ctx.stroke();
+  ctx.fillStyle=C.green; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText('U = -GMm/r',sx(2.8),sy(-G*M*m/2.8)+16);
+
+  // 現在の点（黄）
+  if(r>=0.5&&r<=rMax){
+    const curPx=sx(r), curPy=sy(U);
+    if(curPy>=PAD.t&&curPy<=H-PAD.b){
+      ctx.strokeStyle='rgba(247,201,72,0.4)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(curPx,PAD.t); ctx.lineTo(curPx,curPy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PAD.l,curPy); ctx.lineTo(curPx,curPy); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(curPx,curPy,6,0,Math.PI*2);
+      ctx.fillStyle=C.yellow; ctx.fill();
+      ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+      ctx.fillText('U='+U.toFixed(3),curPx+10,curPy-8);
+    }
+  }
+
+  // 計測値
+  document.getElementById('ml1').textContent='引力 F';
+  document.getElementById('mv1').textContent=F.toFixed(4);
+  document.getElementById('ml2').textContent='位置エネルギー U';
+  document.getElementById('mv2').textContent=U.toFixed(4);
+  document.getElementById('ml3').textContent='距離 r (AU)';
+  document.getElementById('mv3').textContent=r.toFixed(2);
+  document.getElementById('ml4').textContent='r²';
+  document.getElementById('mv4').textContent=(r*r).toFixed(3);
+  document.getElementById('ml5').textContent='r²倍でFは？';
+  document.getElementById('mv5').textContent='1/'+(r*r).toFixed(1)+'倍';
+  document.getElementById('ml6').textContent='M';
+  document.getElementById('mv6').textContent=M.toFixed(1);
+  document.getElementById('ml7').textContent='m';
+  document.getElementById('mv7').textContent=m.toFixed(1);
+  document.getElementById('lbl-M').textContent=M.toFixed(1);
+  document.getElementById('lbl-m2').textContent=m.toFixed(1);
+  document.getElementById('lbl-r').textContent=r.toFixed(1);
+}
+
+// ===== 第1・第2宇宙速度 =====
+let escTrail=[], escX=0, escY=0, escVx=0, escVy=0, escDead=false;
+let escPlaying=false, escAnimId=null, escLastTs=null;
+const ESC_R0=1.0; // 発射点（地球表面=1AU相当）
+const ESC_GM=1.0; // GM = 1（規格化）
+const ESC_SURFACE=ESC_R0*0.9; // 地球表面半径
+
+function resetEscape(){
+  // アニメーション完全停止
+  if(escAnimId){cancelAnimationFrame(escAnimId);escAnimId=null;}
+  escPlaying=false; escDead=false; escLastTs=null;
+  escTrail=[];
+  const v1=Math.sqrt(ESC_GM/ESC_R0);
+  const vRatio=parseFloat(document.getElementById('sl-esc').value);
+  escX=ESC_R0; escY=0;
+  escVx=0; escVy=vRatio*v1;
+  const btn=document.getElementById('btn-esc-play');
+  if(btn){btn.textContent='▶ 発射'; btn.style.background='var(--blue-dim)';}
+  draw();
+}
+
+function toggleEscape(){
+  if(escDead){ resetEscape(); }
+  escPlaying=!escPlaying;
+  const btn=document.getElementById('btn-esc-play');
+  btn.textContent=escPlaying?'⏸ 停止':'▶ 発射';
+  btn.style.background=escPlaying?'var(--surface2)':'var(--blue-dim)';
+  if(escPlaying){escLastTs=null;escAnimId=requestAnimationFrame(escLoop);}
+  else{if(escAnimId){cancelAnimationFrame(escAnimId);escAnimId=null;}}
+}
+
+function escLoop(ts){
+  if(!escLastTs) escLastTs=ts;
+  const dt=Math.min((ts-escLastTs)/1000,0.05)*0.4;
+  escLastTs=ts;
+  // ルンゲクッタ法で数値積分
+  function accel(x,y){
+    const r2=x*x+y*y, r=Math.sqrt(r2);
+    if(r<0.05) return{ax:0,ay:0};
+    const a=-ESC_GM/(r2*r);
+    return{ax:a*x, ay:a*y};
+  }
+  const steps=8;
+  const h=dt/steps;
+  for(let s=0;s<steps;s++){
+    const a1=accel(escX,escY);
+    const k1x=escVx, k1y=escVy, k1vx=a1.ax, k1vy=a1.ay;
+    const a2=accel(escX+h/2*k1x,escY+h/2*k1y);
+    const k2x=escVx+h/2*k1vx, k2y=escVy+h/2*k1vy, k2vx=a2.ax, k2vy=a2.ay;
+    const a3=accel(escX+h/2*k2x,escY+h/2*k2y);
+    const k3x=escVx+h/2*k2vx, k3y=escVy+h/2*k2vy, k3vx=a3.ax, k3vy=a3.ay;
+    const a4=accel(escX+h*k3x,escY+h*k3y);
+    const k4x=escVx+h*k3vx, k4y=escVy+h*k3vy, k4vx=a4.ax, k4vy=a4.ay;
+    escX+=h/6*(k1x+2*k2x+2*k3x+k4x);
+    escY+=h/6*(k1y+2*k2y+2*k3y+k4y);
+    escVx+=h/6*(k1vx+2*k2vx+2*k3vx+k4vx);
+    escVy+=h/6*(k1vy+2*k2vy+2*k3vy+k4vy);
+    const r=Math.sqrt(escX*escX+escY*escY);
+    if(r<ESC_SURFACE){escDead=true;break;}
+    if(r>8){escDead=true;break;}
+  }
+  escTrail.push({x:escX,y:escY});
+  if(escTrail.length>2000) escTrail.shift();
+  if(escDead){
+    escPlaying=false;
+    cancelAnimationFrame(escAnimId); escAnimId=null;
+    const btn=document.getElementById('btn-esc-play');
+    if(btn) btn.textContent='▶ 発射';
+  }
+  draw();
+  if(escPlaying) escAnimId=requestAnimationFrame(escLoop);
+}
+
+function drawEscape(W,H){
+  const cx=W/2, cy=H/2;
+  const scale=Math.min(W,H)/2*0.32;
+  const v1=Math.sqrt(ESC_GM/ESC_R0);
+  const v2=Math.sqrt(2*ESC_GM/ESC_R0);
+  const vRatio=parseFloat(document.getElementById('sl-esc').value);
+  const vInit=vRatio*v1;
+
+  // 地球（中心）
+  const earthR=ESC_SURFACE*scale;
+  ctx.beginPath(); ctx.arc(cx,cy,earthR,0,Math.PI*2);
+  ctx.fillStyle='rgba(30,80,180,0.8)'; ctx.fill();
+  ctx.strokeStyle='rgba(100,160,255,0.9)'; ctx.lineWidth=2;
+  ctx.stroke();
+  ctx.fillStyle=C.text; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('地球',cx,cy+earthR+16);
+
+  // 第1宇宙速度の円軌道（薄い破線）
+  ctx.strokeStyle='rgba(63,185,80,0.3)'; ctx.lineWidth=1.2; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.arc(cx,cy,ESC_R0*scale,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(63,185,80,0.5)'; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText('v₁の円軌道',cx+ESC_R0*scale+4,cy-6);
+
+  // 第1宇宙速度の説明ラベル
+  ctx.fillStyle=C.green; ctx.font='10px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText('← 地表すれすれ = v₁の円軌道',cx+earthR+8,cy-8);
+
+  // 軌跡
+  if(escTrail.length>1){
+    // 色をvRatioで変える
+    const trailColor=vRatio<0.99?C.red:vRatio<1.01?C.green:vRatio<Math.sqrt(2)-0.01?C.blue:vRatio<Math.sqrt(2)+0.01?C.yellow:C.pink;
+    ctx.strokeStyle=trailColor; ctx.lineWidth=2;
+    ctx.beginPath();
+    escTrail.forEach(({x,y},i)=>{
+      const px=cx+x*scale, py=cy-y*scale;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+
+  // 発射点
+  const sx2=cx+ESC_R0*scale, sy2=cy;
+  ctx.beginPath(); ctx.arc(sx2,sy2,5,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+
+  // 現在の物体
+  if(!escDead&&escTrail.length>0){
+    const {x,y}=escTrail[escTrail.length-1];
+    const px=cx+x*scale, py=cy-y*scale;
+    ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2);
+    ctx.fillStyle='rgba(47,129,247,0.3)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fillStyle=C.blue; ctx.fill();
+  }
+
+  // v₁, v₂の速度マーカー（スライダー位置表示）
+  const barX=cx-100, barW=200, barY=H-50;
+  ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.fillRect(barX,barY-6,barW,12);
+  // v₁マーク
+  const v1x=barX+barW/2;
+  ctx.strokeStyle=C.green; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(v1x,barY-14); ctx.lineTo(v1x,barY+14); ctx.stroke();
+  ctx.fillStyle=C.green; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('v₁',v1x,barY-18);
+  // v₂マーク
+  const v2x=barX+barW*(Math.sqrt(2)/2);
+  ctx.strokeStyle=C.yellow; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(v2x,barY-14); ctx.lineTo(v2x,barY+14); ctx.stroke();
+  ctx.fillStyle=C.yellow;
+  ctx.fillText('v₂',v2x,barY-18);
+  // 現在位置マーク
+  const curX=barX+barW*(vRatio/2);
+  ctx.fillStyle=C.blue;
+  ctx.beginPath(); ctx.moveTo(curX,barY-8); ctx.lineTo(curX+6,barY+8); ctx.lineTo(curX-6,barY+8); ctx.closePath(); ctx.fill();
+
+  // 判定テキスト
+  let judge='', judgeColor=C.text;
+  if(vRatio<0.98){judge='楕円軌道（地球に落下）';judgeColor=C.red;}
+  else if(vRatio<1.02){judge='円軌道（第1宇宙速度）';judgeColor=C.green;}
+  else if(vRatio<Math.sqrt(2)-0.02){judge='楕円軌道（地球の外側）';judgeColor=C.blue;}
+  else if(vRatio<Math.sqrt(2)+0.02){judge='放物線軌道（第2宇宙速度・脱出）';judgeColor=C.yellow;}
+  else{judge='双曲線軌道（脱出）';judgeColor=C.pink;}
+
+  ctx.fillStyle=judgeColor; ctx.font='700 13px "Noto Sans JP"'; ctx.textAlign='center';
+  ctx.fillText(judge,cx,60);
+
+  // v値表示
+  ctx.fillStyle=C.text; ctx.font='12px "JetBrains Mono"'; ctx.textAlign='center';
+  ctx.fillText('v = '+vRatio.toFixed(2)+'v₁  (v₁=1.00, v₂=√2≈'+Math.sqrt(2).toFixed(2)+')',cx,80);
+
+  // パネル計測値
+  document.getElementById('esc-v1').textContent='v₁ = √(GM/r) = 1.00（規格化）';
+  document.getElementById('esc-v2').textContent='v₂ = √(2GM/r) = √2 v₁ ≈ '+v2.toFixed(3);
+  document.getElementById('esc-vcur').textContent='v = '+vRatio.toFixed(2)+' v₁ = '+vInit.toFixed(3);
+  document.getElementById('esc-judge').textContent=judge;
+  document.getElementById('esc-judge').style.color=judgeColor;
+  document.getElementById('lbl-esc').textContent=vRatio.toFixed(2);
+
+  // 計測値パネル（流用）
+  document.getElementById('ml1').textContent='初速 v / v₁';
+  document.getElementById('mv1').textContent=vRatio.toFixed(2);
+  document.getElementById('ml2').textContent='第1宇宙速度 v₁';
+  document.getElementById('mv2').textContent=v1.toFixed(3);
+  document.getElementById('ml3').textContent='第2宇宙速度 v₂';
+  document.getElementById('mv3').textContent=v2.toFixed(3);
+  document.getElementById('ml4').textContent='v₂/v₁';
+  document.getElementById('mv4').textContent='√2 ≈ '+Math.sqrt(2).toFixed(3);
+  document.getElementById('ml5').textContent='軌道の種類';
+  document.getElementById('mv5').textContent=judge;
+  document.getElementById('mv5').style.color=judgeColor;
+  document.getElementById('ml6').textContent=''; document.getElementById('mv6').textContent='';
+  document.getElementById('ml7').textContent=''; document.getElementById('mv7').textContent='';
+}
+function drawKepler(W,H){
+  const zoomMax=parseFloat(document.getElementById('sl-zoom').value);
+  document.getElementById('lbl-zoom').textContent=Math.round(zoomMax);
+
+  const PAD={l:60,r:30,t:40,b:50};
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+
+  function sx(v){return PAD.l+v/zoomMax*gW;}
+  function sy(v){return PAD.t+gH-v/zoomMax*gH;}
+
+  // グリッド
+  const step=zoomMax<=30?5:zoomMax<=300?50:zoomMax<=3000?500:5000;
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let v=0;v<=zoomMax;v+=step){
+    ctx.beginPath(); ctx.moveTo(sx(v),PAD.t); ctx.lineTo(sx(v),H-PAD.b); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.l,sy(v)); ctx.lineTo(W-PAD.r,sy(v)); ctx.stroke();
+  }
+
+  // 軸
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  ctx.fillStyle=C.muted; ctx.font='11px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.fillText('a³（AU³）',W/2,H-PAD.b+32);
+  ctx.save(); ctx.translate(16,H/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.fillText('T²（年²）',0,0); ctx.restore();
+
+  for(let v=0;v<=zoomMax;v+=step){
+    ctx.fillStyle=C.muted; ctx.font='10px "JetBrains Mono"';
+    ctx.textAlign='right'; ctx.fillText(v,PAD.l-5,sy(v)+4);
+    ctx.textAlign='center'; ctx.fillText(v,sx(v),H-PAD.b+15);
+  }
+
+  // T²=a³ 直線
+  ctx.strokeStyle='rgba(247,201,72,0.4)'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(sx(0),sy(0)); ctx.lineTo(sx(zoomMax),sy(zoomMax)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=C.yellow; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+  const lx=zoomMax*0.65;
+  if(sx(lx)<W-PAD.r) ctx.fillText('T² = a³',sx(lx)+4,sy(lx)-8);
+
+  // 惑星プロット
+  planets.forEach(p=>{
+    const a3=p.a**3, T2=p.a**3; // T²=a³なので同じ値
+    const px2=sx(a3), py2=sy(T2);
+    if(px2>W-PAD.r||py2<PAD.t) return;
+    ctx.beginPath(); ctx.arc(px2,py2,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.color+'55'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px2,py2,p.r-2,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.fill();
+    ctx.fillStyle=C.text; ctx.font='600 11px "JetBrains Mono"'; ctx.textAlign='left';
+    if(px2+p.r+4+40<W-PAD.r){
+      ctx.fillText(p.name,px2+p.r+4,py2+4);
+    }
+  });
+
+  ctx.fillStyle=C.text; ctx.font='700 14px "Noto Sans JP"'; ctx.textAlign='center';
+  ctx.fillText('ケプラーの第3法則　T² ∝ a³',W/2,24);
+
+  document.getElementById('ml5').textContent='T²/a³（全惑星で一定）';
+  document.getElementById('mv5').textContent='1.000';
+  ['ml1','ml2','ml3','ml4','ml6','ml7'].forEach(id=>document.getElementById(id).textContent='—');
+  ['mv1','mv2','mv3','mv4','mv6','mv7'].forEach(id=>document.getElementById(id).textContent='—');
+}
+</script>
+</body>
+</html>
