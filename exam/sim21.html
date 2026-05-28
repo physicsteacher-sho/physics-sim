@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>基礎問題精講 問22 シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --A:#38bdf8;    /* 物体A */
+  --B:#f97316;    /* 物体B */
+  --spring:#a78bfa; /* ばね */
+  --heat:#34d399;   /* エネルギー */
+  --accent:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;letter-spacing:-.02em;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:var(--heat);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .1s,opacity .1s}
+button:active{transform:translateY(1px);opacity:.85}
+.btn-play{background:var(--A);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card-head .dot{width:8px;height:8px;border-radius:50%}
+canvas{display:block;width:100%;background:transparent}
+#cvAnim{height:220px}
+#cvGraph{height:220px}
+#cvEnergy{height:220px}
+.graphs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+
+.phase-badge{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;margin-top:2px}
+.phase-approach{background:#0e2235;border:1px solid var(--A);color:var(--A)}
+.phase-compress{background:#1a1406;border:1px solid var(--accent);color:var(--accent)}
+.phase-separate{background:#1a0e1a;border:1px solid var(--spring);color:var(--spring)}
+.phase-done{background:#0a1a0e;border:1px solid var(--heat);color:var(--heat)}
+
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted)}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--spring);font-size:12px;text-align:right}
+
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+
+@media(max-width:960px){
+  .top-bar{grid-template-columns:1fr 1fr}
+  .btn-group{flex-direction:row;grid-column:1/-1}
+  .main{grid-template-columns:1fr}
+  .graphs-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>基礎問題精講 <span>問22</span>　エネルギーと運動量の保存Ⅰ</h1>
+      <p>なめらかな水平面。質量 m の A が速さ v で、ばね付きの質量 M (M>m) の B に衝突。<br>
+         ばねを通じた衝突 → 完全弾性衝突（e=1）と等価。</p>
+    </div>
+    <div class="badge">福岡大 / 必修基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>
+    なめらかな水平面上に質量 m の物体 A と、ばね（ばね定数 k）が取り付けられた質量 M（M > m）の物体 B がある。
+    A を速さ v で B に向けてばねに衝突させた。<br>
+    <strong>(1)</strong> A と B の速度が等しくなる瞬間の速さ V &nbsp;
+    <strong>(2)</strong> そのときのばねの弾性エネルギー U &nbsp;
+    <strong>(3)</strong> この過程の反発係数 e &nbsp;
+    <strong>(4)(5)</strong> A がばねから離れるときの A・B の速さ
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>質量 m (A)</span><span class="val" id="vMassA">1.0 kg</span></div>
+      <input type="range" id="sldm" min="0.5" max="4" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>質量 M (B)</span><span class="val" id="vMassB">3.0 kg</span></div>
+      <input type="range" id="sldM" min="1" max="8" step="0.5" value="3.0">
+    </label>
+    <label>
+      <div class="label-row"><span>初速度 v (A)</span><span class="val" id="vV">4.0 m/s</span></div>
+      <input type="range" id="sldV" min="1" max="8" step="0.5" value="4.0">
+    </label>
+    <label>
+      <div class="label-row"><span>ばね定数 k</span><span class="val" id="vK">20 N/m</span></div>
+      <input type="range" id="sldK" min="5" max="100" step="5" value="20">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span class="dot" style="background:var(--A)"></span>
+          運動アニメーション
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">数値積分による物理シミュレーション</span>
+        </div>
+        <canvas id="cvAnim" width="900" height="220"></canvas>
+      </div>
+      <div class="graphs-row">
+        <div class="card">
+          <div class="card-head">
+            <span class="dot" style="background:var(--spring)"></span>
+            v-t グラフ
+          </div>
+          <canvas id="cvGraph" width="450" height="220"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="dot" style="background:var(--heat)"></span>
+            エネルギーの変化
+          </div>
+          <canvas id="cvEnergy" width="450" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">時刻 t</span>
+          <span class="num" id="rTime" style="color:var(--text)">0.00 s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速度 vA</span>
+          <span class="num" id="rVA" style="color:var(--A)">— m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速度 vB</span>
+          <span class="num" id="rVB" style="color:var(--B)">0.00 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">ばね圧縮量 x</span>
+          <span class="num" id="rX" style="color:var(--spring)">0.00 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">ばねの弾性エネルギー</span>
+          <span class="num" id="rU" style="color:var(--spring)">0.00 J</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">全運動量 P</span>
+          <span class="num" id="rP" style="color:var(--heat)">— kg·m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">全力学的エネルギー</span>
+          <span class="num" id="rE" style="color:var(--heat)">— J</span>
+        </div>
+        <div id="phaseBadge" class="phase-badge phase-approach">接触前：Aが等速で接近中</div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item">
+            <span class="q">(1) 共通速度 V</span>
+            <span class="a" id="ans1">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 最大弾性エネルギー U</span>
+            <span class="a" id="ans2">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(3) 反発係数 e</span>
+            <span class="a" id="ans3">e = 1（完全弾性）</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(4) 離れるときの vA</span>
+            <span class="a" id="ans4">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(5) 離れるときの vB</span>
+            <span class="a" id="ans5">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>凡例</h3>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--A)"></span>物体 A の速度 vA</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--B)"></span>物体 B の速度 vB</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--spring)"></span>ばねの弾性エネルギー U</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--heat)"></span>全力学的エネルギー（保存）</div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>なめらかな床 → <strong style="color:var(--text)">水平外力なし</strong> → 運動量保存</p>
+        <div class="formula">mv = (m+M)V  →  V = mv/(m+M)</div>
+        <p style="margin-top:10px">ばねは非保存力なし → <strong style="color:var(--text)">力学的エネルギー保存</strong></p>
+        <div class="formula">½mv² = ½(m+M)V² + U</div>
+        <p style="margin-top:10px">A が離れるとき x=0 → 完全弾性衝突と等価</p>
+        <div class="formula">vA = −(M−m)v/(M+m)<br>vB = 2mv/(M+m)</div>
+        <p style="margin-top:10px">M > m なので vA &lt; 0（Aは跳ね返る）</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── 解析解 ───────────────────────────────────────────────────────
+function getP() {
+  const m = +document.getElementById('sldm').value;
+  const M = +document.getElementById('sldM').value;
+  const v = +document.getElementById('sldV').value;
+  const k = +document.getElementById('sldK').value;
+  const V  = m * v / (m + M);                          // 共通速度
+  const U  = 0.5 * M * m * v * v / (M + m);           // 最大弾性エネルギー
+  const vA_final = -(M - m) * v / (M + m);             // 離れるときのvA
+  const vB_final =  2 * m * v / (M + m);               // 離れるときのvB
+  const KE0 = 0.5 * m * v * v;                         // 初期KE
+  // ばね振動の角振動数（換算質量）
+  const mu = m * M / (m + M);
+  const omega = Math.sqrt(k / mu);
+  // 接触時間（半周期）
+  const T_contact = Math.PI / omega;
+  return { m, M, v, k, V, U, vA_final, vB_final, KE0, mu, omega, T_contact };
+}
+
+// ─── 解析解ベースのシミュレーション（数値積分廃止）────────────────
+// 接触前・接触中・接触後を解析式で正確に計算
+// 重なりは物理的にあり得ない
+
+const BLOCK_HALF = 0.4;  // ブロック半幅（物理m）
+const SPRING_L0  = 0.5;  // ばね自然長（物理m）
+const APPROACH_DIST = 1.2; // 接触前の初期距離
+
+let simP = null;
+
+function buildSim() {
+  simP = getP();
+}
+
+// 時刻 t における状態を解析式で返す
+function getStateAt(t) {
+  const P = simP;
+  if(!P) return null;
+
+  const t_contact = APPROACH_DIST / P.v;
+
+  // ── 接触時のA重心位置を先に確定 ──
+  // 接触条件: Aの右端 = ばね左端 = xB_init - BLOCK_HALF - SPRING_L0 = -BLOCK_HALF - SPRING_L0
+  // Aの重心 = Aの右端 - BLOCK_HALF
+  const xA_c = (-BLOCK_HALF - SPRING_L0) - BLOCK_HALF; // 接触時のA重心
+  const xB_c = 0;                                        // 接触時のB重心（静止）
+
+  // ── フェーズ1: 接触前 ──
+  if(t <= t_contact) {
+    const xA = xA_c - P.v * (t_contact - t); // 接触点からt_contact-t秒分だけ左
+    return { xA, vA: P.v, xB: 0, vB: 0, t, phase:'approach', compress:0, springE:0 };
+  }
+
+  const tau = t - t_contact;
+
+  // ── フェーズ2: ばね接触中 ──
+  if(tau <= P.T_contact) {
+    // 換算質量系: x_max = 相対速度初期値 × √(μ/k)
+    // 接触開始時の相対速度 = vA_init - vB_init = P.v - 0 = P.v
+    const x_max = P.v * Math.sqrt(P.mu / P.k);
+    const compress = x_max * Math.sin(P.omega * tau); // 0→max→0（正=圧縮）
+    const compress_dot = x_max * P.omega * Math.cos(P.omega * tau);
+
+    // 表示上のばね圧縮限界
+    // 理想ばねの計算上は自然長以上に圧縮されることがあるが、
+    // 描画ではAとBが重ならないよう、ばねが少し残った状態で止める。
+    const springLimit = SPRING_L0 * 0.85;
+    const isBodyHit = compress >= springLimit;
+    const visualCompress = Math.min(Math.max(0, compress), springLimit);
+
+    // 重心は等速V
+    const xG_c = (P.m * xA_c + P.M * xB_c) / (P.m + P.M);
+    const xG   = xG_c + P.V * tau;
+
+    // 相対距離 D = xB - xA（圧縮すると縮む）
+    // 圧縮なし: D0 = xB_c - xA_c = 2*BLOCK_HALF + SPRING_L0
+    // 圧縮あり: D = D0 - compress
+    const D0 = xB_c - xA_c; // = 2*BLOCK_HALF + SPRING_L0
+    const D  = D0 - visualCompress;
+
+    // 重心定義: xG = (m*xA + M*xB)/(m+M) かつ xB - xA = D
+    // → xA = xG - M/(m+M)*D,  xB = xG + m/(m+M)*D
+    const xA = xG - (P.M / (P.m + P.M)) * D;
+    const xB = xG + (P.m / (P.m + P.M)) * D;
+
+    // 速度: d(xB-xA)/dt = -compress_dot
+    const dD_dt = -compress_dot;
+    const vA = P.V - (P.M / (P.m + P.M)) * dD_dt;
+    const vB = P.V + (P.m / (P.m + P.M)) * dD_dt;
+
+    const springE = 0.5 * P.k * Math.max(0, compress) ** 2;
+
+    return {
+      xA, vA, xB, vB, t,
+      phase: isBodyHit ? 'hitBody' : 'compress',
+      compress: Math.max(0, compress),
+      visualCompress,
+      springLimit,
+      springE
+    };
+  }
+
+  // ── フェーズ3: 接触後 ──
+  const tau2 = tau - P.T_contact;
+  // フェーズ2終了時の位置を計算
+  const xG_c = (P.m * xA_c + P.M * xB_c) / (P.m + P.M);
+  const xG_end = xG_c + P.V * P.T_contact;
+  const D0 = xB_c - xA_c;
+  // τ=T_contactのとき compress=sin(π)=0 → D=D0
+  const xA_end = xG_end - (P.M / (P.m + P.M)) * D0;
+  const xB_end = xG_end + (P.m / (P.m + P.M)) * D0;
+
+  const xA = xA_end + P.vA_final * tau2;
+  const xB = xB_end + P.vB_final * tau2;
+
+  return { xA, vA: P.vA_final, xB, vB: P.vB_final, t, phase:'done', compress:0, springE:0 };
+}
+
+// tMax: アニメーション全体の長さ
+function getTMax() {
+  const P = simP;
+  if(!P) return 5;
+  return APPROACH_DIST/P.v + P.T_contact + 1.5;
+}
+
+// ─── Canvas helpers ───────────────────────────────────────────────
+function arrow(ctx, x1,y1,x2,y2,color,w=3){
+  const a=Math.atan2(y2-y1,x2-x1),hd=9;
+  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=w;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hd*Math.cos(a-Math.PI/6),y2-hd*Math.sin(a-Math.PI/6));
+  ctx.lineTo(x2-hd*Math.cos(a+Math.PI/6),y2-hd*Math.sin(a+Math.PI/6));
+  ctx.closePath();ctx.fill();ctx.restore();
+}
+function rrect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();}
+}
+
+// ─── Draw: Animation ──────────────────────────────────────────────
+function drawAnim(simT) {
+  const cv = document.getElementById('cvAnim');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+
+  const s = getStateAt(simT);
+  if(!s) return;
+  const P = simP;
+
+  const floorY = H - 28;
+  const blockH = 64;
+  const centerY = floorY - blockH / 2;
+
+  // floor
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(20,floorY);ctx.lineTo(W-20,floorY);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(20,floorY,W-40,8);
+  ctx.fillStyle='rgba(255,255,255,0.15)';ctx.font='bold 11px "Noto Sans JP"';
+  ctx.fillText('床（なめらか）',36,floorY+20);
+
+  // スケール: 物理座標→px
+  // Bの初期位置(xB=0)を画面右60%に置く
+  // 物理1m = scl px
+  const scl = 80; // 1m = 80px
+  const originPx = W * 0.62; // xB=0 のpx位置
+
+  function phyToPx(x) { return originPx + x * scl; }
+
+  const pxA_raw = phyToPx(s.xA);
+  const pxB     = phyToPx(s.xB);
+  const halfA = BLOCK_HALF * scl;
+  const halfB = BLOCK_HALF * scl;
+  const springL0px = SPRING_L0 * scl;
+
+  // ── 物体B（オレンジ）──
+  const bLeft  = pxB - halfB;
+  const bRight = pxB + halfB;
+
+  // ── ばね描画用の圧縮量 ──
+  // 物理計算用の s.compress と、画面表示用の drawCompress を分ける。
+  // ばねが短すぎる条件でも、AとBが重ならないようにする。
+  const drawCompress = s.visualCompress ?? Math.max(0, s.compress || 0);
+  const springRight = bLeft;
+  const springLeftNatural = springRight - springL0px;
+  const springLeftActual = springLeftNatural + drawCompress * scl;
+
+  let pxA = pxA_raw;
+  if (s.phase === 'approach') {
+    pxA = Math.min(pxA_raw, springLeftNatural - halfA);
+  } else if (s.phase === 'compress' || s.phase === 'hitBody') {
+    pxA = springLeftActual - halfA;
+  }
+  rrect(ctx, bLeft, floorY-blockH, halfB*2, blockH, 10, 'rgba(249,115,22,0.28)', '#f97316');
+  ctx.fillStyle='#fff';ctx.font='bold 14px "Noto Sans JP"';ctx.textAlign='center';
+  ctx.fillText('B', pxB, floorY-blockH/2+5);
+  ctx.font='10px "JetBrains Mono"';ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillText(`${P.M}kg`, pxB, floorY-blockH/2+19);
+
+  // ── ばね（Bの左面に付いている）──
+  const springLeft  = springLeftActual;
+  const springLen   = springRight - springLeft;
+
+  ctx.save();
+  const isCompressed = s.compress > 0.001;
+  ctx.strokeStyle = isCompressed ? '#a78bfa' : 'rgba(167,139,250,0.45)';
+  ctx.lineWidth   = isCompressed ? 2.5 : 1.5;
+  // ジグザグ描画
+  const nCoil = 9;
+  const coilH = 10;
+  ctx.beginPath();
+  ctx.moveTo(springLeft, centerY);
+  for(let i=0;i<nCoil;i++){
+    const x1 = springLeft + springLen*(i+0.25)/nCoil;
+    const x2 = springLeft + springLen*(i+0.75)/nCoil;
+    const x3 = springLeft + springLen*(i+1.0)/nCoil;
+    ctx.lineTo(x1, centerY - coilH);
+    ctx.lineTo(x2, centerY + coilH);
+    ctx.lineTo(x3, centerY);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // 圧縮量ラベル
+  if((drawCompress || 0) > 0.005) {
+    // 圧縮量を両端の線で示す
+    ctx.save();
+    ctx.strokeStyle='rgba(167,139,250,0.6)';ctx.lineWidth=1;ctx.setLineDash([3,2]);
+    ctx.beginPath();ctx.moveTo(springLeft,centerY-coilH-14);ctx.lineTo(springLeft,centerY+coilH+4);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(springRight,centerY-coilH-14);ctx.lineTo(springRight,centerY+coilH+4);ctx.stroke();
+    ctx.setLineDash([]);
+    // 矢印で圧縮量を示す
+    arrow(ctx, springLeft, centerY-coilH-8, springRight, centerY-coilH-8, '#a78bfa', 1.5);
+    ctx.fillStyle='#a78bfa';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='center';
+    ctx.fillText(`x=${s.compress.toFixed(3)}m`, (springLeft+springRight)/2, centerY-coilH-16);
+    ctx.restore();
+  }
+
+  // ── 物体A（青）──
+  const aLeft  = pxA - halfA;
+  const aRight = pxA + halfA;
+  rrect(ctx, aLeft, floorY-blockH, halfA*2, blockH, 10, 'rgba(56,189,248,0.32)', '#38bdf8');
+  ctx.fillStyle='#fff';ctx.font='bold 14px "Noto Sans JP"';ctx.textAlign='center';
+  ctx.fillText('A', pxA, floorY-blockH/2+5);
+  ctx.font='10px "JetBrains Mono"';ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillText(`${P.m}kg`, pxA, floorY-blockH/2+19);
+
+  // 速度矢印
+  const vsc = 28;
+  const arrowY = floorY - blockH - 12;
+  if(Math.abs(s.vA) > 0.05) {
+    arrow(ctx, pxA, arrowY, pxA + s.vA*vsc, arrowY, '#38bdf8', 2.5);
+    ctx.fillStyle='#38bdf8';ctx.font='bold 10px "JetBrains Mono"';
+    ctx.textAlign = s.vA >= 0 ? 'left' : 'right';
+    const lx = pxA + s.vA*vsc + (s.vA>=0?4:-4);
+    ctx.fillText(`vA=${s.vA.toFixed(2)}`, lx, arrowY-4);
+  }
+  if(Math.abs(s.vB) > 0.02) {
+    arrow(ctx, pxB, arrowY, pxB + s.vB*vsc, arrowY, '#f97316', 2.5);
+    ctx.fillStyle='#f97316';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='left';
+    ctx.fillText(`vB=${s.vB.toFixed(2)}`, pxB+s.vB*vsc+4, arrowY-4);
+  }
+
+  // 運動量表示
+  const momentum = P.m*s.vA + P.M*s.vB;
+  ctx.fillStyle='rgba(52,211,153,0.8)';ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='right';
+  ctx.fillText(`運動量 P = ${momentum.toFixed(3)} kg·m/s（保存）`, W-16, H-10);
+
+  // フェーズラベル
+  const phaseText = {
+    approach: '接触前：A が等速で接近中',
+    compress: 'ばね圧縮・伸張中',
+    hitBody:  'ばね限界：B本体に接触として表示',
+    done:     'ばね離脱後：等速運動',
+  }[s.phase] || '';
+  ctx.fillStyle='rgba(255,255,255,0.55)';ctx.font='bold 12px "Noto Sans JP"';ctx.textAlign='left';
+  ctx.fillText(phaseText, 16, 22);
+
+  if(s.phase === 'hitBody') {
+    ctx.save();
+    ctx.fillStyle='rgba(245,158,11,0.14)';
+    ctx.strokeStyle='rgba(245,158,11,0.65)';
+    ctx.lineWidth=1.2;
+    rrect(ctx, 16, 34, 260, 30, 8, 'rgba(245,158,11,0.14)', 'rgba(245,158,11,0.65)');
+    ctx.fillStyle='#f59e0b';
+    ctx.font='bold 11px "Noto Sans JP"';
+    ctx.textAlign='left';
+    ctx.fillText('ばねが短すぎるため、本体接触として表示中', 28, 54);
+    ctx.restore();
+  }
+
+  ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='11px "JetBrains Mono"';
+  ctx.fillText(`t = ${simT.toFixed(3)} s`, W-115, 20);
+}
+
+// ─── Draw: v-t graph ──────────────────────────────────────────────
+function drawGraph(simT) {
+  const cv = document.getElementById('cvGraph');
+  const ctx = cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const P = simP;
+  if(!P) return;
+
+  const L=54,R=W-16,B=H-36,T2=16;
+  const gW=R-L,gH=B-T2;
+  const tMax = getTMax();
+  const vMax = P.v * 1.15;
+  const vMin = Math.min(P.vA_final - 0.2, -0.3);
+  const vRange = vMax - vMin;
+  const midY = B - gH*(0-vMin)/vRange;
+
+  function xm(t){return L+gW*(t/tMax);}
+  function ym(v){return B-gH*(v-vMin)/vRange;}
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=T2+gH*i/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();
+    const x=L+gW*i/4;ctx.beginPath();ctx.moveTo(x,T2);ctx.lineTo(x,B);ctx.stroke();
+  }
+  ctx.restore();
+
+  // v=0 line & axes
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(L,midY);ctx.lineTo(R,midY);ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(L,T2);ctx.lineTo(L,B);ctx.lineTo(R,B);ctx.stroke();
+
+  // 共通速度 V の水平線
+  ctx.save();ctx.strokeStyle='rgba(245,158,11,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(L,ym(P.V));ctx.lineTo(R,ym(P.V));ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#f59e0b';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText(`V=${P.V.toFixed(2)}`,R,ym(P.V)-4);
+
+  const steps = 200;
+  // vA line
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;
+    const s=getStateAt(tt);
+    if(i===0)ctx.moveTo(xm(tt),ym(s.vA));else ctx.lineTo(xm(tt),ym(s.vA));
+  }
+  ctx.stroke();
+
+  // vB line
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;
+    const s=getStateAt(tt);
+    if(i===0)ctx.moveTo(xm(tt),ym(s.vB));else ctx.lineTo(xm(tt),ym(s.vB));
+  }
+  ctx.stroke();
+
+  // current marker
+  const tc=Math.min(simT,tMax);
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(xm(tc),T2);ctx.lineTo(xm(tc),B);ctx.stroke();ctx.restore();
+  const sc=getStateAt(tc);
+  [[sc.vA,'#38bdf8'],[sc.vB,'#f97316']].forEach(([v,c])=>{
+    ctx.fillStyle=c;ctx.beginPath();ctx.arc(xm(tc),ym(v),4,0,Math.PI*2);ctx.fill();
+  });
+
+  // labels
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='right';
+  ctx.fillText(vMax.toFixed(1),L-4,T2+8);
+  ctx.fillText('0',L-4,midY+4);
+  if(vMin<0)ctx.fillText(vMin.toFixed(1),L-4,B+2);
+  ctx.textAlign='center';
+  ctx.fillText('0',L,B+14);ctx.fillText(tMax.toFixed(2)+'s',R,B+14);
+  ctx.textAlign='left';
+  ctx.fillStyle='#38bdf8';ctx.font='10px "Noto Sans JP"';ctx.fillText('vA',L+4,T2+14);
+  ctx.fillStyle='#f97316';ctx.fillText('vB',L+4,T2+26);
+  ctx.fillStyle='#f59e0b';ctx.fillText('共通速度V',L+4,T2+38);
+}
+
+// ─── Draw: Energy ─────────────────────────────────────────────────
+function drawEnergy(simT) {
+  const cv = document.getElementById('cvEnergy');
+  const ctx = cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const P = simP;
+  if(!P) return;
+
+  const L=40,R=W-16,B=H-36,T2=16;
+  const gH=B-T2;
+  const maxE = P.KE0 * 1.15;
+  const tMax = getTMax();
+
+  function ym(e){return B-gH*(e/maxE);}
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=T2+gH*i/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();}
+  ctx.restore();
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(L,T2);ctx.lineTo(L,B);ctx.lineTo(R,B);ctx.stroke();
+
+  // reference lines
+  ctx.save();ctx.strokeStyle='rgba(52,211,153,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(L,ym(P.KE0));ctx.lineTo(R,ym(P.KE0));ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#34d399';ctx.font='10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText(`KE₀=${P.KE0.toFixed(2)}`,R,ym(P.KE0)-4);
+
+  ctx.save();ctx.strokeStyle='rgba(167,139,250,0.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(L,ym(P.U));ctx.lineTo(R,ym(P.U));ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#a78bfa';ctx.font='10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText(`U_max=${P.U.toFixed(2)}`,R,ym(P.U)-4);
+
+  const steps=200;
+  function xm(t){return L+(R-L)*(t/tMax);}
+
+  // KE合計
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;const s=getStateAt(tt);
+    const ke=0.5*P.m*s.vA*s.vA+0.5*P.M*s.vB*s.vB;
+    if(i===0)ctx.moveTo(xm(tt),ym(ke));else ctx.lineTo(xm(tt),ym(ke));
+  }
+  ctx.stroke();
+
+  // ばねU
+  ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;const s=getStateAt(tt);
+    if(i===0)ctx.moveTo(xm(tt),ym(s.springE));else ctx.lineTo(xm(tt),ym(s.springE));
+  }
+  ctx.stroke();
+
+  // 全エネルギー
+  ctx.strokeStyle='#34d399';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;const s=getStateAt(tt);
+    const tot=0.5*P.m*s.vA*s.vA+0.5*P.M*s.vB*s.vB+s.springE;
+    if(i===0)ctx.moveTo(xm(tt),ym(tot));else ctx.lineTo(xm(tt),ym(tot));
+  }
+  ctx.stroke();ctx.setLineDash([]);
+
+  // current marker
+  const tc=Math.min(simT,tMax);
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(xm(tc),T2);ctx.lineTo(xm(tc),B);ctx.stroke();ctx.restore();
+
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='right';ctx.fillText('0',L-4,B+4);
+  ctx.textAlign='center';ctx.fillText('0',L,B+14);ctx.fillText(tMax.toFixed(2)+'s',R,B+14);
+  ctx.textAlign='left';
+  ctx.fillStyle='#f59e0b';ctx.font='10px "Noto Sans JP"';ctx.fillText('KE合計',L+4,T2+14);
+  ctx.fillStyle='#a78bfa';ctx.fillText('ばねU',L+4,T2+26);
+  ctx.fillStyle='#34d399';ctx.fillText('全エネルギー(保存)',L+4,T2+38);
+}
+
+// ─── UI update ────────────────────────────────────────────────────
+function updateReadout(simT) {
+  const s = getStateAt(simT);
+  const P = simP;
+  if(!s||!P) return;
+  document.getElementById('rTime').textContent = `${simT.toFixed(3)} s`;
+  document.getElementById('rVA').textContent   = `${s.vA.toFixed(3)} m/s`;
+  document.getElementById('rVB').textContent   = `${s.vB.toFixed(3)} m/s`;
+  document.getElementById('rX').textContent    = `${(s.compress||0).toFixed(4)} m`;
+  document.getElementById('rU').textContent    = `${(s.springE||0).toFixed(3)} J`;
+  document.getElementById('rP').textContent    = `${(P.m*s.vA+P.M*s.vB).toFixed(3)} kg·m/s`;
+  const tot = 0.5*P.m*s.vA*s.vA+0.5*P.M*s.vB*s.vB+(s.springE||0);
+  document.getElementById('rE').textContent    = `${tot.toFixed(3)} J`;
+
+  const badge = document.getElementById('phaseBadge');
+  const phases = {
+    approach: ['phase-approach','接触前：A が等速で接近中'],
+    compress: ['phase-compress','ばね圧縮中：共通速度へ近づく'],
+    hitBody:  ['phase-compress','ばねが短すぎる：B本体に接触として表示'],
+    separate: ['phase-compress','ばね伸張中：A が跳ね返り始める'],
+    done:     ['phase-done','ばね離脱後：それぞれ等速運動'],
+  };
+  const [cls,txt] = phases[s.phase]||['phase-approach',''];
+  badge.className=`phase-badge ${cls}`;badge.textContent=txt;
+}
+
+function updateAnswers() {
+  const P = getP();
+  document.getElementById('ans1').textContent = `V = ${P.V.toFixed(3)} m/s`;
+  document.getElementById('ans2').textContent = `U = ${P.U.toFixed(3)} J`;
+  document.getElementById('ans3').textContent = `e = 1（完全弾性衝突）`;
+  const vAf = P.vA_final;
+  const dir = vAf < 0 ? '（←左向き）' : '（→右向き）';
+  document.getElementById('ans4').textContent = `${Math.abs(vAf).toFixed(3)} m/s ${dir}`;
+  document.getElementById('ans5').textContent = `${P.vB_final.toFixed(3)} m/s（→右向き）`;
+}
+
+// ─── Loop ────────────────────────────────────────────────────────
+let sim_t=0, running=false, lastNow=0;
+
+function render() {
+  drawAnim(sim_t);
+  drawGraph(sim_t);
+  drawEnergy(sim_t);
+  updateReadout(sim_t);
+  updateAnswers();
+}
+
+function loop(now) {
+  const dt = Math.min(0.05,(now-lastNow)/1000);
+  lastNow = now;
+  if(running) {
+    sim_t += dt * 0.18; // かなり遅め（0.4→0.18）
+    if(sim_t > getTMax()) {
+      running=false;
+      document.getElementById('btnPlay').textContent='▶ 再生';
+    }
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  if(!running && sim_t >= getTMax()*0.98) sim_t=0;
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ 停止':'▶ 再生';
+  lastNow=performance.now();
+});
+
+document.getElementById('btnReset').addEventListener('click',()=>{
+  sim_t=0;running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';
+  render();
+});
+
+const sliders=[
+  {id:'sldm', out:'vMassA', fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldM', out:'vMassB', fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldV', out:'vV',     fmt:v=>`${(+v).toFixed(1)} m/s`},
+  {id:'sldK', out:'vK',     fmt:v=>`${(+v).toFixed(0)} N/m`},
+];
+sliders.forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    if(!running){sim_t=0;}
+    buildSim();
+    render();
+  });
+});
+
+// 初期化
+buildSim();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
