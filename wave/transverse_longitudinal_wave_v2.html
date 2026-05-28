@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>横波・縦波シミュレーション</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #cbd5e1;
+      --blue: #1d4ed8;
+      --blue-dark: #0f2f7a;
+      --blue-soft: #eff6ff;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --green: #15803d;
+      --green-soft: #dcfce7;
+      --orange: #ea580c;
+      --orange-soft: #ffedd5;
+      --purple: #7c3aed;
+      --purple-soft: #f3e8ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 32px;
+      color: var(--blue-dark);
+      letter-spacing: 0.05em;
+    }
+
+    .header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 16px;
+    }
+
+    .main {
+      display: grid;
+      gap: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 6px;
+      font-weight: 900;
+      color: var(--blue-dark);
+      font-size: 17px;
+    }
+
+    .badge {
+      width: 30px;
+      height: 30px;
+      display: inline-grid;
+      place-items: center;
+      color: white;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #0f2f7a, #2563eb);
+      font-weight: 900;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .side {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .side h2 {
+      margin: 0;
+      color: var(--blue-dark);
+      font-size: 20px;
+    }
+
+    .control {
+      display: grid;
+      gap: 6px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .value {
+      background: #f1f5f9;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 2px 8px;
+      min-width: 68px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .range-minmax {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .toggle.three {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .toggle button,
+    .buttons button {
+      border: 0;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 14px;
+      padding: 10px;
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .toggle button.active {
+      background: var(--blue);
+      color: white;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .buttons button {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      min-height: 52px;
+    }
+
+    .play { background: var(--green-soft) !important; color: #166534 !important; }
+    .pause { background: #fef9c3 !important; color: #854d0e !important; }
+    .reset { background: #f1f5f9 !important; color: #334155 !important; }
+
+    .concept-box {
+      background: #f8fbff;
+      border: 1px solid #bfdbfe;
+      border-radius: 16px;
+      padding: 14px;
+      line-height: 1.65;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .concept-box h3 {
+      margin: 0 0 8px;
+      color: var(--blue-dark);
+      font-size: 16px;
+    }
+
+    .concept-box ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 18px;
+      background: linear-gradient(90deg, #eff6ff, #ffffff);
+      border: 1px solid #bfdbfe;
+      border-radius: 16px;
+      font-weight: 800;
+      line-height: 1.7;
+    }
+
+    .info-title {
+      color: var(--blue-dark);
+      font-size: 18px;
+      border-right: 1px solid #bfdbfe;
+      padding-right: 14px;
+    }
+
+    .blue { color: var(--blue); }
+    .red { color: var(--red); }
+    .green { color: var(--green); }
+    .orange { color: var(--orange); }
+    .purple { color: var(--purple); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .side { order: -1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>横波・縦波シミュレーション</h1>
+      <p>媒質の動き・変位・速度の向きを見分けよう</p>
+    </header>
+
+    <div class="layout">
+      <main class="main">
+        <section class="card">
+          <div class="card-title"><span class="badge">1</span> 横波・縦波の比較</div>
+          <canvas id="mainCanvas" width="900" height="380"></canvas>
+        </section>
+
+        <div class="row">
+          <section class="card">
+            <div class="card-title"><span class="badge">2</span> 変位の向き</div>
+            <canvas id="displacementCanvas" width="440" height="260"></canvas>
+          </section>
+
+          <section class="card">
+            <div class="card-title"><span class="badge">3</span> 媒質の速度の向き</div>
+            <canvas id="velocityCanvas" width="440" height="260"></canvas>
+          </section>
+        </div>
+
+        <div class="info">
+          <div class="info-title">💡 ポイント</div>
+          <div>
+            <span class="blue">横波</span>は媒質の振動方向が波の進行方向に垂直。<span class="green">縦波</span>は平行。<br>
+            横波では、変位が最大・最小の点で<span class="red">媒質の速度は0</span>、変位0の点で<span class="orange">速度が最大</span>になる。
+          </div>
+        </div>
+      </main>
+
+      <aside class="card side">
+        <h2>⚙ パラメータ</h2>
+
+        <div class="control">
+          <label>表示モード</label>
+          <div class="toggle">
+            <button id="transverseBtn" class="active">横波</button>
+            <button id="longitudinalBtn">縦波</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label>強調表示</label>
+          <div class="toggle three">
+            <button id="dispBtn" class="active">変位</button>
+            <button id="velBtn">速度</button>
+            <button id="bothBtn">両方</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A <span class="value"><span id="ampValue">1.0</span> m</span></label>
+          <input id="amp" type="range" min="0.3" max="2.0" step="0.1" value="1.0" />
+          <div class="range-minmax"><span>0.3</span><span>2.0</span></div>
+        </div>
+
+        <div class="control">
+          <label>波長 λ <span class="value"><span id="lambdaValue">6.0</span> m</span></label>
+          <input id="lambda" type="range" min="3" max="12" step="0.5" value="6" />
+          <div class="range-minmax"><span>3.0</span><span>12.0</span></div>
+        </div>
+
+        <div class="control">
+          <label>周期 T <span class="value"><span id="periodValue">2.0</span> s</span></label>
+          <input id="period" type="range" min="0.6" max="5" step="0.1" value="2" />
+          <div class="range-minmax"><span>0.6</span><span>5.0</span></div>
+        </div>
+
+        <div class="control">
+          <label>注目点 x <span class="value"><span id="pointValue">5.0</span> m</span></label>
+          <input id="point" type="range" min="0.5" max="11.5" step="0.1" value="5.0" />
+          <div class="range-minmax"><span>左</span><span>右</span></div>
+        </div>
+
+        <div class="control">
+          <label>進行方向</label>
+          <div class="toggle">
+            <button id="rightBtn" class="active">右へ</button>
+            <button id="leftBtn">左へ</button>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="play" id="playBtn">▶<br>再生</button>
+          <button class="pause" id="pauseBtn">Ⅱ<br>一時停止</button>
+          <button class="reset" id="resetBtn">↺<br>リセット</button>
+        </div>
+
+        <div class="concept-box">
+          <h3>判定メモ</h3>
+          <ul>
+            <li>横波：振動方向 ⟂ 進行方向</li>
+            <li>縦波：振動方向 ∥ 進行方向</li>
+            <li>山・谷：変位最大、速度0</li>
+            <li>変位0：速度最大</li>
+            <li>波が右へ進むとき、右側の形が次に来る</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const mainCanvas = document.getElementById('mainCanvas');
+    const displacementCanvas = document.getElementById('displacementCanvas');
+    const velocityCanvas = document.getElementById('velocityCanvas');
+    const mainCtx = mainCanvas.getContext('2d');
+    const dispCtx = displacementCanvas.getContext('2d');
+    const velCtx = velocityCanvas.getContext('2d');
+
+    const ampSlider = document.getElementById('amp');
+    const lambdaSlider = document.getElementById('lambda');
+    const periodSlider = document.getElementById('period');
+    const pointSlider = document.getElementById('point');
+
+    const ampValue = document.getElementById('ampValue');
+    const lambdaValue = document.getElementById('lambdaValue');
+    const periodValue = document.getElementById('periodValue');
+    const pointValue = document.getElementById('pointValue');
+
+    const transverseBtn = document.getElementById('transverseBtn');
+    const longitudinalBtn = document.getElementById('longitudinalBtn');
+    const dispBtn = document.getElementById('dispBtn');
+    const velBtn = document.getElementById('velBtn');
+    const bothBtn = document.getElementById('bothBtn');
+    const rightBtn = document.getElementById('rightBtn');
+    const leftBtn = document.getElementById('leftBtn');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const state = {
+      mode: 'transverse',
+      highlight: 'disp',
+      A: 1.0,
+      lambda: 6.0,
+      T: 2.0,
+      focusX: 5.0,
+      dir: 1,
+      t: 0,
+      last: performance.now(),
+      playing: true
+    };
+
+    function resizeCanvasToDisplaySize(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const baseW = Number(canvas.getAttribute('width'));
+      const baseH = Number(canvas.getAttribute('height'));
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round((baseH / baseW) * rect.width * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function cssSize(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Number(canvas.getAttribute('height')) / Number(canvas.getAttribute('width'));
+      return { w: rect.width, h: rect.width * ratio };
+    }
+
+    function waveY(x, time) {
+      return state.A * Math.sin(2 * Math.PI * (x / state.lambda - state.dir * time / state.T));
+    }
+
+    function velocitySign(x, time) {
+      const phase = 2 * Math.PI * (x / state.lambda - state.dir * time / state.T);
+      return -state.dir * Math.cos(phase);
+    }
+
+    function velocityValue(x, time) {
+      return -(2 * Math.PI * state.A / state.T) * state.dir * Math.cos(2 * Math.PI * (x / state.lambda - state.dir * time / state.T));
+    }
+
+    function drawArrow(ctx, x1, y1, x2, y2, color = '#1d4ed8', both = false, width = 2) {
+      const head = 8;
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      function headAt(x, y, a) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - head * Math.cos(a - Math.PI / 6), y - head * Math.sin(a - Math.PI / 6));
+        ctx.lineTo(x - head * Math.cos(a + Math.PI / 6), y - head * Math.sin(a + Math.PI / 6));
+        ctx.closePath(); ctx.fill();
+      }
+      headAt(x2, y2, angle);
+      if (both) headAt(x1, y1, angle + Math.PI);
+      ctx.restore();
+    }
+
+    function drawGrid(ctx, x0, y0, gw, gh, xLabel, yLabel) {
+      const midY = y0 + gh / 2;
+      ctx.save();
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        const y = y0 + gh * i / 5;
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + gw, y); ctx.stroke();
+      }
+      for (let i = 1; i < 9; i++) {
+        const x = x0 + gw * i / 9;
+        ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + gh); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#111827';
+      ctx.fillStyle = '#111827';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x0 + gw + 18, midY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0 + gw + 18, midY); ctx.lineTo(x0 + gw + 8, midY - 5); ctx.lineTo(x0 + gw + 8, midY + 5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x0, y0 + gh + 8); ctx.lineTo(x0, y0 - 18); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0, y0 - 18); ctx.lineTo(x0 - 5, y0 - 7); ctx.lineTo(x0 + 5, y0 - 7); ctx.closePath(); ctx.fill();
+      ctx.font = '800 13px system-ui, sans-serif';
+      ctx.fillText(xLabel, x0 + gw + 24, midY + 5);
+      ctx.fillText(yLabel, x0 - 22, y0 - 27);
+      ctx.restore();
+    }
+
+    function syncControls() {
+      state.A = Number(ampSlider.value);
+      state.lambda = Number(lambdaSlider.value);
+      state.T = Number(periodSlider.value);
+      state.focusX = Number(pointSlider.value);
+      ampValue.textContent = state.A.toFixed(1);
+      lambdaValue.textContent = state.lambda.toFixed(1);
+      periodValue.textContent = state.T.toFixed(1);
+      pointValue.textContent = state.focusX.toFixed(1);
+    }
+
+    function setActive(group, active) {
+      group.forEach(btn => btn.classList.remove('active'));
+      active.classList.add('active');
+    }
+
+    function drawMain() {
+      resizeCanvasToDisplaySize(mainCanvas);
+      const { w, h } = cssSize(mainCanvas);
+      const ctx = mainCtx;
+      ctx.clearRect(0, 0, 5000, 5000);
+
+      const x0 = 56, y0 = 54, gw = w - 118, gh = h - 105;
+      const midY = y0 + gh / 2;
+      const xMax = 12;
+      const xToPx = x => x0 + (x / xMax) * gw;
+      const ampPx = gh / 5;
+      const yToPx = y => midY - y * ampPx;
+
+      ctx.fillStyle = state.mode === 'transverse' ? '#eff6ff' : '#f0fdf4';
+      ctx.fillRect(x0, y0, gw, gh);
+      drawGrid(ctx, x0, y0, gw, gh, '位置 x', state.mode === 'transverse' ? '変位 y' : '変位 x');
+
+      ctx.font = '900 15px system-ui, sans-serif';
+      ctx.fillStyle = state.mode === 'transverse' ? '#1d4ed8' : '#15803d';
+      ctx.fillText(state.mode === 'transverse' ? '横波：媒質は上下に振動' : '縦波：媒質は左右に振動', x0 + 12, y0 + 24);
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillText('波の進行方向', x0 + gw - 170, y0 + 24);
+      if (state.dir === 1) drawArrow(ctx, x0 + gw - 130, y0 + 42, x0 + gw - 50, y0 + 42, '#1d4ed8');
+      else drawArrow(ctx, x0 + gw - 50, y0 + 42, x0 + gw - 130, y0 + 42, '#1d4ed8');
+
+      if (state.mode === 'transverse') {
+        ctx.strokeStyle = '#0f49bd';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let px = 0; px <= gw; px++) {
+          const x = (px / gw) * xMax;
+          const py = yToPx(waveY(x, state.t));
+          if (px === 0) ctx.moveTo(x0 + px, py); else ctx.lineTo(x0 + px, py);
+        }
+        ctx.stroke();
+
+        const focusPx = xToPx(state.focusX);
+        const focusY = yToPx(waveY(state.focusX, state.t));
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(focusPx, focusY, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '900 14px system-ui, sans-serif';
+        ctx.fillText('注目点', focusPx + 10, focusY - 10);
+
+        if (state.highlight === 'disp' || state.highlight === 'both') {
+          const dotR = 9;
+          const dispSign = focusY < midY ? 1 : -1;
+          drawArrow(ctx, focusPx, midY, focusPx, focusY + dispSign * dotR, '#dc2626', false, 3);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillText('変位', focusPx + 12, (midY + focusY) / 2);
+        }
+
+        if (state.highlight === 'vel' || state.highlight === 'both') {
+          const v = velocityValue(state.focusX, state.t);
+          if (Math.abs(v) > 0.03) {
+            const len = Math.min(65, Math.max(25, Math.abs(v) * 18));
+            const endY = focusY + (v > 0 ? -len : len);
+            drawArrow(ctx, focusPx + 34, focusY, focusPx + 34, endY, '#ea580c', false, 3);
+            ctx.fillStyle = '#ea580c';
+            ctx.fillText('速度', focusPx + 44, endY);
+          } else {
+            ctx.fillStyle = '#ea580c';
+            ctx.font = '900 16px system-ui, sans-serif';
+            ctx.fillText('速度 0', focusPx + 28, focusY + 24);
+          }
+        }
+
+        markSpecialPoints(ctx, x0, y0, gw, gh, xToPx, yToPx, midY);
+      } else {
+        drawLongitudinal(ctx, x0, y0, gw, gh, midY, xToPx, xMax);
+      }
+    }
+
+    function markSpecialPoints(ctx, x0, y0, gw, gh, xToPx, yToPx, midY) {
+      const xMax = 12;
+      const samples = 800;
+      const extrema = [];
+      const zeros = [];
+      let prev = waveY(0, state.t);
+      for (let i = 1; i <= samples; i++) {
+        const x = (i / samples) * xMax;
+        const y = waveY(x, state.t);
+        if (prev * y < 0) zeros.push(x);
+        prev = y;
+      }
+
+      const phaseShift = state.dir * state.t / state.T;
+      for (let k = -4; k < 8; k++) {
+        const crest = state.lambda * (0.25 + k + phaseShift);
+        const trough = state.lambda * (0.75 + k + phaseShift);
+        if (crest > 0 && crest < xMax) extrema.push({ x: crest, type: '山' });
+        if (trough > 0 && trough < xMax) extrema.push({ x: trough, type: '谷' });
+      }
+
+      ctx.font = '900 12px system-ui, sans-serif';
+      extrema.slice(0, 5).forEach(p => {
+        const px = xToPx(p.x), py = yToPx(waveY(p.x, state.t));
+        ctx.fillStyle = '#7c3aed';
+        ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText(p.type + '：速度0', px - 28, py + (p.type === '山' ? -12 : 18));
+      });
+
+      zeros.slice(0, 6).forEach(x => {
+        const px = xToPx(x);
+        ctx.fillStyle = '#ea580c';
+        ctx.beginPath(); ctx.arc(px, midY, 4, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.fillStyle = '#ea580c';
+      ctx.fillText('変位0：速度最大', x0 + 12, y0 + gh - 12);
+    }
+
+    function drawLongitudinal(ctx, x0, y0, gw, gh, midY, xToPx, xMax) {
+      const count = 34;
+      const baseGap = gw / (count - 1);
+      const ampMove = 24 * state.A;
+      const dots = [];
+
+      for (let i = 0; i < count; i++) {
+        const x = (i / (count - 1)) * xMax;
+        const displacement = Math.sin(2 * Math.PI * (x / state.lambda - state.dir * state.t / state.T));
+        const px = x0 + i * baseGap + ampMove * displacement;
+        dots.push({ x, px, disp: displacement });
+      }
+
+      for (let i = 0; i < dots.length - 1; i++) {
+        const gap = dots[i + 1].px - dots[i].px;
+        const center = (dots[i + 1].px + dots[i].px) / 2;
+        if (gap < baseGap * 0.75) {
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.12)';
+          ctx.fillRect(center - baseGap * 0.6, y0 + 42, baseGap * 1.2, gh - 84);
+          ctx.fillStyle = '#dc2626';
+          ctx.font = '900 12px system-ui, sans-serif';
+          ctx.fillText('密', center - 7, y0 + 58);
+        } else if (gap > baseGap * 1.25) {
+          ctx.fillStyle = 'rgba(37, 99, 235, 0.10)';
+          ctx.fillRect(center - baseGap * 0.6, y0 + 42, baseGap * 1.2, gh - 84);
+          ctx.fillStyle = '#1d4ed8';
+          ctx.font = '900 12px system-ui, sans-serif';
+          ctx.fillText('疎', center - 7, y0 + gh - 48);
+        }
+      }
+
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x0 + 10, midY); ctx.lineTo(x0 + gw - 10, midY); ctx.stroke();
+
+      dots.forEach(d => {
+        const isFocus = Math.abs(d.x - state.focusX) < 0.18;
+        ctx.fillStyle = isFocus ? '#dc2626' : '#94a3b8';
+        ctx.strokeStyle = '#475569';
+        ctx.beginPath(); ctx.arc(d.px, midY, isFocus ? 8 : 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      });
+
+      const focus = dots.reduce((best, d) => Math.abs(d.x - state.focusX) < Math.abs(best.x - state.focusX) ? d : best, dots[0]);
+      ctx.fillStyle = '#dc2626';
+      ctx.font = '900 14px system-ui, sans-serif';
+      ctx.fillText('注目点', focus.px + 10, midY - 18);
+
+      if (state.highlight === 'disp' || state.highlight === 'both') {
+        const basePx = xToPx(focus.x);
+        drawArrow(ctx, basePx, midY + 34, focus.px, midY + 34, '#dc2626', true, 3);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText('変位', Math.min(basePx, focus.px) + 8, midY + 56);
+      }
+
+      if (state.highlight === 'vel' || state.highlight === 'both') {
+        const v = velocityValue(focus.x, state.t);
+        if (Math.abs(v) > 0.03) {
+          const len = Math.min(70, Math.max(24, Math.abs(v) * 18));
+          const dir = v > 0 ? 1 : -1;
+          drawArrow(ctx, focus.px, midY - 38, focus.px + dir * len, midY - 38, '#ea580c', false, 3);
+          ctx.fillStyle = '#ea580c';
+          ctx.fillText('速度', focus.px + dir * len + (dir > 0 ? 5 : -35), midY - 44);
+        } else {
+          ctx.fillStyle = '#ea580c';
+          ctx.fillText('速度0', focus.px + 16, midY - 34);
+        }
+      }
+
+      ctx.fillStyle = '#475569';
+      ctx.font = '800 13px system-ui, sans-serif';
+      ctx.fillText('縦波は、媒質の点が進行方向と平行に振動する', x0 + 12, y0 + gh - 18);
+    }
+
+    function drawDisplacementPanel() {
+      resizeCanvasToDisplaySize(displacementCanvas);
+      const { w, h } = cssSize(displacementCanvas);
+      const ctx = dispCtx;
+      ctx.clearRect(0, 0, 5000, 5000);
+      const x0 = 48, y0 = 44, gw = w - 92, gh = h - 86;
+      const midY = y0 + gh / 2;
+      const xMax = 12;
+      const xToPx = x => x0 + (x / xMax) * gw;
+      const disp = waveY(state.focusX, state.t);
+
+      if (state.mode === 'transverse') {
+        // 横波：y-xグラフで上下変位を示す
+        const yToPx = y => midY - y * (gh / 5);
+        drawGrid(ctx, x0, y0, gw, gh, 'x', 'y');
+        ctx.strokeStyle = '#0f49bd';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let p = 0; p <= gw; p++) {
+          const x = (p / gw) * xMax;
+          const y = yToPx(waveY(x, state.t));
+          if (p === 0) ctx.moveTo(x0 + p, y); else ctx.lineTo(x0 + p, y);
+        }
+        ctx.stroke();
+        const px = xToPx(state.focusX);
+        const py = yToPx(disp);
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fill();
+        const dotR2 = 9;
+        const dispSign2 = py < midY ? 1 : -1;
+        drawArrow(ctx, px, midY, px, py + dispSign2 * dotR2, '#dc2626', false, 3);
+        ctx.fillStyle = '#111827';
+        ctx.font = '900 14px system-ui, sans-serif';
+        let text = '変位 0（基準位置）';
+        if (disp > 0.08) text = '正の向きの変位（上向き）';
+        if (disp < -0.08) text = '負の向きの変位（下向き）';
+        ctx.fillText(text, x0 + 10, y0 + 22);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.fillText('横波：変位は波の進行方向に垂直（上下）', x0 + 10, y0 + gh + 38);
+
+      } else {
+        // 縦波：粒子の並びで左右変位を示す
+        ctx.fillStyle = '#f0fdf4';
+        ctx.fillRect(x0, y0, gw, gh);
+        ctx.strokeStyle = '#86efac';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x0, y0, gw, gh);
+
+        // タイトル
+        ctx.fillStyle = '#15803d';
+        ctx.font = '900 14px system-ui, sans-serif';
+        ctx.fillText('縦波の変位（進行方向 = 左右）', x0 + 10, y0 + 22);
+
+        // 基準線
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x0 + gw, midY); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 注目点の基準位置と変位後位置
+        const basePx = xToPx(state.focusX);
+        const ampMove = Math.min(gw * 0.08, 50);
+        const dispPx = basePx + disp * ampMove;
+
+        // 基準位置（薄い点線）
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(basePx, midY - 20); ctx.lineTo(basePx, midY + 20); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '700 11px system-ui, sans-serif';
+        ctx.fillText('基準', basePx - 12, midY + 34);
+
+        // 変位後の点
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(dispPx, midY, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#111827';
+        ctx.font = '900 13px system-ui, sans-serif';
+        ctx.fillText('注目点', dispPx + 14, midY - 14);
+
+        // 変位矢印（水平）
+        if (Math.abs(disp) > 0.05) {
+          drawArrow(ctx, basePx, midY + 48, dispPx, midY + 48, '#dc2626', true, 3);
+          ctx.fillStyle = '#dc2626';
+          ctx.font = '900 13px system-ui, sans-serif';
+          const label = disp > 0 ? '正の向きの変位（右）' : '負の向きの変位（左）';
+          ctx.fillText(label, Math.min(basePx, dispPx) + 4, midY + 68);
+        } else {
+          ctx.fillStyle = '#dc2626';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.fillText('変位 0（基準位置）', basePx - 52, midY + 68);
+        }
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.fillText('縦波：変位は波の進行方向と平行（左右）', x0 + 10, y0 + gh + 38);
+      }
+    }
+
+    function drawVelocityPanel() {
+      resizeCanvasToDisplaySize(velocityCanvas);
+      const { w, h } = cssSize(velocityCanvas);
+      const ctx = velCtx;
+      ctx.clearRect(0, 0, 5000, 5000);
+      const x0 = 48, y0 = 44, gw = w - 92, gh = h - 86;
+      const midY = y0 + gh / 2;
+      const xMax = 12;
+      const xToPx = x => x0 + (x / xMax) * gw;
+      const v = velocityValue(state.focusX, state.t);
+
+      if (state.mode === 'transverse') {
+        // 横波：速度は上下方向
+        const yToPx = y => midY - y * (gh / 5);
+        drawGrid(ctx, x0, y0, gw, gh, 'x', 'y');
+        ctx.strokeStyle = '#0f49bd';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let p = 0; p <= gw; p++) {
+          const x = (p / gw) * xMax;
+          const y = yToPx(waveY(x, state.t));
+          if (p === 0) ctx.moveTo(x0 + p, y); else ctx.lineTo(x0 + p, y);
+        }
+        ctx.stroke();
+        const px = xToPx(state.focusX);
+        const py = yToPx(waveY(state.focusX, state.t));
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fill();
+        if (Math.abs(v) > 0.03) {
+          const len = Math.min(65, Math.max(25, Math.abs(v) * 18));
+          const endY = py + (v > 0 ? -len : len);
+          drawArrow(ctx, px + 28, py, px + 28, endY, '#ea580c', false, 3);
+          ctx.fillStyle = '#ea580c';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.fillText('速度', px + 38, endY + (v < 0 ? -4 : 16));
+        } else {
+          ctx.fillStyle = '#ea580c';
+          ctx.font = '900 14px system-ui, sans-serif';
+          ctx.fillText('速度0', px + 20, py + 22);
+        }
+        ctx.fillStyle = '#111827';
+        ctx.font = '900 14px system-ui, sans-serif';
+        let text = '速度 0（山・谷の位置）';
+        if (v > 0.08) text = '正の向きの速度（上向き）';
+        if (v < -0.08) text = '負の向きの速度（下向き）';
+        ctx.fillText(text, x0 + 10, y0 + 22);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.fillText('横波：速度の向きは上下（変位の変化方向）', x0 + 10, y0 + gh + 38);
+
+      } else {
+        // 縦波：速度は左右方向
+        ctx.fillStyle = '#fff7ed';
+        ctx.fillRect(x0, y0, gw, gh);
+        ctx.strokeStyle = '#fed7aa';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x0, y0, gw, gh);
+
+        ctx.fillStyle = '#ea580c';
+        ctx.font = '900 14px system-ui, sans-serif';
+        ctx.fillText('縦波の速度（進行方向 = 左右）', x0 + 10, y0 + 22);
+
+        // 基準線
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x0 + gw, midY); ctx.stroke();
+        ctx.setLineDash([]);
+
+        const disp = waveY(state.focusX, state.t);
+        const ampMove = Math.min(gw * 0.08, 50);
+        const dispPx = xToPx(state.focusX) + disp * ampMove;
+
+        // 粒子
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(dispPx, midY, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#111827';
+        ctx.font = '900 13px system-ui, sans-serif';
+        ctx.fillText('注目点', dispPx + 14, midY - 14);
+
+        // 速度矢印（水平）
+        if (Math.abs(v) > 0.03) {
+          const len = Math.min(80, Math.max(20, Math.abs(v) * 16));
+          const endX = dispPx + (v > 0 ? len : -len);
+          drawArrow(ctx, dispPx, midY - 44, endX, midY - 44, '#ea580c', false, 3);
+          ctx.fillStyle = '#ea580c';
+          ctx.font = '900 13px system-ui, sans-serif';
+          const label = v > 0 ? '正の向きの速度（右）' : '負の向きの速度（左）';
+          ctx.fillText(label, Math.min(dispPx, endX) + 4, midY - 56);
+        } else {
+          ctx.fillStyle = '#ea580c';
+          ctx.font = '900 13px system-ui, sans-serif';
+          ctx.fillText('速度 0（密・疎の中心）', dispPx - 60, midY - 52);
+        }
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '800 12px system-ui, sans-serif';
+        ctx.fillText('縦波：速度の向きは左右（進行方向と平行）', x0 + 10, y0 + gh + 38);
+      }
+    }
+
+    function drawAll() {
+      syncControls();
+      drawMain();
+      drawDisplacementPanel();
+      drawVelocityPanel();
+    }
+
+    function tick(now) {
+      const dt = Math.min(0.05, (now - state.last) / 1000);
+      state.last = now;
+      if (state.playing) state.t += dt;
+      drawAll();
+      requestAnimationFrame(tick);
+    }
+
+    [ampSlider, lambdaSlider, periodSlider, pointSlider].forEach(el => el.addEventListener('input', drawAll));
+
+    transverseBtn.addEventListener('click', () => {
+      state.mode = 'transverse';
+      setActive([transverseBtn, longitudinalBtn], transverseBtn);
+      drawAll();
+    });
+
+    longitudinalBtn.addEventListener('click', () => {
+      state.mode = 'longitudinal';
+      setActive([transverseBtn, longitudinalBtn], longitudinalBtn);
+      drawAll();
+    });
+
+    dispBtn.addEventListener('click', () => {
+      state.highlight = 'disp';
+      setActive([dispBtn, velBtn, bothBtn], dispBtn);
+      drawAll();
+    });
+
+    velBtn.addEventListener('click', () => {
+      state.highlight = 'vel';
+      setActive([dispBtn, velBtn, bothBtn], velBtn);
+      drawAll();
+    });
+
+    bothBtn.addEventListener('click', () => {
+      state.highlight = 'both';
+      setActive([dispBtn, velBtn, bothBtn], bothBtn);
+      drawAll();
+    });
+
+    rightBtn.addEventListener('click', () => {
+      state.dir = 1;
+      setActive([rightBtn, leftBtn], rightBtn);
+      drawAll();
+    });
+
+    leftBtn.addEventListener('click', () => {
+      state.dir = -1;
+      setActive([rightBtn, leftBtn], leftBtn);
+      drawAll();
+    });
+
+    playBtn.addEventListener('click', () => { state.playing = true; });
+    pauseBtn.addEventListener('click', () => { state.playing = false; });
+    resetBtn.addEventListener('click', () => { state.t = 0; drawAll(); });
+
+    window.addEventListener('resize', drawAll);
+    drawAll();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
