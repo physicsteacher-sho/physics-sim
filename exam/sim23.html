@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>基礎問題精講 問23 シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #222535;
+  --border: rgba(255,255,255,0.08);
+  --text: #e8eaf6;
+  --muted: #7986a3;
+  --A: #38bdf8;
+  --D: #f97316;
+  --vf: #a78bfa;
+  --heat: #34d399;
+  --accent: #f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+
+/* HEADER */
+.header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:16px;margin-bottom:20px;
+  border-bottom:1px solid var(--border);padding-bottom:16px;
+}
+.header-left h1{
+  font-size:clamp(17px,2.5vw,26px);
+  font-weight:900;letter-spacing:-.02em;
+  line-height:1.3;
+}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{
+  white-space:nowrap;padding:6px 14px;border-radius:999px;
+  background:#1e2a1a;border:1px solid #34d39955;
+  color:var(--heat);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;
+}
+
+/* PROBLEM BOX */
+.problem{
+  background:var(--surface);border:1px solid var(--border);
+  border-left:4px solid var(--accent);border-radius:12px;
+  padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;
+  color:#c9d1e8;
+}
+.problem strong{color:var(--accent)}
+.problem .fig{
+  display:inline-flex;align-items:center;gap:8px;
+  margin-left:12px;padding:4px 10px;border-radius:8px;
+  background:var(--surface2);font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--muted);vertical-align:middle;
+}
+
+/* TOP CONTROLS */
+.top-bar{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:16px 20px;margin-bottom:18px;
+  display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr 1fr;
+  gap:14px;align-items:end;
+}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{
+  font-family:'Noto Sans JP',sans-serif;
+  border:none;border-radius:10px;padding:10px 16px;
+  font-weight:700;font-size:13px;cursor:pointer;
+  transition:transform .1s,opacity .1s;
+}
+button:active{transform:translateY(1px);opacity:.85}
+.btn-play{background:var(--A);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.btn-reset:hover{color:var(--text)}
+
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+  color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;
+  padding:2px 8px;border-radius:6px;min-width:58px;text-align:center;
+}
+input[type=range]{
+  width:100%;accent-color:var(--accent);
+  height:4px;background:var(--surface2);border-radius:2px;
+  -webkit-appearance:none;outline:none;border:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+}
+
+/* MAIN LAYOUT */
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+
+/* LEFT */
+.left{display:grid;gap:16px}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;
+}
+.card-head{
+  padding:12px 16px;font-size:13px;font-weight:900;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.card-head .dot{width:8px;height:8px;border-radius:50%}
+canvas{display:block;width:100%;background:transparent}
+#cvAnim{height:240px}
+#cvGraph{height:220px}
+#cvEnergy{height:220px}
+
+.graphs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* RIGHT PANEL */
+.right{display:grid;gap:14px}
+.readout{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:14px;display:grid;gap:8px;
+}
+.readout-row{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px;
+}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+}
+.phase-badge{
+  padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;
+  margin-top:4px;
+}
+.phase-sliding{background:#0e2235;border:1px solid var(--A);color:var(--A)}
+.phase-together{background:#1a1406;border:1px solid var(--accent);color:var(--accent)}
+
+.info-block{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4;
+}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  background:var(--surface2);border-radius:6px;
+  padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center;
+}
+
+.legend{display:grid;gap:7px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+
+/* ANSWERS */
+.answers{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;
+}
+.answers-head{
+  padding:10px 14px;font-size:12px;font-weight:900;
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  color:var(--muted);display:flex;justify-content:space-between;align-items:center;
+}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12px;gap:10px;
+}
+.ans-item .q{color:var(--muted)}
+.ans-item .a{
+  font-family:'JetBrains Mono',monospace;font-weight:700;
+  color:var(--vf);font-size:12px;text-align:right;
+}
+
+@media(max-width:960px){
+  .top-bar{grid-template-columns:1fr 1fr 1fr}
+  .btn-group{flex-direction:row;grid-column:1/-1}
+  .main{grid-template-columns:1fr}
+  .graphs-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>基礎問題精講 <span>問23</span>　エネルギーと運動量の保存Ⅱ</h1>
+      <p>なめらかな床の上の台D（質量 M）の上で、物体A（質量 m）が初速度 v₀ で滑る。<br>
+         時間 T 後に一体となって等速運動する。</p>
+    </div>
+    <div class="badge">埼玉大 / 必修基礎問</div>
+  </div>
+
+  <!-- PROBLEM -->
+  <div class="problem">
+    <strong>問題設定：</strong>
+    なめらかで水平な床の上に、粗くて水平な上面をもつ質量 M の台 D が置かれている。
+    台の上に質量 m の物体 A を置き、水平右向きに初速度 v₀ を瞬間的に与えた。
+    A が台上を運動し始めると同時に、台 D は床上を A と同じ向きに運動を始めた。
+    時間 T の後、台 D と物体 A は一体となって等速度で運動を始めた。
+    <span class="fig">↑ 右向き正／床はなめらか／A-D間に動摩擦あり</span><br>
+    <strong>(1)</strong> 一体となって運動する速度 V₀ &nbsp;
+    <strong>(2)</strong> 動摩擦係数 μ′ &nbsp;
+    <strong>(3)</strong> A が台上を滑った距離 L &nbsp;
+    <strong>(4)</strong> v-t グラフ
+  </div>
+
+  <!-- TOP CONTROLS -->
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>質量 m (A)</span><span class="val" id="vMassA">1.0 kg</span></div>
+      <input type="range" id="sldM" min="0.5" max="5" step="0.1" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>質量 M (台D)</span><span class="val" id="vMassD">3.0 kg</span></div>
+      <input type="range" id="sldMM" min="0.5" max="10" step="0.5" value="3.0">
+    </label>
+    <label>
+      <div class="label-row"><span>初速度 v₀</span><span class="val" id="vV0">4.0 m/s</span></div>
+      <input type="range" id="sldV0" min="1" max="10" step="0.5" value="4.0">
+    </label>
+    <label>
+      <div class="label-row"><span>動摩擦係数 μ′</span><span class="val" id="vMu">0.20</span></div>
+      <input type="range" id="sldMu" min="0.05" max="0.8" step="0.01" value="0.20">
+    </label>
+    <label>
+      <div class="label-row"><span>重力加速度 g</span><span class="val" id="vG">9.8 m/s²</span></div>
+      <input type="range" id="sldG" min="5" max="12" step="0.1" value="9.8">
+    </label>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="left">
+      <!-- Animation -->
+      <div class="card">
+        <div class="card-head">
+          <span class="dot" style="background:var(--A)"></span>
+          運動アニメーション
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">地面から見た絶対位置</span>
+        </div>
+        <canvas id="cvAnim" width="900" height="260"></canvas>
+      </div>
+
+      <!-- Graphs -->
+      <div class="graphs-row">
+        <div class="card">
+          <div class="card-head">
+            <span class="dot" style="background:var(--vf)"></span>
+            v-t グラフ
+            <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">面積の差 = 滑った距離 L</span>
+          </div>
+          <canvas id="cvGraph" width="450" height="240"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="dot" style="background:var(--heat)"></span>
+            エネルギーの変化
+            <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">失ったKEが熱になる</span>
+          </div>
+          <canvas id="cvEnergy" width="450" height="240"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+      <!-- Live readout -->
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">時刻 t</span>
+          <span class="num" id="rTime" style="color:var(--text)">0.00 s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速度 vA</span>
+          <span class="num" id="rVA" style="color:var(--A)">— m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速度 vD</span>
+          <span class="num" id="rVD" style="color:var(--D)">— m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">位置 xA</span>
+          <span class="num" id="rXA" style="color:var(--A)">0.00 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">位置 xD</span>
+          <span class="num" id="rXD" style="color:var(--D)">0.00 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">相対すべり距離</span>
+          <span class="num" id="rSlip" style="color:var(--heat)">0.00 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">全運動量 P</span>
+          <span class="num" id="rP" style="color:var(--vf)">— kg·m/s</span>
+        </div>
+        <div id="phaseBadge" class="phase-badge phase-sliding">すべり中（摩擦で相互作用）</div>
+      </div>
+
+      <!-- Answers -->
+      <div class="answers">
+        <div class="answers-head">
+          <span>計算結果（問の答え）</span>
+        </div>
+        <div class="answer-list">
+          <div class="ans-item">
+            <span class="q">(1) 共通速度 V₀</span>
+            <span class="a" id="ansV0">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 動摩擦係数 μ′</span>
+            <span class="a" id="ansMu">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(3) すべり距離 L</span>
+            <span class="a" id="ansL">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">一体化する時刻 T</span>
+            <span class="a" id="ansT">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="info-block">
+        <h3>凡例</h3>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--A)"></span>物体 A の速度 vA</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--D)"></span>台 D の速度 vD</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--vf)"></span>共通速度 V₀（一体化後）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--heat)"></span>熱として失われたエネルギー</div>
+        </div>
+      </div>
+
+      <!-- Key physics -->
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>床がなめらかなので、<strong style="color:var(--text)">A+D全体に水平外力なし</strong>。</p>
+        <div class="formula">運動量保存：mv₀ = (m+M)V₀</div>
+        <p style="margin-top:10px">Aは摩擦で<strong style="color:var(--A)">等加速度で減速</strong>、<br>Dは摩擦で<strong style="color:var(--D)">等加速度で加速</strong>。</p>
+        <div class="formula">A の加速度：aA = −μ′g<br>D の加速度：aD = μ′mg/M</div>
+        <p style="margin-top:10px">すべり距離 = v-tグラフの<strong style="color:var(--heat)">面積の差</strong></p>
+        <div class="formula">L = ½v₀T</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Physics engine ───────────────────────────────────────────────
+function getP() {
+  const m  = +document.getElementById('sldM').value;
+  const M  = +document.getElementById('sldMM').value;
+  const v0 = +document.getElementById('sldV0').value;
+  const mu = +document.getElementById('sldMu').value;
+  const g  = +document.getElementById('sldG').value;
+
+  const aA   = -mu * g;                  // A の加速度（負）
+  const aD   =  mu * m * g / M;          // D の加速度（正）
+  const Vf   =  m * v0 / (m + M);        // 共通速度（運動量保存）
+  // 一体化時刻: v0 + aA*T = aD*T  →  T = v0/(aA の絶対値 + aD)
+  const T    =  v0 / (mu * g * (1 + m/M));
+  const L    =  0.5 * v0 * T;            // すべり距離 = ½v₀T
+  // μ′の逆算（参照: μ′ = Mv₀/((M+m)gT) ）
+  const muCalc = M * v0 / ((M + m) * g * T);
+  const KE0  =  0.5 * m * v0 * v0;
+  const KEf  =  0.5 * (m + M) * Vf * Vf;
+  const heat =  KE0 - KEf;
+
+  return { m, M, v0, mu, g, aA, aD, Vf, T, L, muCalc, KE0, KEf, heat };
+}
+
+function stateAt(t, P) {
+  const after = t - P.T;
+  if (t <= P.T) {
+    const vA  = P.v0 + P.aA * t;
+    const vD  = P.aD * t;
+    const xA  = P.v0 * t + 0.5 * P.aA * t * t;
+    const xD  = 0.5 * P.aD * t * t;
+    const slip = Math.max(0, xA - xD);
+    const keA  = 0.5 * P.m * vA * vA;
+    const keD  = 0.5 * P.M * vD * vD;
+    const q    = Math.max(0, P.KE0 - keA - keD);
+    return { vA, vD, xA, xD, slip, keA, keD, q, done: false };
+  } else {
+    const xAS = P.v0*P.T + 0.5*P.aA*P.T*P.T;
+    const xDS = 0.5*P.aD*P.T*P.T;
+    const xA  = xAS + P.Vf * after;
+    const xD  = xDS + P.Vf * after;
+    const keAD = 0.5*(P.m+P.M)*P.Vf*P.Vf;
+    return { vA: P.Vf, vD: P.Vf, xA, xD, slip: P.L, keA: 0.5*P.m*P.Vf*P.Vf, keD: 0.5*P.M*P.Vf*P.Vf, q: P.heat, done: true };
+  }
+}
+
+// ─── Canvas helpers ───────────────────────────────────────────────
+function rrect(ctx, x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w,y, x+w,y+h, r);
+  ctx.arcTo(x+w,y+h, x,y+h, r);
+  ctx.arcTo(x,y+h, x,y, r);
+  ctx.arcTo(x,y, x+w,y, r);
+  ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();}
+}
+function arrow(ctx, x1,y1,x2,y2, color, w=3) {
+  const a = Math.atan2(y2-y1,x2-x1), h=10;
+  ctx.save();
+  ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=w;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-h*Math.cos(a-Math.PI/6),y2-h*Math.sin(a-Math.PI/6));
+  ctx.lineTo(x2-h*Math.cos(a+Math.PI/6),y2-h*Math.sin(a+Math.PI/6));
+  ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+
+// ─── Draw: Animation ──────────────────────────────────────────────
+function drawAnim(t, P, S) {
+  const cv = document.getElementById('cvAnim');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  // subtle grid
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+
+  const floorY = H - 36;
+  const platH = 32, blockH = 46, blockW = 70;
+  const platW0 = 320;
+
+  // scale: fit max travel into ~60% of width
+  const postT = 2.0;
+  const maxXA = P.v0*P.T + 0.5*P.aA*P.T*P.T + P.Vf*postT;
+  const maxXD = 0.5*P.aD*P.T*P.T + P.Vf*postT;
+  const physSpan = Math.max(maxXA, maxXD + P.L, 1);
+  const scl = (W * 0.58) / physSpan;
+
+  const originX = 60;
+  const platX = originX + S.xD * scl;
+  const blockXCenter = originX + S.xA * scl + blockW/2;
+  const blockX = blockXCenter - blockW/2;
+  const platTop = floorY - platH;
+  const blockY  = platTop - blockH;
+
+  // floor
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=2;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(30,floorY);ctx.lineTo(W-30,floorY);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.05)';
+  ctx.fillRect(30,floorY,W-60,8);
+  ctx.fillStyle='rgba(255,255,255,0.18)';
+  ctx.font='bold 11px "Noto Sans JP"';
+  ctx.fillText('床（なめらか）',42,floorY+20);
+
+  // platform D
+  const platColor = S.done ? '#f97316cc' : '#f9731688';
+  rrect(ctx, platX, platTop, platW0, platH, 8, platColor, '#f97316');
+  ctx.fillStyle='#fff';ctx.font='bold 14px "Noto Sans JP"';ctx.textAlign='center';
+  ctx.fillText(`台 D  M=${P.M}kg`, platX + platW0/2, platTop + platH/2 + 5);
+
+  // sliding mark (relative slip)
+  if(!S.done && S.slip > 0.01) {
+    const slipPx = S.slip * scl;
+    const markY = platTop - 8;
+    ctx.save();
+    ctx.strokeStyle=`var(--heat)`;ctx.lineWidth=4;ctx.lineCap='round';
+    ctx.setLineDash([4,3]);
+    const slipStartX = originX + S.xD*scl + 44; // where A started on D
+    ctx.beginPath();ctx.moveTo(slipStartX, markY);ctx.lineTo(slipStartX + slipPx, markY);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    ctx.fillStyle='#34d399';ctx.font='bold 11px "JetBrains Mono"';ctx.textAlign='left';
+    ctx.fillText(`L=${S.slip.toFixed(2)}m`, slipStartX, markY-6);
+  }
+
+  // block A
+  const blockColor = S.done ? '#38bdf8cc' : '#38bdf888';
+  rrect(ctx, blockX, blockY, blockW, blockH, 8, blockColor, '#38bdf8');
+  ctx.fillStyle='#fff';ctx.font='bold 16px "Noto Sans JP"';ctx.textAlign='center';
+  ctx.fillText('A', blockX+blockW/2, blockY+blockH/2+6);
+  ctx.font='11px "JetBrains Mono"';ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.fillText(`${P.m}kg`, blockX+blockW/2, blockY+blockH-6);
+
+  // friction arrows (while sliding)
+  if(!S.done) {
+    const fLen = 48;
+    arrow(ctx, blockX+blockW/2, blockY+blockH/2, blockX+blockW/2-fLen, blockY+blockH/2, '#f87171', 3);
+    ctx.fillStyle='#f87171';ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='right';
+    ctx.fillText('摩擦力', blockX+blockW/2-fLen-4, blockY+blockH/2+4);
+    arrow(ctx, platX+platW0/2, platTop+platH/2, platX+platW0/2+fLen, platTop+platH/2, '#4ade80', 3);
+    ctx.fillStyle='#4ade80';ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='left';
+    ctx.fillText('摩擦力', platX+platW0/2+fLen+4, platTop+platH/2+4);
+  } else {
+    ctx.fillStyle='#a78bfa';ctx.font='bold 12px "Noto Sans JP"';ctx.textAlign='center';
+    ctx.fillText('一体で等速運動中', blockX+blockW/2, blockY-10);
+  }
+
+  // velocity arrows
+  const vsc = 22;
+  if(S.vA > 0.01) {
+    const aLen = Math.min(S.vA*vsc, 120);
+    arrow(ctx, blockX+blockW, blockY+blockH/2, blockX+blockW+aLen, blockY+blockH/2, '#38bdf8', 3);
+    ctx.fillStyle='#38bdf8';ctx.font='bold 11px "JetBrains Mono"';ctx.textAlign='left';
+    ctx.fillText(`vA=${S.vA.toFixed(2)}`, blockX+blockW+aLen+4, blockY+blockH/2+4);
+  }
+  if(S.vD > 0.01) {
+    const dLen = Math.min(S.vD*vsc, 120);
+    arrow(ctx, platX+platW0+10, platTop+platH/2, platX+platW0+10+dLen, platTop+platH/2, '#f97316', 3);
+    ctx.fillStyle='#f97316';ctx.font='bold 11px "JetBrains Mono"';ctx.textAlign='left';
+    ctx.fillText(`vD=${S.vD.toFixed(2)}`, platX+platW0+10+dLen+4, platTop+platH/2+4);
+  }
+
+  // time display
+  ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='12px "JetBrains Mono"';ctx.textAlign='left';
+  const tShow = Math.min(t, P.T + postT);
+  ctx.fillText(`t = ${tShow.toFixed(2)} s`, 16, 24);
+  if(S.done){
+    ctx.fillStyle='#a78bfa';ctx.font='bold 12px "Noto Sans JP"';
+    ctx.fillText(`T = ${P.T.toFixed(2)}s で一体化`, 100, 24);
+  }
+  ctx.textAlign='left';
+}
+
+// ─── Draw: v-t Graph ──────────────────────────────────────────────
+function drawGraph(t, P) {
+  const cv = document.getElementById('cvGraph');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  const L=52, R=W-20, B=H-38, T2=22;
+  const gW=R-L, gH=B-T2;
+  const postT = 2.0;
+  const tMax = (P.T + postT) * 1.05;
+  const vMax = P.v0 * 1.15;
+
+  function xm(tt){return L + gW*(tt/tMax);}
+  function ym(v){return B - gH*(v/vMax);}
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=T2+gH*i/5;
+    ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();
+  }
+  for(let i=0;i<=5;i++){
+    const x=L+gW*i/5;
+    ctx.beginPath();ctx.moveTo(x,T2);ctx.lineTo(x,B);ctx.stroke();
+  }
+  ctx.restore();
+
+  // axes
+  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(L,T2);ctx.lineTo(L,B);ctx.lineTo(R,B);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='11px "JetBrains Mono"';
+  ctx.textAlign='right';ctx.fillText('v',L-4,T2+4);
+  ctx.textAlign='center';ctx.fillText('t',R+4,B+2);
+
+  // shaded area (slip) up to min(t, T)
+  const tShade = Math.min(t, P.T);
+  if(tShade > 0.001){
+    ctx.save();
+    ctx.fillStyle='rgba(52,211,153,0.12)';
+    ctx.beginPath();
+    const steps=80;
+    ctx.moveTo(xm(0), ym(P.v0)); // start of vA
+    for(let i=1;i<=steps;i++){
+      const tt=tShade*i/steps;
+      ctx.lineTo(xm(tt), ym(P.v0+P.aA*tt));
+    }
+    for(let i=steps;i>=0;i--){
+      const tt=tShade*i/steps;
+      ctx.lineTo(xm(tt), ym(P.aD*tt));
+    }
+    ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+
+  // T vertical line
+  ctx.save();ctx.strokeStyle='rgba(167,139,250,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(xm(P.T),T2);ctx.lineTo(xm(P.T),B);ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#a78bfa';ctx.font='bold 11px "JetBrains Mono"';ctx.textAlign='center';
+  ctx.fillText(`T=${P.T.toFixed(2)}`,xm(P.T),T2-4);
+
+  // vA line
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  const stepsAll=120;
+  for(let i=0;i<=stepsAll;i++){
+    const tt=tMax*i/stepsAll;
+    const s=stateAt(tt,P);
+    const x=xm(tt),y=ym(s.vA);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // vD line
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  for(let i=0;i<=stepsAll;i++){
+    const tt=tMax*i/stepsAll;
+    const s=stateAt(tt,P);
+    const x=xm(tt),y=ym(s.vD);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // current time marker
+  const tc=Math.min(t,tMax);
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(xm(tc),T2);ctx.lineTo(xm(tc),B);ctx.stroke();ctx.restore();
+
+  // dot on each line
+  const sc=stateAt(Math.min(t,tMax),P);
+  [[sc.vA,'#38bdf8'],[sc.vD,'#f97316']].forEach(([v,c])=>{
+    ctx.fillStyle=c;
+    ctx.beginPath();ctx.arc(xm(tc),ym(v),4,0,Math.PI*2);ctx.fill();
+  });
+
+  // axis labels
+  ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='right';
+  ctx.fillText(P.v0.toFixed(1),L-4,ym(P.v0)+4);
+  ctx.fillText(P.Vf.toFixed(2),L-4,ym(P.Vf)+4);
+  ctx.fillText('0',L-4,B+4);
+  ctx.textAlign='center';
+  ctx.fillText('0',L,B+14);
+  ctx.fillText(tMax.toFixed(1)+'s',R,B+14);
+
+  // L label in shaded area
+  if(tShade>0.3){
+    const midT=tShade/2;
+    const midY=(ym(P.v0+P.aA*midT)+ym(P.aD*midT))/2;
+    ctx.fillStyle='#34d399';ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='center';
+    ctx.fillText('面積=L',xm(midT),midY);
+  }
+}
+
+// ─── Draw: Energy bars ────────────────────────────────────────────
+function drawEnergy(t, P, S) {
+  const cv = document.getElementById('cvEnergy');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  const L=52, R=W-16, B=H-38, T2=22;
+  const gH=B-T2;
+  const maxE = P.KE0 * 1.15;
+
+  function hm(e){return gH*(e/maxE);}
+  function ym(e){return B-hm(e);}
+
+  // grid lines
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=T2+gH*i/5;ctx.beginPath();ctx.moveTo(L-8,y);ctx.lineTo(R,y);ctx.stroke();
+  }
+  ctx.restore();
+
+  // axis
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(L-8,T2);ctx.lineTo(L-8,B);ctx.lineTo(R,B);ctx.stroke();
+
+  const gap=16, bw=58;
+  const bars=[
+    {x:L,      v:P.KE0,  c:'#a78bfa88', stroke:'#a78bfa', lb1:'初期', lb2:'KE₀'},
+    {x:L+bw+gap, v:S.keA, c:'#38bdf888', stroke:'#38bdf8', lb1:'Aの', lb2:'KE'},
+    {x:L+(bw+gap)*2, v:S.keD, c:'#f9731688', stroke:'#f97316', lb1:'Dの', lb2:'KE'},
+    {x:L+(bw+gap)*3, v:S.q,   c:'#34d39988', stroke:'#34d399', lb1:'熱', lb2:'Q'},
+  ];
+
+  // KE0 reference line
+  ctx.save();ctx.strokeStyle='rgba(167,139,250,0.4)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(L-4,ym(P.KE0));ctx.lineTo(R,ym(P.KE0));ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#a78bfa';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText(P.KE0.toFixed(2),L-10,ym(P.KE0)+4);
+
+  bars.forEach(b=>{
+    const bh=Math.max(2,hm(b.v));
+    const by=B-bh;
+    rrect(ctx,b.x,by,bw,bh,6,b.c,b.stroke);
+
+    // value label
+    ctx.fillStyle='#fff';ctx.font='bold 11px "JetBrains Mono"';ctx.textAlign='center';
+    ctx.fillText(b.v.toFixed(2),b.x+bw/2,Math.max(T2+14,by-4));
+
+    ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font='10px "Noto Sans JP"';
+    ctx.fillText(b.lb1,b.x+bw/2,B+16);
+    ctx.fillText(b.lb2,b.x+bw/2,B+28);
+  });
+
+  ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText('0',L-10,B+4);
+  ctx.textAlign='left';
+}
+
+// ─── UI update ────────────────────────────────────────────────────
+function updateAnswers(P) {
+  document.getElementById('ansV0').textContent  = `V₀ = ${P.Vf.toFixed(3)} m/s`;
+  document.getElementById('ansMu').textContent  = `μ′ = ${P.mu.toFixed(3)}`;
+  document.getElementById('ansL').textContent   = `L = ${P.L.toFixed(3)} m`;
+  document.getElementById('ansT').textContent   = `T = ${P.T.toFixed(3)} s`;
+}
+
+function updateReadout(t, P, S) {
+  document.getElementById('rTime').textContent = `${Math.min(t,P.T+2).toFixed(2)} s`;
+  document.getElementById('rVA').textContent   = `${S.vA.toFixed(3)} m/s`;
+  document.getElementById('rVD').textContent   = `${S.vD.toFixed(3)} m/s`;
+  document.getElementById('rXA').textContent   = `${S.xA.toFixed(3)} m`;
+  document.getElementById('rXD').textContent   = `${S.xD.toFixed(3)} m`;
+  document.getElementById('rSlip').textContent = `${S.slip.toFixed(3)} m`;
+  document.getElementById('rP').textContent    = `${(P.m*S.vA + P.M*S.vD).toFixed(3)} kg·m/s`;
+
+  const badge = document.getElementById('phaseBadge');
+  if(S.done){
+    badge.className='phase-badge phase-together';
+    badge.textContent='一体で等速運動中（摩擦ゼロ）';
+  } else {
+    badge.className='phase-badge phase-sliding';
+    badge.textContent='すべり中（摩擦で相互作用）';
+  }
+}
+
+// ─── Animation loop ───────────────────────────────────────────────
+let sim_t = 0, running = false, lastNow = 0;
+
+function render() {
+  const P = getP();
+  const S = stateAt(sim_t, P);
+  drawAnim(sim_t, P, S);
+  drawGraph(sim_t, P);
+  drawEnergy(sim_t, P, S);
+  updateReadout(sim_t, P, S);
+  updateAnswers(P);
+}
+
+function loop(now) {
+  const dt = Math.min(0.04, (now - lastNow)/1000);
+  lastNow = now;
+  if(running) {
+    const P = getP();
+    sim_t += dt;
+    if(sim_t > P.T + 2.0) {
+      running = false;
+      document.getElementById('btnPlay').textContent = '▶ 再生';
+    }
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+// ─── Controls ─────────────────────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', () => {
+  const P = getP();
+  if(!running && sim_t >= P.T + 1.9) sim_t = 0;
+  running = !running;
+  document.getElementById('btnPlay').textContent = running ? '⏸ 停止' : '▶ 再生';
+  lastNow = performance.now();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  sim_t = 0; running = false;
+  document.getElementById('btnPlay').textContent = '▶ 再生';
+  render();
+});
+
+const sliders = [
+  {id:'sldM',   out:'vMassA', fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldMM',  out:'vMassD', fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldV0',  out:'vV0',    fmt:v=>`${(+v).toFixed(1)} m/s`},
+  {id:'sldMu',  out:'vMu',    fmt:v=>`${(+v).toFixed(2)}`},
+  {id:'sldG',   out:'vG',     fmt:v=>`${(+v).toFixed(1)} m/s²`},
+];
+sliders.forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input', function(){
+    document.getElementById(out).textContent = fmt(this.value);
+    if(!running){ sim_t=0; }
+    render();
+  });
+});
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
