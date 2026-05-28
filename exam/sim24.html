@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>基礎問題精講 問24 シミュレーション</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --small:#38bdf8;   /* 小物体 */
+  --wedge:#f97316;   /* 三角台 */
+  --vf:#a78bfa;      /* 台の速度 */
+  --heat:#34d399;    /* エネルギー */
+  --accent:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;letter-spacing:-.02em;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:var(--heat);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .1s,opacity .1s}
+button:active{transform:translateY(1px);opacity:.85}
+.btn-play{background:var(--small);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.btn-reset:hover{color:var(--text)}
+
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card-head .dot{width:8px;height:8px;border-radius:50%}
+canvas{display:block;width:100%;background:transparent}
+#cvAnim{height:260px}
+#cvGraph{height:220px}
+#cvEnergy{height:220px}
+.graphs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted)}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--vf);font-size:12px;text-align:right}
+
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+
+.legend{display:grid;gap:7px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+
+@media(max-width:960px){
+  .top-bar{grid-template-columns:1fr 1fr 1fr}
+  .btn-group{flex-direction:row;grid-column:1/-1}
+  .main{grid-template-columns:1fr}
+  .graphs-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>基礎問題精講 <span>問24</span>　可動台上の物体の運動</h1>
+      <p>傾き角 θ の三角台（質量 M）の斜面上で、小物体（質量 m）を静かに放す。<br>
+         水平面・斜面はなめらか。水平外力なし → 水平方向の運動量保存。</p>
+    </div>
+    <div class="badge">岡山大 / 実戦基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>
+    傾き角 θ の斜面をもつ質量 M の三角台を水平面上に置いた。三角台は固定されておらず、水平面上を自由に動くことができる。
+    静止している三角台の斜面上で、質量 m の小物体を静かに放して滑らせた。
+    水平面および三角台の斜面はなめらかであるとし、重力加速度の大きさを g とする。<br>
+    小物体が斜面上で高さ h だけ滑り降りたとき：<br>
+    <strong>(1)</strong> 位置エネルギーの減少量 &nbsp;
+    <strong>(2)</strong> 運動エネルギーの増加量 &nbsp;
+    <strong>(3)</strong> 保存される量（水平方向）&nbsp;
+    <strong>(4)</strong> (3)の式 &nbsp;
+    <strong>(5)</strong> M=m のとき v を sinθ, g, h で表せ
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>質量 m (小物体)</span><span class="val" id="vMassm">1.0 kg</span></div>
+      <input type="range" id="sldm" min="0.5" max="5" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>質量 M (三角台)</span><span class="val" id="vMassM">1.0 kg</span></div>
+      <input type="range" id="sldM" min="0.5" max="10" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>角度 θ</span><span class="val" id="vTheta">30°</span></div>
+      <input type="range" id="sldTheta" min="10" max="70" step="5" value="30">
+    </label>
+    <label>
+      <div class="label-row"><span>高さ h (目標)</span><span class="val" id="vH">1.0 m</span></div>
+      <input type="range" id="sldH" min="0.2" max="3" step="0.1" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>重力加速度 g</span><span class="val" id="vG">9.8 m/s²</span></div>
+      <input type="range" id="sldG" min="5" max="12" step="0.1" value="9.8">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span class="dot" style="background:var(--small)"></span>
+          運動アニメーション
+          <span style="margin-left:auto;display:flex;gap:6px">
+            <button id="btnGround" onclick="setView('ground')" style="padding:4px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #38bdf8;background:#0e2235;color:#38bdf8;cursor:pointer">地面から見る</button>
+            <button id="btnCart" onclick="setView('cart')" style="padding:4px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:var(--muted);cursor:pointer">台から見る</button>
+          </span>
+        </div>
+        <canvas id="cvAnim" width="900" height="280"></canvas>
+      </div>
+      <div class="graphs-row">
+        <div class="card">
+          <div class="card-head">
+            <span class="dot" style="background:var(--vf)"></span>
+            速度の時間変化
+            <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">水平成分</span>
+          </div>
+          <canvas id="cvGraph" width="450" height="240"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="dot" style="background:var(--heat)"></span>
+            エネルギーの変化
+          </div>
+          <canvas id="cvEnergy" width="450" height="240"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">経過時間 t</span>
+          <span class="num" id="rTime" style="color:var(--text)">0.00 s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">小物体の水平速度 vₓ</span>
+          <span class="num" id="rVx" style="color:var(--small)">0.00 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">小物体の鉛直速度 vy</span>
+          <span class="num" id="rVy" style="color:var(--small)">0.00 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">台の速度 V（水平）</span>
+          <span class="num" id="rV" style="color:var(--wedge)">0.00 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">滑り降りた高さ</span>
+          <span class="num" id="rHeight" style="color:var(--heat)">0.00 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">水平運動量 P</span>
+          <span class="num" id="rP" style="color:var(--vf)">0.00 kg·m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">台に対する相対速度</span>
+          <span class="num" id="rRel" style="color:var(--accent)">0.00 m/s</span>
+        </div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">計算結果（目標高さ h に達したとき）</div>
+        <div class="answer-list">
+          <div class="ans-item">
+            <span class="q">(1) 位置エネルギー減少</span>
+            <span class="a" id="ans1">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 運動エネルギー増加</span>
+            <span class="a" id="ans2">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(3) 保存量</span>
+            <span class="a" id="ans3">水平方向の運動量</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(4) 保存の式</span>
+            <span class="a" id="ans4">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(5) v (M=m のとき)</span>
+            <span class="a" id="ans5">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">台の速度 V (目標 h 時)</span>
+            <span class="a" id="ansV">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>凡例</h3>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--small)"></span>小物体の速度（水平成分）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--wedge)"></span>台 M の速度 V（左向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--heat)"></span>増加した運動エネルギー</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--vf)"></span>位置エネルギーの減少量</div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>水平方向に外力なし → <strong style="color:var(--text)">水平運動量保存</strong></p>
+        <div class="formula">mvₓ + M(−V) = 0<br>→ mvₓ = MV</div>
+        <p style="margin-top:10px">なめらかなので <strong style="color:var(--text)">力学的エネルギー保存</strong></p>
+        <div class="formula">mgh = ½m(vₓ²+vy²) + ½MV²</div>
+        <p style="margin-top:10px">小物体の台に対する相対速度 v：</p>
+        <div class="formula">vₓ方向：vcosθ = vₓ−(−V) = vₓ+V<br>vy方向：vsinθ = vy</div>
+        <p style="margin-top:10px">M=m のとき：</p>
+        <div class="formula" id="fmlV5">v = 2√(gh/(1+sin²θ))</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Physics ─────────────────────────────────────────────────────
+// 運動方程式を数値積分（Runge-Kutta 4次）で解く
+// 一般化座標: X=台の水平位置, s=小物体の斜面上の位置（台基準）
+// 
+// ラグランジアン解析（なめらか・斜面固定角θ）:
+//   xm = X + s*cosθ  (小物体の水平位置, 台右端基準)
+//   ym = -s*sinθ     (小物体の鉛直位置, 上が正)
+// Lagrange方程式:
+//   (M+m)X'' + m*cosθ*s'' = 0         ... (1) 水平
+//   m*cosθ*X'' + m*s''   = -m*g*sinθ  ... (2) 斜面方向
+// 解析解:
+//   s'' = -g*sinθ*(M+m) / (M + m*sin²θ)  ※ sin²θ = 1-cos²θで整理
+//   X'' = m*g*sinθ*cosθ / (M + m*sin²θ) ... 但し符号注意（台は左へ）
+// → X'' は正（右）だが、台は左に動くのでV=-X''*t とする方向に注意
+//   → 実際: X'' の符号を確認する
+
+function getP() {
+  const m     = +document.getElementById('sldm').value;
+  const M     = +document.getElementById('sldM').value;
+  const theta = +document.getElementById('sldTheta').value * Math.PI / 180;
+  const hGoal = +document.getElementById('sldH').value;
+  const g     = +document.getElementById('sldG').value;
+  const sin   = Math.sin(theta), cos = Math.cos(theta);
+
+  // ─── 座標系（右向き正）───
+  // 台の水平位置: X（台は右へ動く → X > 0）
+  // 斜面上の位置: s（頂点〔右上〕から斜面下端〔左下〕方向 → 増加）
+  // 小物体の絶対座標:
+  //   xm = X_top - s*cosθ  → 水平速度 vx = Xdot - sdot*cosθ < 0 （左向き）
+  //   ym = -s*sinθ         → 鉛直速度 vy = sdot*sinθ > 0 （下向き正）
+  //
+  // ラグランジュ方程式:
+  //   (M+m)*Xdd - m*cosθ*sdd = 0       ... (1)
+  //   -m*cosθ*Xdd + m*sdd = m*g*sinθ   ... (2)
+  //
+  // 解: sdd = g*sinθ*(M+m) / (M + m*sin²θ)  > 0 ✓
+  //     Xdd = m*g*sinθ*cosθ / (M + m*sin²θ)  > 0（台は右）✓
+
+  const denom  = M + m * sin * sin;
+  const as_dd  = g * sin * (M + m) / denom;   // 斜面加速度（正=下方）
+  const aX_dd  = m * g * sin * cos / denom;    // 台の加速度（正=右）
+
+  // 目標高さhに達する時刻: h = ½*as_dd*sinθ*t²
+  const tGoal    = Math.sqrt(2 * hGoal / (as_dd * sin));
+
+  // 目標時刻の速度
+  const sdotGoal = as_dd * tGoal;                   // 斜面速度（正）
+  const XdotGoal = aX_dd * tGoal;                   // 台の速度（正=右）
+  const vxGoal   = XdotGoal - sdotGoal * cos;       // 小物体の水平速度（負=左）
+  const vyGoal   = sdotGoal * sin;                   // 小物体の鉛直速度（正=下）
+  const Vgoal    = XdotGoal;                         // 台の速さ（正値）
+
+  const deltaU = m * g * hGoal;
+  const deltaK = 0.5*m*(vxGoal*vxGoal + vyGoal*vyGoal) + 0.5*M*Vgoal*Vgoal;
+
+  // M=mのとき相対速度 v = 2√(gh/(1+sin²θ))
+  const v_eq = 2 * Math.sqrt(g * hGoal / (1 + sin*sin));
+
+  return {
+    m, M, theta, hGoal, g, sin, cos,
+    as_dd, aX_dd, tGoal,
+    sdotGoal, XdotGoal, vxGoal, vyGoal, Vgoal,
+    deltaU, deltaK, v_eq
+  };
+}
+
+function stateAt(t, P) {
+  const tc   = Math.min(t, P.tGoal);
+  const sdot = P.as_dd * tc;
+  const Xdot = P.aX_dd * tc;
+  const s    = 0.5 * P.as_dd * tc * tc;
+  const X    = 0.5 * P.aX_dd * tc * tc;   // 台の右向き移動量（正）
+  const h    = s * P.sin;
+  const vx   = Xdot - sdot * P.cos;        // 小物体の水平速度（負=左）
+  const vy   = sdot * P.sin;               // 小物体の鉛直速度（正=下）
+  const V    = Xdot;                        // 台の速度（正=右）
+  // 台に対する相対速度ベクトル = (vx - V, vy) = (vx - Xdot, vy)
+  const relV = Math.sqrt((vx - V)*(vx - V) + vy*vy);
+  const keM  = 0.5 * P.m * (vx*vx + vy*vy);
+  const keW  = 0.5 * P.M * V * V;
+  const deltaK   = keM + keW;
+  const momentum = P.m * vx + P.M * V;    // ≈ 0 （運動量保存）
+  return { s, X, h, vx, vy, V, relV, keM, keW, deltaK, momentum, done: t >= P.tGoal };
+}
+
+// ─── View mode ────────────────────────────────────────────────────
+let viewMode = 'ground';
+function setView(mode) {
+  viewMode = mode;
+  document.getElementById('btnGround').style.background = mode==='ground' ? '#0e2235' : 'transparent';
+  document.getElementById('btnGround').style.color      = mode==='ground' ? '#38bdf8' : 'var(--muted)';
+  document.getElementById('btnGround').style.borderColor= mode==='ground' ? '#38bdf8' : 'rgba(255,255,255,0.15)';
+  document.getElementById('btnCart').style.background   = mode==='cart'   ? '#1a100a' : 'transparent';
+  document.getElementById('btnCart').style.color        = mode==='cart'   ? '#f97316' : 'var(--muted)';
+  document.getElementById('btnCart').style.borderColor  = mode==='cart'   ? '#f97316' : 'rgba(255,255,255,0.15)';
+  render();
+}
+
+// ─── Canvas helpers ───────────────────────────────────────────────
+function rrect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();}
+}
+function arrow(ctx,x1,y1,x2,y2,color,w=3){
+  const a=Math.atan2(y2-y1,x2-x1),hd=10;
+  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=w;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hd*Math.cos(a-Math.PI/6),y2-hd*Math.sin(a-Math.PI/6));
+  ctx.lineTo(x2-hd*Math.cos(a+Math.PI/6),y2-hd*Math.sin(a+Math.PI/6));
+  ctx.closePath();ctx.fill();ctx.restore();
+}
+
+// ─── Draw: Animation ─────────────────────────────────────────────
+function drawAnim(t, P, S) {
+  const cv = document.getElementById('cvAnim');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+
+  const floorY = H - 36;
+  const sin = P.sin, cos = P.cos;
+  const scl     = (H * 0.48) / P.hGoal;
+  const wedgeH  = P.hGoal * scl;
+  const wedgeBaseW = P.hGoal / sin * cos * scl;
+
+  // 視点オフセット: 台から見る場合は台のX移動を逆補正
+  const camOffsetX = viewMode === 'cart' ? -S.X * scl : 0;
+
+  const originLeftX = W * 0.10;
+  const wedgeLeftX  = originLeftX + S.X * scl + camOffsetX;
+  const wedgeRightX = wedgeLeftX + wedgeBaseW;
+  const wedgeTopX   = wedgeRightX;
+  const wedgeTopY   = floorY - wedgeH;
+
+  // floor
+  ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(20,floorY);ctx.lineTo(W-20,floorY);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(20,floorY,W-40,8);
+  ctx.fillStyle='rgba(255,255,255,0.15)';ctx.font='bold 11px "Noto Sans JP"';
+  ctx.fillText('水平面（なめらか）',38,floorY+20);
+
+  // 三角台
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(wedgeLeftX, floorY);
+  ctx.lineTo(wedgeRightX, floorY);
+  ctx.lineTo(wedgeTopX, wedgeTopY);
+  ctx.closePath();
+  ctx.fillStyle='rgba(249,115,22,0.22)';ctx.fill();
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2;ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='#f97316';ctx.font='bold 12px "Noto Sans JP"';ctx.textAlign='left';
+  ctx.fillText(`θ=${Math.round(P.theta*180/Math.PI)}°`, wedgeLeftX+10, floorY-10);
+  ctx.fillStyle='rgba(249,115,22,0.7)';ctx.font='11px "Noto Sans JP"';ctx.textAlign='center';
+  ctx.fillText(`台 M=${P.M}kg`, (wedgeLeftX+wedgeRightX)/2, floorY-24);
+
+  // 小物体位置
+  const sLen = S.s * scl;
+  const bx = wedgeTopX - sLen * cos;
+  const by = wedgeTopY + sLen * sin;
+  const ballR = 14;
+
+  // 高さ表示
+  if(S.h > 0.01) {
+    ctx.save();ctx.strokeStyle='rgba(52,211,153,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(bx, by);ctx.lineTo(bx, floorY);ctx.stroke();
+    ctx.setLineDash([]);ctx.restore();
+    ctx.fillStyle='#34d399';ctx.font='bold 11px "JetBrains Mono"';ctx.textAlign='right';
+    ctx.fillText(`h=${S.h.toFixed(2)}m`, bx-4, (by+floorY)/2);
+  }
+
+  // 小物体
+  ctx.beginPath();ctx.arc(bx, by, ballR, 0, Math.PI*2);
+  ctx.fillStyle='rgba(56,189,248,0.85)';ctx.fill();
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='center';
+  ctx.fillText('m', bx, by+4);
+
+  // ── 速度ベクトル ──────────────────────────────────
+  const vsc = 28; // ベクトルスケール(px per m/s)
+
+  // 相対速度（台基準）: 斜面下方向＝左下
+  const vRel_x = -S.V - S.vx * 0 + (-(S.as_dd ?? P.as_dd) * Math.min(t,P.tGoal) * cos); // = -sdot*cos
+  // stateAtから直接取る
+  const sdot = P.as_dd * Math.min(t, P.tGoal);
+  const Xdot = P.aX_dd * Math.min(t, P.tGoal);
+  const vRel_xComp = -(sdot * cos);   // 左方向（台基準での水平成分）
+  const vRel_yComp =  (sdot * sin);   // 下方向（台基準での鉛直成分）
+  // 台の速度（右向き）
+  const vCart_x = S.V;  // 正=右
+
+  // 矢印の根元: 小物体の中心
+  const ox = bx, oy = by - ballR - 4;
+
+  if(viewMode === 'ground') {
+    // ① 台の速度ベクトル（青・右向き）小物体から
+    if(S.V > 0.01) {
+      const ex = ox + vCart_x * vsc, ey = oy;
+      arrow(ctx, ox, oy, ex, ey, '#38bdf8', 3);
+      ctx.fillStyle='#38bdf8';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='left';
+      ctx.fillText(`V台`, ex+4, ey-3);
+    }
+    // ② 相対速度ベクトル（赤・左下）小物体から
+    const rx = ox + vRel_xComp * vsc, ry = oy + vRel_yComp * vsc;
+    if(sdot > 0.01) {
+      arrow(ctx, ox, oy, rx, ry, '#f87171', 3);
+      ctx.fillStyle='#f87171';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='right';
+      ctx.fillText(`v相対`, rx - 6, ry + 14);
+    }
+    // ③ 地面速度ベクトル（緑・合成）小物体から
+    const gvx = vCart_x + vRel_xComp, gvy = vRel_yComp;
+    const gx = ox + gvx * vsc, gy = oy + gvy * vsc;
+    if(sdot > 0.01 || S.V > 0.01) {
+      arrow(ctx, ox, oy, gx, gy, '#34d399', 4);
+      ctx.fillStyle='#34d399';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='left';
+      ctx.fillText(`v地面`, gx + 4, gy + 4);
+    }
+
+    // 台の速度矢印（台の底面）
+    if(S.V > 0.01) {
+      const wxm = (wedgeLeftX+wedgeRightX)/2;
+      arrow(ctx, wxm, floorY-14, wxm + S.V*vsc, floorY-14, '#f97316', 2.5);
+      ctx.fillStyle='#f97316';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='left';
+      ctx.fillText(`V台=${S.V.toFixed(2)}m/s`, wxm+S.V*vsc+4, floorY-18);
+    }
+
+    // ── ベクトル合成図（右下コーナー） ──────────────
+    if(sdot > 0.01) {
+      const sc2 = 14;
+      // 各矢印のpx量を先に計算
+      const vCart_px  =  vCart_x    * sc2;  // 正（右）
+      const vRelX_px  =  vRel_xComp * sc2;  // 負（左）
+      const vRelY_px  =  vRel_yComp * sc2;  // 正（下）
+      // 始点からの最大右端: ax0 + vCart_px
+      // 始点からの最大左端: ax0 + vCart_px + vRelX_px（赤の終点）
+      // ボックスサイズ: 右端余白+vCart_px幅 + |vRelX_px|幅 + 左余白
+      const pad = 16;
+      const boxW = Math.max(220, vCart_px + Math.abs(vRelX_px) + pad*3 + 20);
+      const boxH = Math.max(110, Math.abs(vRelY_px) + 55);
+      const cx0 = W - boxW - 12;
+      const cy0 = floorY - boxH - 14;
+
+      // 背景
+      ctx.fillStyle='rgba(10,14,26,0.90)';
+      ctx.beginPath();ctx.roundRect(cx0, cy0, boxW, boxH, 10);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(cx0, cy0, boxW, boxH, 10);ctx.stroke();
+
+      // タイトル
+      ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='bold 10px "Noto Sans JP"';ctx.textAlign='center';
+      ctx.fillText('v地面 = V台 + v相対', cx0 + boxW/2, cy0 + 14);
+
+      // 始点: 右端から vCart_px 分だけ左に余白を取る
+      // ax0 + vCart_px が右端内に収まり、ax0 + vCart_px + vRelX_px が左端内に収まる
+      const ax0 = cx0 + pad + Math.abs(vRelX_px);  // 左側にv相対の水平分だけ余白
+      const ay0 = cy0 + 28;
+
+      // 青（V台：右向き）始点→右
+      const bEx = ax0 + vCart_px, bEy = ay0;
+      arrow(ctx, ax0, ay0, bEx, bEy, '#38bdf8', 2.5);
+      ctx.fillStyle='#38bdf8';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='center';
+      ctx.fillText('V台', ax0 + vCart_px/2, ay0 - 6);
+
+      // 赤（v相対：左下）青の先端→左下
+      const rEx = bEx + vRelX_px, rEy = bEy + vRelY_px;
+      arrow(ctx, bEx, bEy, rEx, rEy, '#f87171', 2.5);
+      ctx.fillStyle='#f87171';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='left';
+      ctx.fillText('v相対', bEx + 4, bEy + vRelY_px/2);
+
+      // 緑（v地面：始点→赤の終点）
+      arrow(ctx, ax0, ay0, rEx, rEy, '#34d399', 3);
+      ctx.fillStyle='#34d399';ctx.font='bold 10px "JetBrains Mono"';ctx.textAlign='right';
+      ctx.fillText('v地面', rEx - 4, rEy + 12);
+
+      // 数値
+      ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='10px "JetBrains Mono"';ctx.textAlign='center';
+      ctx.fillText(`|v相対|=${sdot.toFixed(2)}  V台=${S.V.toFixed(2)}`, cx0+boxW/2, cy0+boxH-7);
+    }
+
+    // 凡例（左上・視点ラベルの下）
+    const lx=16, ly=36;
+    ctx.fillStyle='rgba(10,14,26,0.7)';ctx.beginPath();ctx.roundRect(lx,ly,158,72,8);ctx.fill();
+    [['#38bdf8','V台（右向き）'],['#f87171','v相対（左下）'],['#34d399','v地面（合成）']].forEach(([c,lb],i)=>{
+      arrow(ctx, lx+10, ly+16+i*22, lx+34, ly+16+i*22, c, 2.5);
+      ctx.fillStyle=c;ctx.font='10px "Noto Sans JP"';ctx.textAlign='left';
+      ctx.fillText(lb, lx+40, ly+20+i*22);
+    });
+
+    // 視点ラベル（左上）
+    ctx.fillStyle='rgba(56,189,248,0.85)';ctx.font='bold 12px "Noto Sans JP"';ctx.textAlign='left';
+    ctx.fillText('📍 地面から見た図', 16, 22);
+
+  } else {
+    // 台から見る：小物体は斜面方向にだけ加速（台の速度を差し引く）
+    // 相対速度ベクトルのみ（赤）
+    const rx = ox + vRel_xComp * vsc, ry = oy + vRel_yComp * vsc;
+    if(sdot > 0.01) {
+      arrow(ctx, ox, oy, rx, ry, '#f87171', 4);
+      ctx.fillStyle='#f87171';ctx.font='bold 12px "JetBrains Mono"';ctx.textAlign='right';
+      ctx.fillText(`v相対=${sdot.toFixed(2)}m/s`, rx-6, ry+14);
+
+      // 斜面方向ラベル
+      ctx.save();
+      const midSx = (ox+rx)/2, midSy = (oy+ry)/2;
+      const angle = Math.atan2(ry-oy, rx-ox);
+      ctx.translate(midSx, midSy);ctx.rotate(angle);
+      ctx.fillStyle='rgba(248,113,113,0.8)';ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='center';
+      ctx.fillText('斜面方向に加速',0,-10);
+      ctx.restore();
+    }
+
+    ctx.fillStyle='rgba(248,113,113,0.8)';ctx.font='bold 12px "Noto Sans JP"';ctx.textAlign='left';
+    ctx.fillText('📍 台から見た図（台は静止して見える）',16,22);
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='11px "Noto Sans JP"';
+    ctx.fillText('※ 小物体は純粋に斜面方向だけに動いて見える',16,38);
+  }
+
+  // 重力矢印
+  ctx.save();ctx.globalAlpha=0.4;
+  arrow(ctx, bx, by+ballR, bx, by+ballR+32, '#fbbf24', 2);
+  ctx.fillStyle='#fbbf24';ctx.font='10px "Noto Sans JP"';ctx.textAlign='left';ctx.fillText('mg',bx+4,by+ballR+36);
+  ctx.restore();
+
+  // 運動量（地面視点のみ）
+  if(viewMode === 'ground') {
+    const pColor = Math.abs(S.momentum) < 0.02 ? '#34d399' : '#f87171';
+    ctx.fillStyle=pColor;ctx.font='bold 11px "Noto Sans JP"';ctx.textAlign='right';
+    ctx.fillText(`水平運動量 P = ${S.momentum.toFixed(3)} ≈ 0`, W-16, H-8);
+  }
+
+  ctx.textAlign='left';ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='11px "JetBrains Mono"';
+  ctx.fillText(`t = ${Math.min(t,P.tGoal).toFixed(2)} s`, 16, H-8);
+  if(S.done){
+    ctx.fillStyle='#a78bfa';ctx.font='bold 12px "Noto Sans JP"';
+    ctx.fillText(`h=${P.hGoal}m 到達！`, 130, H-8);
+  }
+}
+
+// ─── Draw: Velocity graph ─────────────────────────────────────────
+function drawGraph(t, P) {
+  const cv = document.getElementById('cvGraph');
+  const ctx = cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  const L=56,R=W-16,B=H-38,T2=16;
+  const gW=R-L,gH=B-T2;
+  const tMax = P.tGoal * 1.3;
+  const sGoal = stateAt(P.tGoal, P);
+  const vAbsMax = Math.max(Math.abs(sGoal.vx), sGoal.V, sGoal.vy, 0.5) * 1.3;
+
+  function xm(tt){return L+gW*(tt/tMax);}
+  // 速度0がグラフ中央
+  const midY = T2 + gH/2;
+  function ym(v){return midY - (gH/2)*(v/vAbsMax);}
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=T2+gH*i/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();
+    const x=L+gW*i/4;ctx.beginPath();ctx.moveTo(x,T2);ctx.lineTo(x,B);ctx.stroke();
+  }
+  ctx.restore();
+
+  // 軸（v=0の水平線 + 縦軸）
+  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(L,midY);ctx.lineTo(R,midY);ctx.stroke(); // v=0
+  ctx.beginPath();ctx.moveTo(L,T2);ctx.lineTo(L,B);ctx.stroke();      // t軸
+
+  ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='right';ctx.fillText('v',L-3,T2+8);
+  ctx.textAlign='center';ctx.fillText('t →',R+8,midY+4);
+  ctx.textAlign='right';
+  ctx.fillText(`+${vAbsMax.toFixed(1)}`,L-4,T2+8);
+  ctx.fillText('0',L-4,midY+4);
+  ctx.fillText(`−${vAbsMax.toFixed(1)}`,L-4,B+2);
+
+  // goal vertical line
+  ctx.save();ctx.strokeStyle='rgba(245,158,11,0.4)';ctx.setLineDash([4,3]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(xm(P.tGoal),T2);ctx.lineTo(xm(P.tGoal),B);ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#f59e0b';ctx.font='10px "JetBrains Mono"';ctx.textAlign='center';
+  ctx.fillText('h到達',xm(P.tGoal),T2+8);
+
+  const steps=100;
+
+  // vx of small object（左向き=負）
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;const s=stateAt(tt,P);
+    if(i===0)ctx.moveTo(xm(tt),ym(s.vx));else ctx.lineTo(xm(tt),ym(s.vx));
+  }
+  ctx.stroke();
+
+  // V of wedge（右向き=正）
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;const s=stateAt(tt,P);
+    if(i===0)ctx.moveTo(xm(tt),ym(s.V));else ctx.lineTo(xm(tt),ym(s.V));
+  }
+  ctx.stroke();
+
+  // vy（下向き=正）
+  ctx.strokeStyle='#7dd3fc';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+  ctx.beginPath();
+  for(let i=0;i<=steps;i++){
+    const tt=tMax*i/steps;const s=stateAt(tt,P);
+    if(i===0)ctx.moveTo(xm(tt),ym(s.vy));else ctx.lineTo(xm(tt),ym(s.vy));
+  }
+  ctx.stroke();ctx.setLineDash([]);
+
+  // current time marker
+  const tc=Math.min(t,tMax);
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(xm(tc),T2);ctx.lineTo(xm(tc),B);ctx.stroke();ctx.restore();
+
+  const sc=stateAt(Math.min(t,P.tGoal),P);
+  [[sc.vx,'#38bdf8'],[sc.V,'#f97316'],[sc.vy,'#7dd3fc']].forEach(([v,c])=>{
+    ctx.fillStyle=c;ctx.beginPath();ctx.arc(xm(tc),ym(v),4,0,Math.PI*2);ctx.fill();
+  });
+
+  ctx.textAlign='center';
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='10px "JetBrains Mono"';
+  ctx.fillText('0',L,B+14);ctx.fillText(tMax.toFixed(2)+'s',R,B+14);
+
+  // legend
+  ctx.textAlign='left';
+  ctx.fillStyle='#38bdf8';ctx.font='10px "Noto Sans JP"';ctx.fillText('小物体vx（←左）',L+4,T2+14);
+  ctx.fillStyle='#f97316';ctx.fillText('台V（右→）',L+4,T2+26);
+  ctx.fillStyle='#7dd3fc';ctx.fillText('小物体vy（↓下）',L+4,T2+38);
+}
+
+// ─── Draw: Energy bars ────────────────────────────────────────────
+function drawEnergy(t, P, S) {
+  const cv = document.getElementById('cvEnergy');
+  const ctx = cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  const L=40,R=W-16,B=H-42,T2=22;
+  const gH=B-T2;
+  const maxE = P.deltaU * 1.2;
+  function hm(e){return gH*(e/maxE);}
+  function ym(e){return B-hm(e);}
+
+  // grid
+  ctx.save();ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=T2+gH*i/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();}
+  ctx.restore();
+
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(L,T2);ctx.lineTo(L,B);ctx.lineTo(R,B);ctx.stroke();
+
+  // mgh reference line (goal)
+  ctx.save();ctx.strokeStyle='rgba(167,139,250,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(L,ym(P.deltaU));ctx.lineTo(R,ym(P.deltaU));ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='#a78bfa';ctx.font='10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText(`mgh=${P.deltaU.toFixed(2)}`,R,ym(P.deltaU)-4);
+
+  const gap=14,bw=58;
+  // 現在の高さ h での mgh
+  const mgh_now = P.m * P.g * S.h;
+  const bars=[
+    {x:L+6,         v:mgh_now, c:'rgba(167,139,250,0.6)', stroke:'#a78bfa', lb1:'ΔU減少', lb2:'(=mgh)'},
+    {x:L+6+bw+gap,  v:S.keM,  c:'rgba(56,189,248,0.6)',  stroke:'#38bdf8', lb1:'小物体', lb2:'KE'},
+    {x:L+6+(bw+gap)*2, v:S.keW, c:'rgba(249,115,22,0.6)', stroke:'#f97316', lb1:'台M', lb2:'KE'},
+    {x:L+6+(bw+gap)*3, v:S.deltaK, c:'rgba(52,211,153,0.4)', stroke:'#34d399', lb1:'KE合計', lb2:'(=ΔU)'},
+  ];
+
+  bars.forEach(b=>{
+    const bh=Math.max(2,hm(b.v));
+    const by=B-bh;
+    const ctx2=ctx;
+    rrect(ctx2,b.x,by,bw,bh,6,b.c,b.stroke);
+    ctx2.fillStyle='#fff';ctx2.font='bold 10px "JetBrains Mono"';ctx2.textAlign='center';
+    ctx2.fillText(b.v.toFixed(2),b.x+bw/2,Math.max(T2+12,by-4));
+    ctx2.fillStyle='rgba(255,255,255,0.4)';ctx2.font='10px "Noto Sans JP"';
+    ctx2.fillText(b.lb1,b.x+bw/2,B+16);ctx2.fillText(b.lb2,b.x+bw/2,B+28);
+  });
+
+  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='10px "JetBrains Mono"';ctx.textAlign='right';
+  ctx.fillText('0',L-4,B+4);ctx.textAlign='left';
+}
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateAnswers(P) {
+  const sin=P.sin, theta_deg=Math.round(P.theta*180/Math.PI);
+  document.getElementById('ans1').textContent = `mgh = ${P.deltaU.toFixed(3)} J`;
+  document.getElementById('ans2').textContent = `ΔK = ${P.deltaK.toFixed(3)} J`;
+  document.getElementById('ans3').textContent = `水平方向の運動量`;
+  document.getElementById('ans4').textContent = `mvₓ = MV`;
+  document.getElementById('ans5').textContent = `v = 2√(gh/(1+sin²θ))`;
+  document.getElementById('ansV').textContent  = `V = ${P.Vgoal.toFixed(3)} m/s`;
+  document.getElementById('fmlV5').textContent = `v = 2√(gh/(1+sin²θ)) ≈ ${P.v_eq.toFixed(3)} m/s`;
+}
+
+function updateReadout(t, P, S) {
+  document.getElementById('rTime').textContent = `${Math.min(t,P.tGoal).toFixed(2)} s`;
+  document.getElementById('rVx').textContent   = `${S.vx.toFixed(3)} m/s（←左）`;
+  document.getElementById('rVy').textContent   = `${S.vy.toFixed(3)} m/s（↓下）`;
+  document.getElementById('rV').textContent    = `${S.V.toFixed(3)} m/s（→右）`;
+  document.getElementById('rHeight').textContent= `${S.h.toFixed(3)} m`;
+  document.getElementById('rP').textContent    = `${S.momentum.toFixed(4)} kg·m/s`;
+  document.getElementById('rRel').textContent  = `${S.relV.toFixed(3)} m/s`;
+}
+
+// ─── Loop ────────────────────────────────────────────────────────
+let sim_t=0, running=false, lastNow=0;
+
+function render(){
+  const P=getP();
+  const S=stateAt(sim_t,P);
+  drawAnim(sim_t,P,S);
+  drawGraph(sim_t,P);
+  drawEnergy(sim_t,P,S);
+  updateReadout(sim_t,P,S);
+  updateAnswers(P);
+}
+
+function loop(now){
+  const dt=Math.min(0.04,(now-lastNow)/1000);
+  lastNow=now;
+  if(running){
+    const P=getP();
+    sim_t+=dt*0.6; // やや遅め
+    if(sim_t>P.tGoal*1.3){running=false;document.getElementById('btnPlay').textContent='▶ 再生';}
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  const P=getP();
+  if(!running && sim_t>=P.tGoal*1.25) sim_t=0;
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ 停止':'▶ 再生';
+  lastNow=performance.now();
+});
+
+document.getElementById('btnReset').addEventListener('click',()=>{
+  sim_t=0;running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';render();
+});
+
+const sliders=[
+  {id:'sldm',    out:'vMassm', fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldM',    out:'vMassM', fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldTheta',out:'vTheta', fmt:v=>`${(+v).toFixed(0)}°`},
+  {id:'sldH',    out:'vH',     fmt:v=>`${(+v).toFixed(1)} m`},
+  {id:'sldG',    out:'vG',     fmt:v=>`${(+v).toFixed(1)} m/s²`},
+];
+sliders.forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    if(!running)sim_t=0;
+    render();
+  });
+});
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
