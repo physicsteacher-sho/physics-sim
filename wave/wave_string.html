@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弦の固有振動シミュレーション</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --line: #e2e8f0;
+    --blue: #1d4ed8; --blue-dark: #0f2f7a; --blue-soft: #eff6ff;
+    --red: #dc2626; --red-soft: #fee2e2;
+    --green: #15803d; --green-soft: #dcfce7;
+    --orange: #ea580c; --orange-soft: #fff7ed;
+    --purple: #7c3aed; --purple-soft: #fdf4ff;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+
+  canvas { display:block; width:100%; }
+
+  /* 3つ横並び */
+  .modes-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  /* サイドバー */
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; min-width:60px; text-align:right; font-weight:700; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle.four  { grid-template-columns:1fr 1fr 1fr 1fr; }
+  .toggle button { border:0; padding:9px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; transition:all 0.15s; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .btns button { border:1px solid var(--line); border-radius:10px; padding:10px 4px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-play  { background:var(--green-soft)!important; color:#166534!important; }
+  .btn-pause { background:#fef9c3!important; color:#854d0e!important; }
+  .btn-reset { background:#f1f5f9!important; color:#475569!important; }
+
+  /* 数値カード */
+  .nums-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .num-card { background:#f8fafc; border:1px solid var(--line); border-radius:10px; padding:10px 12px; text-align:center; }
+  .num-label { font-size:11px; color:var(--muted); font-weight:700; margin-bottom:2px; }
+  .num-val   { font-size:18px; font-weight:900; color:var(--blue-dark); }
+  .num-unit  { font-size:11px; color:var(--muted); font-weight:600; }
+
+  .info-row { display:flex; gap:10px; }
+  .info-half { flex:1; background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .info-half strong { color:var(--blue-dark); display:block; font-size:13px; margin-bottom:4px; }
+  .info-item { margin-bottom:2px; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-orange { background:#ffedd5; color:#9a3412; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-red    { background:#fee2e2; color:#991b1b; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-green  { background:#dcfce7; color:#166534; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; border-radius:4px; padding:1px 6px; font-weight:900; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+
+  /* モードバッジ */
+  .mode-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:900; }
+</style>
+</head>
+<body>
+
+<h1>弦の固有振動シミュレーション</h1>
+<p class="subtitle">§63 物体固有の振動　/　§64 弦の固有振動</p>
+
+<div class="layout">
+  <div class="main-col">
+
+    <!-- 3モード横並び -->
+    <div class="modes-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="badge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">1</div>
+          <span class="card-title">基本振動</span>
+        </div>
+        <canvas id="cm1" height="130"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="badge" style="background:linear-gradient(135deg,#166534,#16a34a)">2</div>
+          <span class="card-title">2倍振動</span>
+        </div>
+        <canvas id="cm2" height="130"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="badge" style="background:linear-gradient(135deg,#991b1b,#dc2626)">3</div>
+          <span class="card-title">3倍振動</span>
+        </div>
+        <canvas id="cm3" height="130"></canvas>
+      </div>
+    </div>
+
+    <!-- 注目モードの大きい表示 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#6b21a8,#7c3aed)" id="mainBadge">n</div>
+        <span class="card-title" id="mainTitle">n倍振動の詳細</span>
+        <span class="card-sub" id="mainSub">弦の両端は固定端（節）</span>
+      </div>
+      <canvas id="cmain" height="180"></canvas>
+    </div>
+
+    <!-- 数値表示 -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;font-weight:900;color:var(--blue-dark);margin-bottom:10px">現在のモード（n = <span id="nVal">1</span> 倍振動）の計算結果</div>
+      <div class="nums-grid" id="numsGrid"></div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-row">
+      <div class="info-half">
+        <strong>§63 共振（共鳴）</strong>
+        <div class="info-item">物体に<span class="hl-blue">固有振動数</span>と同じ振動数で外から振動を加えると</div>
+        <div class="info-item">→ 振幅がしだいに<span class="hl-orange">大きく</span>なる</div>
+        <div class="info-item">→ この現象を<span class="hl-red">共振（共鳴）</span>という</div>
+      </div>
+      <div class="info-half" style="background:var(--purple-soft);border-color:#e9d5ff;">
+        <strong style="color:#6b21a8;">§64 弦の固有振動</strong>
+        <div class="info-item">両端固定 → 両端が<span class="hl-purple">節</span></div>
+        <div class="info-item">n倍振動の波長：<span class="hl-purple">λₙ = 2L/n</span></div>
+        <div class="info-item">n倍振動の振動数：<span class="hl-purple">fₙ = nv/2L</span></div>
+        <div class="info-item" style="margin-top:2px">fₙ = n × f₁（基本振動の<span class="hl-purple">n倍</span>）</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== 右カラム ===== -->
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+
+        <div>
+          <h3>表示モード</h3>
+          <div class="toggle four" style="margin-top:10px">
+            <button id="btn1" class="active" onclick="setFocus(1)">基本</button>
+            <button id="btn2" onclick="setFocus(2)">2倍</button>
+            <button id="btn3" onclick="setFocus(3)">3倍</button>
+            <button id="btn4" onclick="setFocus(4)">4倍</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label>弦の長さ L <span class="val" id="LVal">1.0 m</span></label>
+          <input type="range" id="LSlider" min="0.5" max="2.0" step="0.1" value="1.0">
+          <div class="range-hint"><span>短い</span><span>長い</span></div>
+        </div>
+
+        <div class="control">
+          <label>波速 v <span class="val" id="vVal">4.0 m/s</span></label>
+          <input type="range" id="vSlider" min="1.0" max="8.0" step="0.5" value="4.0">
+          <div class="range-hint"><span>遅い</span><span>速い</span></div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A <span class="val" id="aVal">1.0</span></label>
+          <input type="range" id="aSlider" min="0.3" max="1.5" step="0.1" value="1.0">
+          <div class="range-hint"><span>小</span><span>大</span></div>
+        </div>
+
+        <div>
+          <h3>再生コントロール</h3>
+          <div class="btns" style="margin-top:10px">
+            <button class="btn-play"  onclick="setState('play')">▶ 再生</button>
+            <button class="btn-pause" onclick="setState('pause')">⏸ 停止</button>
+            <button class="btn-reset" onclick="doReset()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          <strong>弦の固有振動の公式</strong>
+          λₙ = 2L / n<br>
+          fₙ = nv / 2L = n × f₁<br>
+          <span style="color:var(--muted);font-size:12px">v = fλ（波の基本式）</span><br>
+          <span style="color:var(--muted);font-size:12px">v = √(S/ρ)　S:張力、ρ:線密度</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const S = { L:1.0, v:4.0, A:1.0, focus:1, t:0, playing:true, last:null };
+
+const COLORS = ['','#1d4ed8','#15803d','#dc2626','#7c3aed'];
+const CNAMES = ['','基本振動','2倍振動','3倍振動','4倍振動'];
+
+// キャンバス
+const CM = [null,
+  document.getElementById('cm1'),
+  document.getElementById('cm2'),
+  document.getElementById('cm3'),
+];
+const CMAIN = document.getElementById('cmain');
+const ALL_CVS = [...CM.filter(Boolean), CMAIN];
+
+function resize(){
+  ALL_CVS.forEach(c=>{
+    const r=c.getBoundingClientRect();
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').scale(DPR,DPR);
+  });
+}
+window.addEventListener('resize',()=>{resize();redraw();});
+
+// ===== 波の計算 =====
+function lambda(n){ return 2*S.L/n; }
+function freq(n){ return S.v/(2*S.L)*n; }
+function omega(n){ return 2*Math.PI*freq(n); }
+// 定常波 y = A sin(kx) cos(ωt)  両端(x=0,x=L)が節
+function stringY(x, n, t){ 
+  const k=2*Math.PI/lambda(n);
+  return S.A*Math.sin(k*x)*Math.cos(omega(n)*t);
+}
+
+// ===== 描画ヘルパー =====
+function drawString(c, n, t, big){
+  const ctx=c.getContext('2d');
+  const W=c.getBoundingClientRect().width, H=c.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W*3,H*3);
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,W,H);
+
+  const pad=big?36:20;
+  const gx=pad, gw=W-pad*2, midY=H/2;
+  const ampPx=(H/2)*(big?0.68:0.58);
+  const col=COLORS[n];
+
+  // グリッド
+  ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=n*2;i++){
+    const px=gx+(i/(n*2))*gw;
+    ctx.beginPath();ctx.moveTo(px,midY-ampPx-8);ctx.lineTo(px,midY+ampPx+8);ctx.stroke();
+  }
+
+  // 包絡線（最大振幅）
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=1; ctx.globalAlpha=0.18; ctx.setLineDash([3,4]);
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const x=(p/(gw*2))*S.L;
+    const k=2*Math.PI/lambda(n);
+    const env=S.A*Math.abs(Math.sin(k*x));
+    const px=gx+(x/S.L)*gw;
+    p===0?ctx.moveTo(px,midY-env*ampPx):ctx.lineTo(px,midY-env*ampPx);
+  }
+  ctx.stroke(); ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const x=(p/(gw*2))*S.L;
+    const k=2*Math.PI/lambda(n);
+    const env=S.A*Math.abs(Math.sin(k*x));
+    const px=gx+(x/S.L)*gw;
+    p===0?ctx.moveTo(px,midY+env*ampPx):ctx.lineTo(px,midY+env*ampPx);
+  }
+  ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+
+  // x軸
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(gx,midY);ctx.lineTo(gx+gw,midY);ctx.stroke();
+
+  // 弦の両端（固定端の壁）
+  [gx, gx+gw].forEach(wx=>{
+    ctx.fillStyle='#64748b'; ctx.fillRect(wx-3,midY-ampPx-10,3,ampPx*2+20);
+    ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1.2;
+    for(let i=0;i<5;i++){
+      ctx.beginPath();
+      const sign=wx===gx?-1:1;
+      ctx.moveTo(wx-3,midY-ampPx+i*((ampPx*2+20)/4));
+      ctx.lineTo(wx-3+sign*8,midY-ampPx+i*((ampPx*2+20)/4)+8);
+      ctx.stroke();
+    }
+  });
+
+  // 波形
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=big?3:2; ctx.globalAlpha=0.95;
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const x=(p/(gw*2))*S.L;
+    const y=stringY(x,n,t);
+    const px=gx+(x/S.L)*gw, py=midY-y*ampPx;
+    p===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke(); ctx.restore();
+
+  // 節と腹のラベル（bigのみ詳しく）
+  const k=2*Math.PI/lambda(n);
+  ctx.font=`700 ${big?11:10}px Hiragino Sans,system-ui`;
+  for(let i=0;i<=n;i++){
+    // 節 x = i*L/n
+    const xN=i*S.L/n, pxN=gx+(xN/S.L)*gw;
+    ctx.fillStyle='#7c3aed';
+    ctx.beginPath();ctx.arc(pxN,midY,big?5:4,0,Math.PI*2);ctx.fill();
+    if(big){ctx.fillStyle='#7c3aed';ctx.textAlign='center';ctx.fillText('節',pxN,midY+18);}
+  }
+  for(let i=0;i<n;i++){
+    // 腹 x = (i+0.5)*L/n
+    const xA=(i+0.5)*S.L/n, pxA=gx+(xA/S.L)*gw;
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(pxA,midY,big?4:3,0,Math.PI*2);ctx.fill();
+    if(big){ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText('腹',pxA,midY-ampPx*1.1-6);}
+  }
+
+  if(big){
+    // λ 注釈（最初の1波長分）
+    if(n>=1){
+      const px0=gx, px1=gx+(2*S.L/n/S.L)*gw;
+      if(px1<=gx+gw){
+        ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;ctx.setLineDash([2,3]);
+        ctx.beginPath();ctx.moveTo(px0,midY+ampPx+16);ctx.lineTo(Math.min(px1,gx+gw),midY+ampPx+16);ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#64748b';ctx.font='700 11px system-ui';ctx.textAlign='center';
+        ctx.fillText(`λ = 2L/${n} = ${lambda(n).toFixed(2)}m`,(px0+Math.min(px1,gx+gw))/2,midY+ampPx+30);
+      }
+    }
+    // L 注釈
+    ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(gx,midY-ampPx-18);ctx.lineTo(gx+gw,midY-ampPx-18);ctx.stroke();
+    const arrY=midY-ampPx-18;
+    [[gx,-1],[gx+gw,1]].forEach(([px,d])=>{
+      ctx.beginPath();ctx.moveTo(px,arrY);ctx.lineTo(px+d*6,arrY-4);ctx.lineTo(px+d*6,arrY+4);ctx.stroke();
+    });
+    ctx.fillStyle='#475569';ctx.font='700 11px system-ui';ctx.textAlign='center';
+    ctx.fillText(`L = ${S.L.toFixed(1)} m`,gx+gw/2,midY-ampPx-22);
+  } else {
+    // 小表示のラベル
+    ctx.fillStyle=col;ctx.font='700 11px system-ui';ctx.textAlign='left';
+    ctx.fillText(`f=${freq(n).toFixed(1)}Hz`,gx+4,16);
+    ctx.fillStyle='#475569';ctx.textAlign='right';
+    ctx.fillText(`λ=${lambda(n).toFixed(2)}m`,gx+gw-4,16);
+  }
+}
+
+// ===== 数値カード更新 =====
+function updateNums(){
+  const n=S.focus;
+  const grid=document.getElementById('numsGrid');
+  const items=[
+    {label:'モード番号 n', val:n+'倍振動', unit:'', col:COLORS[n]||'#7c3aed'},
+    {label:'波長 λₙ = 2L/n', val:lambda(n).toFixed(3), unit:'m', col:'#1d4ed8'},
+    {label:'振動数 fₙ = nv/2L', val:freq(n).toFixed(2), unit:'Hz', col:'#15803d'},
+    {label:'基本振動の何倍か', val:n+'倍', unit:`（f₁=${freq(1).toFixed(2)}Hz）`, col:'#ea580c'},
+  ];
+  grid.innerHTML=items.map(it=>`
+    <div class="num-card">
+      <div class="num-label">${it.label}</div>
+      <div class="num-val" style="color:${it.col}">${it.val}</div>
+      <div class="num-unit">${it.unit}</div>
+    </div>
+  `).join('');
+}
+
+// ===== メイン描画 =====
+function redraw(){
+  for(let n=1;n<=3;n++) drawString(CM[n],n,S.t,false);
+  drawString(CMAIN,S.focus,S.t,true);
+  document.getElementById('nVal').textContent=S.focus;
+  document.getElementById('mainBadge').textContent=S.focus;
+  document.getElementById('mainTitle').textContent=CNAMES[S.focus]+'の詳細';
+  document.getElementById('mainBadge').style.background=`linear-gradient(135deg,${COLORS[S.focus]}cc,${COLORS[S.focus]})`;
+  updateNums();
+}
+
+// ===== アニメーション =====
+function tick(ts){
+  if(S.playing){
+    if(S.last!=null) S.t+=(ts-S.last)/1000;
+    S.last=ts;
+  } else { S.last=null; }
+  redraw();
+  requestAnimationFrame(tick);
+}
+
+// ===== コントロール =====
+function syncSliders(){
+  S.L=+document.getElementById('LSlider').value;
+  S.v=+document.getElementById('vSlider').value;
+  S.A=+document.getElementById('aSlider').value;
+  document.getElementById('LVal').textContent=S.L.toFixed(1)+' m';
+  document.getElementById('vVal').textContent=S.v.toFixed(1)+' m/s';
+  document.getElementById('aVal').textContent=S.A.toFixed(1);
+}
+function setFocus(n){
+  S.focus=n;
+  for(let i=1;i<=4;i++) document.getElementById('btn'+i).classList.toggle('active',i===n);
+}
+function setState(s){ S.playing=(s==='play'); }
+function doReset(){ S.t=0; S.last=null; }
+
+document.querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('input',syncSliders));
+window.addEventListener('load',()=>{ resize(); requestAnimationFrame(tick); });
+</script>
+</body>
+</html>

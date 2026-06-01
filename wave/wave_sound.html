@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音波・うなりシミュレーション</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --line: #e2e8f0;
+    --blue: #1d4ed8; --blue-dark: #0f2f7a; --blue-soft: #eff6ff;
+    --red: #dc2626; --red-soft: #fee2e2;
+    --green: #15803d; --green-soft: #dcfce7;
+    --orange: #ea580c; --orange-soft: #fff7ed;
+    --purple: #7c3aed; --purple-soft: #fdf4ff;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+
+  canvas { display:block; width:100%; }
+
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; font-weight:700; color:var(--muted); padding:8px 16px; background:#f8fafc; border-top:1px solid var(--line); }
+  .legend-item { display:flex; align-items:center; gap:5px; }
+  .legend-dot { width:22px; height:3px; border-radius:2px; }
+
+  /* サイドバー */
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two   { grid-template-columns:1fr 1fr; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:9px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; transition:all 0.15s; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; min-width:60px; text-align:right; font-weight:700; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .btns button { border:1px solid var(--line); border-radius:10px; padding:10px 4px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-play  { background:var(--green-soft)!important; color:#166534!important; }
+  .btn-pause { background:#fef9c3!important; color:#854d0e!important; }
+  .btn-reset { background:#f1f5f9!important; color:#475569!important; }
+
+  .status-box { background:var(--orange-soft); border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; min-height:80px; }
+  .status-main { font-size:16px; font-weight:900; color:var(--orange); margin-bottom:4px; min-height:24px; }
+  .status-detail { font-size:12px; color:var(--muted); line-height:1.7; }
+
+  .info-row { display:flex; gap:10px; }
+  .info-half { flex:1; background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .info-half strong { color:var(--blue-dark); display:block; font-size:13px; margin-bottom:4px; }
+  .info-item { margin-bottom:2px; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-orange { background:#ffedd5; color:#9a3412; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-red    { background:#fee2e2; color:#991b1b; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-green  { background:#dcfce7; color:#166534; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; border-radius:4px; padding:1px 6px; font-weight:900; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.8; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+
+  .beat-display { text-align:center; background:linear-gradient(135deg,#fdf4ff,#ede9fe); border:2px solid #c4b5fd; border-radius:14px; padding:14px; margin-top:4px; }
+  .beat-num { font-size:36px; font-weight:900; color:var(--purple); line-height:1; }
+  .beat-unit { font-size:13px; color:var(--muted); font-weight:700; margin-top:2px; }
+  .beat-formula { font-size:12px; color:#6b21a8; font-weight:700; margin-top:6px; }
+
+  .section-divider { text-align:center; font-size:13px; font-weight:900; color:var(--muted); padding:4px 0; letter-spacing:0.1em; }
+</style>
+</head>
+<body>
+
+<h1>音波・うなりシミュレーション</h1>
+<p class="subtitle">§61 音と波　/　§62 うなり</p>
+
+<div class="layout">
+  <div class="main-col">
+
+    <!-- ①② 横並び -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+      <!-- §61 音波1 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="badge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">①</div>
+          <span class="card-title">音波 1</span>
+          <span class="card-sub" id="f1label">f₁=4.0Hz A₁=1.0</span>
+        </div>
+        <canvas id="c1" height="130"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8"></div><span style="color:#1d4ed8">音波1 y₁</span></div>
+        </div>
+      </div>
+
+      <!-- §61 音波2 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="badge" style="background:linear-gradient(135deg,#991b1b,#dc2626)">②</div>
+          <span class="card-title">音波 2</span>
+          <span class="card-sub" id="f2label">f₂=5.0Hz A₂=1.0</span>
+        </div>
+        <canvas id="c2" height="130"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div><span style="color:#dc2626">音波2 y₂</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- §62 うなり -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#6b21a8,#7c3aed)">③</div>
+        <span class="card-title">合成波（うなり）</span>
+        <span class="card-sub">2つの音波を重ね合わせると振幅が周期的に変化する</span>
+      </div>
+      <canvas id="c3" height="160"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8;opacity:0.4"></div><span style="color:#93c5fd">音波1（薄く）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#dc2626;opacity:0.4"></div><span style="color:#fca5a5">音波2（薄く）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;height:4px"></div><span style="color:#7c3aed">合成波（うなり）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div><span style="color:#f59e0b">うなりの包絡線</span></div>
+      </div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-row">
+      <div class="info-half">
+        <strong>§61 音の3要素</strong>
+        <div class="info-item">🔊 <span class="hl-blue">音の大きさ</span>：振幅が大きいほど大きく聞こえる</div>
+        <div class="info-item">🎵 <span class="hl-green">音の高さ</span>：振動数が大きいほど高く聞こえる</div>
+        <div class="info-item">🎨 <span class="hl-orange">音色</span>：波形の形の違いによる</div>
+        <div class="info-item" style="margin-top:4px">🌡️ 音速：<span class="hl-blue">V = 331.5 + 0.6t</span> (m/s)</div>
+      </div>
+      <div class="info-half" style="background:var(--purple-soft);border-color:#e9d5ff;">
+        <strong style="color:#6b21a8;">§62 うなりの公式</strong>
+        <div class="info-item">うなりの回数：<span class="hl-purple">f = |f₁ − f₂|</span>（回/秒）</div>
+        <div class="info-item">うなりの周期：<span class="hl-purple">T₀ = 1/f</span>（秒）</div>
+        <div class="info-item" style="margin-top:4px">📌 f₁ と f₂ が近いほど</div>
+        <div class="info-item">　うなりの周期が<span class="hl-purple">長く</span>なる</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== 右カラム ===== -->
+  <div class="side-col">
+
+    <!-- §61 コントロール -->
+    <div class="card">
+      <div class="ctrl-section">
+        <h3>§61 音波の設定</h3>
+
+        <div class="control">
+          <label>振動数 f₁ <span class="val" id="f1Val">4.0 Hz</span></label>
+          <input type="range" id="f1Slider" min="1" max="10" step="0.5" value="4">
+          <div class="range-hint"><span>低音</span><span>高音</span></div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A₁ <span class="val" id="a1Val">1.0</span></label>
+          <input type="range" id="a1Slider" min="0.1" max="1.5" step="0.1" value="1.0">
+          <div class="range-hint"><span>小</span><span>大</span></div>
+        </div>
+
+        <div class="control">
+          <label>振動数 f₂ <span class="val" id="f2Val">5.0 Hz</span></label>
+          <input type="range" id="f2Slider" min="1" max="10" step="0.5" value="5">
+          <div class="range-hint"><span>低音</span><span>高音</span></div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A₂ <span class="val" id="a2Val">1.0</span></label>
+          <input type="range" id="a2Slider" min="0.1" max="1.5" step="0.1" value="1.0">
+          <div class="range-hint"><span>小</span><span>大</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- うなり表示 -->
+    <div class="card" style="padding:16px">
+      <div class="ctrl-section">
+        <h3>§62 うなりの計算</h3>
+        <div class="beat-display">
+          <div class="beat-num" id="beatNum">1.0</div>
+          <div class="beat-unit">回 / 秒</div>
+          <div class="beat-formula" id="beatFormula">f = |4.0 − 5.0| = 1.0 Hz</div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;font-weight:700;color:var(--muted)">
+          うなりの周期 T₀ = <span id="beatPeriod" style="color:var(--purple);font-weight:900">1.00</span> 秒
+        </div>
+      </div>
+    </div>
+
+    <!-- 再生コントロール -->
+    <div class="card" style="padding:16px">
+      <div class="ctrl-section">
+        <h3>再生コントロール</h3>
+        <div class="btns">
+          <button class="btn-play"  onclick="setState('play')">▶ 再生</button>
+          <button class="btn-pause" onclick="setState('pause')">⏸ 停止</button>
+          <button class="btn-reset" onclick="doReset()">↺ リセット</button>
+        </div>
+
+        <div class="control" style="margin-top:4px">
+          <label>時間スケール <span class="val" id="scaleVal">1.0×</span></label>
+          <input type="range" id="scaleSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+          <div class="range-hint"><span>ゆっくり</span><span>速く</span></div>
+        </div>
+
+        <div class="status-box">
+          <div class="status-main" id="statusMain">再生中</div>
+          <div class="status-detail" id="statusDetail">うなりの回数：1.0 回/秒</div>
+        </div>
+
+        <div class="formula-box">
+          <strong>音速の公式</strong>
+          V = 331.5 + 0.6t (m/s)<br>
+          <span style="color:var(--muted)">t：気温（℃）</span><br>
+          15℃ → V ≈ <span style="color:var(--blue-dark)">340.5 m/s</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const S = { f1:4.0, a1:1.0, f2:5.0, a2:1.0, t:0, playing:true, last:null, scale:1.0 };
+const TW = 4.0; // 表示する時間幅（秒）
+
+const CVS = [document.getElementById('c1'), document.getElementById('c2'), document.getElementById('c3')];
+
+function resize() {
+  CVS.forEach(c => {
+    const r=c.getBoundingClientRect();
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').scale(DPR,DPR);
+  });
+}
+window.addEventListener('resize',()=>{resize();redraw();});
+
+// ===== 波の式 =====
+function y1(t){ return S.a1*Math.sin(2*Math.PI*S.f1*t); }
+function y2(t){ return S.a2*Math.sin(2*Math.PI*S.f2*t); }
+function yc(t){ return y1(t)+y2(t); }
+// うなりの包絡線（合成波の振幅変化）
+function envelope(t){ return Math.abs(2*Math.max(S.a1,S.a2)*Math.cos(Math.PI*(S.f1-S.f2)*t)); }
+
+// ===== 共通描画ヘルパー =====
+function getL(c){ const W=c.getBoundingClientRect().width,H=c.getBoundingClientRect().height; return {W,H}; }
+
+function drawBg(ctx,x0,y0,gw,gh,midY){
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(x0,y0,gw,gh);
+  ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=8;i++){const px=x0+(i/8)*gw;ctx.beginPath();ctx.moveTo(px,y0);ctx.lineTo(px,y0+gh);ctx.stroke();}
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(x0,midY);ctx.lineTo(x0+gw,midY);ctx.stroke();
+}
+
+function drawTimeAxis(ctx,x0,y0,gw,gh,midY){
+  // 時刻ラベル
+  ctx.fillStyle='#94a3b8'; ctx.font='700 10px system-ui'; ctx.textAlign='center';
+  for(let i=0;i<=4;i++){
+    const t=S.t-TW*(1-i/4);
+    const px=x0+(i/4)*gw;
+    ctx.fillText(t.toFixed(1)+'s',px,y0+gh+14);
+  }
+  // y=0ラベル
+  ctx.textAlign='right'; ctx.fillText('0',x0-4,midY+4);
+}
+
+function plotWave(ctx,fn,x0,gw,y0,gh,midY,ampPx,color,lw,dash,alpha){
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.globalAlpha=alpha??1;
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const frac=p/(gw*2);
+    const t=S.t-TW*(1-frac);
+    const y=fn(t);
+    const px=x0+frac*gw;
+    const py=midY-y*ampPx;
+    p===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+}
+
+// ===== 各キャンバス描画 =====
+function drawC1(){
+  const c=CVS[0],ctx=c.getContext('2d');
+  const {W,H}=getL(c);
+  ctx.clearRect(0,0,W*3,H*3);
+  const x0=36,y0=10,gw=W-50,gh=H-28,midY=y0+gh/2,ampPx=gh*0.38;
+  drawBg(ctx,x0,y0,gw,gh,midY);
+  drawTimeAxis(ctx,x0,y0,gw,gh,midY);
+  plotWave(ctx,y1,x0,gw,y0,gh,midY,ampPx,'#1d4ed8',2.5,null,1);
+  // 現在点
+  ctx.fillStyle='#1d4ed8';
+  ctx.beginPath();ctx.arc(x0+gw,midY-y1(S.t)*ampPx,5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1d4ed8';ctx.font='700 11px Hiragino Sans,system-ui';ctx.textAlign='left';
+  ctx.fillText(`f₁=${S.f1.toFixed(1)}Hz　A₁=${S.a1.toFixed(1)}`,x0+4,y0+14);
+}
+
+function drawC2(){
+  const c=CVS[1],ctx=c.getContext('2d');
+  const {W,H}=getL(c);
+  ctx.clearRect(0,0,W*3,H*3);
+  const x0=36,y0=10,gw=W-50,gh=H-28,midY=y0+gh/2,ampPx=gh*0.38;
+  drawBg(ctx,x0,y0,gw,gh,midY);
+  drawTimeAxis(ctx,x0,y0,gw,gh,midY);
+  plotWave(ctx,y2,x0,gw,y0,gh,midY,ampPx,'#dc2626',2.5,null,1);
+  ctx.fillStyle='#dc2626';
+  ctx.beginPath();ctx.arc(x0+gw,midY-y2(S.t)*ampPx,5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#dc2626';ctx.font='700 11px Hiragino Sans,system-ui';ctx.textAlign='left';
+  ctx.fillText(`f₂=${S.f2.toFixed(1)}Hz　A₂=${S.a2.toFixed(1)}`,x0+4,y0+14);
+}
+
+function drawC3(){
+  const c=CVS[2],ctx=c.getContext('2d');
+  const {W,H}=getL(c);
+  ctx.clearRect(0,0,W*3,H*3);
+  const x0=36,y0=10,gw=W-50,gh=H-28,midY=y0+gh/2;
+  const maxAmp=S.a1+S.a2;
+  const ampPx=(gh/2)*0.82/Math.max(maxAmp,0.5);
+  drawBg(ctx,x0,y0,gw,gh,midY);
+  drawTimeAxis(ctx,x0,y0,gw,gh,midY);
+
+  // 個別波（薄く）
+  plotWave(ctx,y1,x0,gw,y0,gh,midY,ampPx,'#1d4ed8',1.2,[4,4],0.25);
+  plotWave(ctx,y2,x0,gw,y0,gh,midY,ampPx,'#dc2626',1.2,[4,4],0.25);
+
+  // 包絡線
+  ctx.save(); ctx.strokeStyle='#f59e0b'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.globalAlpha=0.7;
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const t=S.t-TW*(1-(p/(gw*2)));
+    const env=Math.abs((S.a1+S.a2)*Math.cos(Math.PI*(S.f1-S.f2)*t));
+    const px=x0+(p/(gw*2))*gw;
+    p===0?ctx.moveTo(px,midY-env*ampPx):ctx.lineTo(px,midY-env*ampPx);
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const t=S.t-TW*(1-(p/(gw*2)));
+    const env=Math.abs((S.a1+S.a2)*Math.cos(Math.PI*(S.f1-S.f2)*t));
+    const px=x0+(p/(gw*2))*gw;
+    p===0?ctx.moveTo(px,midY+env*ampPx):ctx.lineTo(px,midY+env*ampPx);
+  }
+  ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+
+  // 合成波
+  plotWave(ctx,yc,x0,gw,y0,gh,midY,ampPx,'#7c3aed',2.5,null,1);
+
+  // 現在点
+  ctx.fillStyle='#7c3aed';
+  ctx.beginPath();ctx.arc(x0+gw,midY-yc(S.t)*ampPx,6,0,Math.PI*2);ctx.fill();
+
+  // うなりの周期注釈
+  const beat=Math.abs(S.f1-S.f2);
+  if(beat>0.01){
+    const T0=1/beat;
+    const pxT0=(T0/TW)*gw;
+    if(pxT0<gw*0.9){
+      ctx.save();
+      ctx.strokeStyle='#f59e0b'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+      const annotX=x0+gw*0.3;
+      ctx.beginPath();ctx.moveTo(annotX,y0+gh-18);ctx.lineTo(annotX+pxT0,y0+gh-18);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#f59e0b';ctx.font='700 11px system-ui';ctx.textAlign='center';
+      ctx.fillText(`T₀=${T0.toFixed(2)}s`,annotX+pxT0/2,y0+gh-4);
+      ctx.restore();
+    }
+  }
+
+  ctx.fillStyle='#7c3aed';ctx.font='700 11px Hiragino Sans,system-ui';ctx.textAlign='left';
+  ctx.fillText(`うなり ${beat.toFixed(1)} 回/秒`,x0+4,y0+14);
+}
+
+// ===== 状態更新 =====
+function updateStatus(){
+  const beat=Math.abs(S.f1-S.f2);
+  const T0=beat>0.01?1/beat:Infinity;
+  document.getElementById('beatNum').textContent=beat.toFixed(1);
+  document.getElementById('beatFormula').textContent=`f = |${S.f1.toFixed(1)} − ${S.f2.toFixed(1)}| = ${beat.toFixed(1)} Hz`;
+  document.getElementById('beatPeriod').textContent=T0<100?T0.toFixed(2):'∞';
+  document.getElementById('statusMain').textContent=beat<0.1?'うなりなし（同じ振動数）':`うなり ${beat.toFixed(1)} 回/秒`;
+  document.getElementById('statusDetail').textContent=
+    beat<0.1?'f₁とf₂がほぼ等しいときうなりは消える':
+    T0<100?`うなり周期 T₀ = ${T0.toFixed(2)} 秒\nf₁とf₂の差が大きいほど速くうなる`:'';
+}
+
+// ===== コントロール =====
+function syncSliders(){
+  S.f1=+document.getElementById('f1Slider').value;
+  S.a1=+document.getElementById('a1Slider').value;
+  S.f2=+document.getElementById('f2Slider').value;
+  S.a2=+document.getElementById('a2Slider').value;
+  S.scale=+document.getElementById('scaleSlider').value;
+  document.getElementById('f1Val').textContent=S.f1.toFixed(1)+' Hz';
+  document.getElementById('a1Val').textContent=S.a1.toFixed(1);
+  document.getElementById('f2Val').textContent=S.f2.toFixed(1)+' Hz';
+  document.getElementById('a2Val').textContent=S.a2.toFixed(1);
+  document.getElementById('scaleVal').textContent=S.scale.toFixed(1)+'×';
+  document.getElementById('f1label').textContent=`f₁=${S.f1.toFixed(1)}Hz A₁=${S.a1.toFixed(1)}`;
+  document.getElementById('f2label').textContent=`f₂=${S.f2.toFixed(1)}Hz A₂=${S.a2.toFixed(1)}`;
+  updateStatus();
+}
+function setState(s){ S.playing=(s==='play'); }
+function doReset(){ S.t=0; S.last=null; }
+
+document.querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('input',syncSliders));
+
+// ===== アニメーション =====
+function redraw(){ drawC1(); drawC2(); drawC3(); updateStatus(); }
+
+function tick(ts){
+  if(S.playing){
+    if(S.last!=null) S.t+=(ts-S.last)/1000*S.scale;
+    S.last=ts;
+  } else { S.last=null; }
+  redraw();
+  requestAnimationFrame(tick);
+}
+
+window.addEventListener('load',()=>{ resize(); requestAnimationFrame(tick); });
+</script>
+</body>
+</html>

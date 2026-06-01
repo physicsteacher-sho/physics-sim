@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>気柱の固有振動シミュレーション</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #fff; --text: #0f172a; --muted: #64748b; --line: #e2e8f0;
+    --blue: #1d4ed8; --blue-dark: #0f2f7a; --blue-soft: #eff6ff;
+    --green: #15803d; --green-soft: #dcfce7;
+    --orange: #ea580c; --orange-soft: #fff7ed;
+    --purple: #7c3aed; --purple-soft: #fdf4ff;
+    --red: #dc2626; --red-soft: #fee2e2;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+
+  canvas { display:block; width:100%; }
+  .modes-grid { display:grid; gap:14px; }
+  .modes-grid.cols3 { grid-template-columns:1fr 1fr 1fr; }
+  .modes-grid.cols2 { grid-template-columns:1fr 1fr; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; min-width:60px; text-align:right; font-weight:700; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two   { grid-template-columns:1fr 1fr; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:9px 4px; font-size:13px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; transition:all 0.15s; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .btns button { border:1px solid var(--line); border-radius:10px; padding:10px 4px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-play  { background:var(--green-soft)!important; color:#166534!important; }
+  .btn-pause { background:#fef9c3!important; color:#854d0e!important; }
+  .btn-reset { background:#f1f5f9!important; color:#475569!important; }
+
+  .nums-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .num-card { background:#f8fafc; border:1px solid var(--line); border-radius:10px; padding:10px 12px; text-align:center; }
+  .num-label { font-size:11px; color:var(--muted); font-weight:700; margin-bottom:2px; }
+  .num-val   { font-size:18px; font-weight:900; color:var(--blue-dark); }
+  .num-unit  { font-size:11px; color:var(--muted); font-weight:600; }
+
+  .info-row { display:flex; gap:10px; }
+  .info-half { flex:1; background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .info-half strong { color:var(--blue-dark); display:block; font-size:13px; margin-bottom:4px; }
+  .info-item { margin-bottom:2px; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-orange { background:#ffedd5; color:#9a3412; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-red    { background:#fee2e2; color:#991b1b; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-green  { background:#dcfce7; color:#166534; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; border-radius:4px; padding:1px 6px; font-weight:900; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; font-size:13px; margin-bottom:4px; }
+
+  .section-label { font-size:16px; font-weight:900; color:var(--blue-dark); padding:6px 2px 2px; border-left:4px solid var(--blue); padding-left:10px; }
+</style>
+</head>
+<body>
+
+<h1>気柱の固有振動シミュレーション</h1>
+<p class="subtitle">§65 気柱の固有振動　／　閉管・開管の定常波</p>
+
+<div class="layout">
+  <div class="main-col">
+
+    <!-- 管タイプ切替ヘッダー -->
+    <div class="card" style="padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="font-size:14px;font-weight:900;color:var(--blue-dark)">管のタイプ</div>
+        <div class="toggle two" style="flex:1;max-width:320px">
+          <button id="closedBtn" class="active" onclick="setPipeType('closed')">🔒 閉管（片方が閉じている）</button>
+          <button id="openBtn" onclick="setPipeType('open')">🌬️ 開管（両端が開いている）</button>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted)" id="pipeRuleLabel">閉管：開口端が腹、閉口端が節／奇数倍振動のみ</div>
+      </div>
+    </div>
+
+    <!-- 小モード3つ横並び -->
+    <div class="modes-grid cols3" id="modesGrid"></div>
+
+    <!-- 詳細表示 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#6b21a8,#7c3aed)" id="mainBadge">1</div>
+        <span class="card-title" id="mainTitle">基本振動の詳細</span>
+        <span class="card-sub" id="mainSub">詳細を表示</span>
+      </div>
+      <canvas id="cmain" height="200"></canvas>
+    </div>
+
+    <!-- 数値 -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;font-weight:900;color:var(--blue-dark);margin-bottom:10px" id="numsTitle">現在のモードの計算結果</div>
+      <div class="nums-grid" id="numsGrid"></div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-row">
+      <div class="info-half">
+        <strong>🔒 閉管のポイント</strong>
+        <div class="info-item">閉口端 → <span class="hl-purple">節</span>　開口端 → <span class="hl-orange">腹</span></div>
+        <div class="info-item">基本振動：<span class="hl-blue">λ₁ = 4L</span>　<span class="hl-blue">f₁ = V/4L</span></div>
+        <div class="info-item">奇数倍振動のみ：<span class="hl-red">f = (2m−1)×f₁</span></div>
+        <div class="info-item" style="margin-top:2px">（偶数倍振動は存在しない）</div>
+      </div>
+      <div class="info-half" style="background:var(--green-soft);border-color:#bbf7d0;">
+        <strong style="color:#166534;">🌬️ 開管のポイント</strong>
+        <div class="info-item">両端の開口端 → どちらも<span class="hl-green">腹</span></div>
+        <div class="info-item">基本振動：<span class="hl-blue">λ₁ = 2L</span>　<span class="hl-blue">f₁ = V/2L</span></div>
+        <div class="info-item">整数倍振動すべて：<span class="hl-green">f = n×f₁</span></div>
+        <div class="info-item" style="margin-top:2px">開口端補正 Δl → 実効長 L+2Δl</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== 右カラム ===== -->
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+
+        <div>
+          <h3>表示モード</h3>
+          <div class="toggle three" style="margin-top:10px" id="modeToggle">
+            <button id="mbtn0" class="active" onclick="setFocus(0)">基本</button>
+            <button id="mbtn1" onclick="setFocus(1)">3倍</button>
+            <button id="mbtn2" onclick="setFocus(2)">5倍</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label>管の長さ L <span class="val" id="LVal">1.0 m</span></label>
+          <input type="range" id="LSlider" min="0.5" max="2.0" step="0.1" value="1.0">
+          <div class="range-hint"><span>短い</span><span>長い</span></div>
+        </div>
+
+        <div class="control">
+          <label>音速 V <span class="val" id="VVal">340 m/s</span></label>
+          <input type="range" id="VSlider" min="300" max="400" step="10" value="340">
+          <div class="range-hint"><span>300</span><span>400</span></div>
+        </div>
+
+        <div>
+          <h3>再生コントロール</h3>
+          <div class="btns" style="margin-top:10px">
+            <button class="btn-play"  onclick="setState('play')">▶ 再生</button>
+            <button class="btn-pause" onclick="setState('pause')">⏸ 停止</button>
+            <button class="btn-reset" onclick="doReset()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          <strong>閉管の固有振動数</strong>
+          fₙ = (2n−1)V / 4L<br>
+          <span style="color:var(--muted)">（n = 1, 2, 3, … → 奇数倍のみ）</span>
+          <div style="margin-top:8px"><strong>開管の固有振動数</strong></div>
+          fₙ = nV / 2L<br>
+          <span style="color:var(--muted)">（n = 1, 2, 3, … → 整数倍すべて）</span>
+        </div>
+
+        <div class="formula-box" style="background:var(--orange-soft);border-color:#fed7aa;">
+          <strong style="color:#9a3412;">開口端補正について</strong>
+          <span style="color:#78350f">実際の腹の位置は開口端より少し外側（Δl）にずれる。</span><br>
+          <span style="color:#78350f">閉管の実効長：L + Δl</span><br>
+          <span style="color:#78350f">開管の実効長：L + 2Δl</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const S = { pipe:'closed', focus:0, L:1.0, V:340, t:0, playing:true, last:null };
+
+// 閉管：奇数倍（1,3,5倍）、開管：整数倍（1,2,3倍）
+const CLOSED_MODES = [1,3,5];
+const OPEN_MODES   = [1,2,3];
+const COLORS = ['#1d4ed8','#15803d','#dc2626','#7c3aed'];
+
+function getModes(){ return S.pipe==='closed' ? CLOSED_MODES : OPEN_MODES; }
+function lambdaN(n){ return S.pipe==='closed' ? 4*S.L/n : 2*S.L/n; }
+function freqN(n){   return S.pipe==='closed' ? S.V*n/(4*S.L) : S.V*n/(2*S.L); }
+function omegaN(n){  return 2*Math.PI*freqN(n); }
+
+// 変位の式
+// 閉管：x=0が閉口端（節）、x=L が開口端（腹）
+//   y = A cos(kx) cos(ωt)   [x=0で節、x=L=λ/4で腹]
+//   閉管nの場合 k = nπ/(2L) = nπ/2L
+// 開管：x=0とx=Lが開口端（腹）
+//   y = A cos(kx) cos(ωt)   [x=0で腹、x=L=λ/2 * n で腹]
+//   開管nの場合 k = nπ/L
+function pipeY(x, n, t){
+  if(S.pipe==='closed'){
+    // 開口端(x=0, 左)=腹、閉口端(x=L, 右)=節 → cos(kx)
+    // k = nπ/(2L) → x=0で最大(腹)、x=L=nπ/2k で0(節) ✅
+    const k = n*Math.PI/(2*S.L);
+    return Math.cos(k*x)*Math.cos(omegaN(n)*t);
+  } else {
+    // 開管：両端(x=0, x=L)=腹 → cos(kx)
+    const k = n*Math.PI/S.L;
+    return Math.cos(k*x)*Math.cos(omegaN(n)*t);
+  }
+}
+
+// キャンバス管理
+const CMAIN = document.getElementById('cmain');
+let smallCvs = [];
+
+function resize(){
+  [CMAIN, ...smallCvs].forEach(c=>{
+    if(!c) return;
+    const r=c.getBoundingClientRect();
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').scale(DPR,DPR);
+  });
+}
+window.addEventListener('resize',()=>{ resize(); redraw(); });
+
+// ===== 描画 =====
+function drawPipe(c, n, t, big){
+  if(!c) return;
+  const ctx=c.getContext('2d');
+  const W=c.getBoundingClientRect().width, H=c.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W*3,H*3);
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,W,H);
+
+  const isClosed = S.pipe==='closed';
+  const padL = big ? 48 : 28;
+  const padR = big ? 28 : 18;
+  const gx=padL, gw=W-padL-padR;
+  const midY=H*(big?0.46:0.48);
+  const ampPx=(H/2)*(big?0.58:0.52);
+  const col = COLORS[getModes().indexOf(n)%COLORS.length];
+
+  // --- 管の描画 ---
+  const tubeT = big ? 10 : 6; // 管の壁の厚さ
+  const tubeTop  = midY - ampPx - (big?14:10);
+  const tubeBot  = midY + ampPx + (big?14:10);
+
+  // 上壁・下壁
+  ctx.fillStyle='#cbd5e1';
+  ctx.fillRect(gx, tubeTop-tubeT, gw, tubeT); // 上
+  ctx.fillRect(gx, tubeBot, gw, tubeT);       // 下
+
+  // 閉口端（右端の壁）
+  if(isClosed){
+    ctx.fillStyle='#475569';
+    ctx.fillRect(gx+gw, tubeTop-tubeT, tubeT, (tubeBot-tubeTop)+tubeT*2);
+    ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1.2;
+    for(let i=0;i<5;i++){
+      ctx.beginPath();
+      ctx.moveTo(gx+gw+tubeT, tubeTop-ampPx*0+i*((tubeBot-tubeTop+tubeT*2)/4));
+      ctx.lineTo(gx+gw+tubeT+8, tubeTop-ampPx*0+i*((tubeBot-tubeTop+tubeT*2)/4)+8);
+      ctx.stroke();
+    }
+    if(big){
+      ctx.fillStyle='#475569'; ctx.font='700 11px system-ui'; ctx.textAlign='center';
+      ctx.fillText('閉口端', gx+gw+tubeT/2, tubeBot+tubeT+14);
+    }
+  } else {
+    // 開管の右端（開口）
+    ctx.fillStyle='#f8fafc';
+    ctx.fillRect(gx+gw-2, tubeTop-tubeT, 4, tubeT);
+    ctx.fillRect(gx+gw-2, tubeBot, 4, tubeT);
+    if(big){
+      ctx.fillStyle='#15803d'; ctx.font='700 11px system-ui'; ctx.textAlign='center';
+      ctx.fillText('開口端', gx+gw, tubeBot+tubeT+14);
+    }
+  }
+  // 左端（開口端）
+  ctx.fillStyle='#f8fafc';
+  ctx.fillRect(gx-2, tubeTop-tubeT, 4, tubeT);
+  ctx.fillRect(gx-2, tubeBot, 4, tubeT);
+  if(big){
+    ctx.fillStyle='#15803d'; ctx.font='700 11px system-ui'; ctx.textAlign='center';
+    ctx.fillText('開口端', gx, tubeBot+tubeT+14);
+  }
+
+  // 管内の背景色（空気）
+  ctx.fillStyle='rgba(224,242,254,0.35)';
+  ctx.fillRect(gx, tubeTop, gw, tubeBot-tubeTop);
+
+  // グリッド（薄く）
+  ctx.strokeStyle='rgba(0,0,0,0.04)'; ctx.lineWidth=1;
+  const modeN=isClosed?n:n;
+  for(let i=0;i<=modeN*2;i++){
+    const px=gx+(i/(modeN*2))*gw;
+    ctx.beginPath();ctx.moveTo(px,tubeTop);ctx.lineTo(px,tubeBot);ctx.stroke();
+  }
+
+  // x軸（中心線）
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(gx,midY);ctx.lineTo(gx+gw,midY);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 包絡線
+  ctx.save(); ctx.strokeStyle=col; ctx.globalAlpha=0.15; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+  for(let sign of [-1,1]){
+    ctx.beginPath();
+    for(let p=0;p<=gw*2;p++){
+      const x=(p/(gw*2))*S.L;
+      const env=Math.abs(pipeY(x,n,0));
+      const px=gx+(x/S.L)*gw, py=midY+sign*env*ampPx;
+      p===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]); ctx.restore();
+
+  // 変位波形
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=big?3:2; ctx.globalAlpha=0.95;
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const x=(p/(gw*2))*S.L;
+    const y=pipeY(x,n,t);
+    const px=gx+(x/S.L)*gw, py=midY-y*ampPx;
+    p===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke(); ctx.restore();
+
+  // 節と腹
+  ctx.font=`700 ${big?11:9}px Hiragino Sans,system-ui`;
+  // 節の位置
+  const nodePositions = isClosed
+    ? Array.from({length:n},(_,i)=>(i+0.5)*2*S.L/n/(2)) // 閉管節位置
+    : Array.from({length:n-1},(_,i)=>(i+1)*S.L/n);      // 開管節位置
+  // より正確な節位置
+  const nodes=[], antis=[];
+  if(isClosed){
+    // 閉管：節は x=0（閉口端）、λ/2ごと / 腹は x=L、その手前λ/2ごと
+    for(let i=0;i<=n;i++) nodes.push(i*2*S.L/n);   // 2L/n = λ ずつ... 修正
+    // 閉管 n倍: 節は k個所 k=n, 腹はk個所 k=n
+    // 節: cos(k*x)=0 → x = (2j-1)*(L/n) j=1..n  だが x=0 は cos(0)=1(腹に近い)
+    // 実際: 閉管 x=0 が閉口端=節, x=L が開口端=腹
+    // 節: x=0, 2L/n, 4L/n, ... = 2jL/n  j=0..floor(n/2)
+    // 腹: x=L/n, 3L/n, ... = (2j-1)L/n  j=1..ceil(n/2)
+  }
+  // シンプルに数値計算で節・腹を探す
+  const nodeArr=[], antiArr=[];
+  const steps=1000;
+  for(let i=0;i<=steps;i++){
+    const x=(i/steps)*S.L;
+    const val=Math.abs(pipeY(x,n,0)); // t=0での絶対値
+    if(val<0.02) nodeArr.push(x);
+    if(val>0.98) antiArr.push(x);
+  }
+  // 近い点をまとめる
+  function dedup(arr, tol=S.L*0.03){
+    return arr.reduce((acc,x)=>{
+      if(!acc.length||x-acc[acc.length-1]>tol) acc.push(x);
+      return acc;
+    },[]);
+  }
+  const nodesFinal=dedup(nodeArr), antisFinal=dedup(antiArr);
+
+  nodesFinal.forEach(x=>{
+    const px=gx+(x/S.L)*gw;
+    ctx.fillStyle='#7c3aed';
+    ctx.beginPath();ctx.arc(px,midY,big?5:3,0,Math.PI*2);ctx.fill();
+    if(big){ctx.fillStyle='#7c3aed';ctx.textAlign='center';ctx.fillText('節',px,midY+18);}
+  });
+  antisFinal.forEach(x=>{
+    const px=gx+(x/S.L)*gw;
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(px,midY,big?4:3,0,Math.PI*2);ctx.fill();
+    if(big){ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText('腹',px,midY-ampPx-6);}
+  });
+
+  // bigのとき注釈
+  if(big){
+    // L注釈
+    const arrY = tubeTop-tubeT-8;
+    ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(gx,arrY);ctx.lineTo(gx+gw,arrY);ctx.stroke();
+    [[gx,-1],[gx+gw,1]].forEach(([px,d])=>{
+      ctx.beginPath();ctx.moveTo(px,arrY);ctx.lineTo(px+d*5,arrY-3);ctx.lineTo(px+d*5,arrY+3);ctx.stroke();
+    });
+    ctx.fillStyle='#475569';ctx.font='700 11px system-ui';ctx.textAlign='center';
+    ctx.fillText(`L = ${S.L.toFixed(1)} m`,gx+gw/2,arrY-4);
+
+    // λ注釈
+    const lam=lambdaN(n);
+    const pw=Math.min((lam/S.L)*gw, gw);
+    const ay=tubeBot+tubeT+28;
+    ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(gx,ay);ctx.lineTo(gx+pw,ay);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=col;ctx.font='700 11px system-ui';ctx.textAlign='center';
+    const lbl=isClosed?`λ = 4L/${n} = ${lam.toFixed(2)}m`:`λ = 2L/${n} = ${lam.toFixed(2)}m`;
+    ctx.fillText(lbl,gx+pw/2,ay+12);
+
+  } else {
+    ctx.fillStyle=col;ctx.font='700 10px system-ui';ctx.textAlign='left';
+    ctx.fillText(`f=${freqN(n).toFixed(1)}Hz  λ=${lambdaN(n).toFixed(2)}m`,gx+4,tubeTop-3);
+  }
+}
+
+// ===== モードグリッド構築 =====
+function buildModeGrid(){
+  const modes=getModes();
+  const grid=document.getElementById('modesGrid');
+  grid.className='modes-grid '+(modes.length>=3?'cols3':'cols2');
+  grid.innerHTML='';
+  smallCvs=[];
+
+  const modeNames={1:'基本振動',2:'2倍振動',3:'3倍振動',5:'5倍振動'};
+  const bgGrads=['linear-gradient(135deg,#1e40af,#3b82f6)','linear-gradient(135deg,#166534,#16a34a)','linear-gradient(135deg,#991b1b,#dc2626)'];
+
+  modes.forEach((n,i)=>{
+    const card=document.createElement('div');
+    card.className='card';
+    card.innerHTML=`
+      <div class="card-header">
+        <div class="badge" style="background:${bgGrads[i]}">${n===1?'基':n+'倍'}</div>
+        <span class="card-title">${modeNames[n]||n+'倍振動'}</span>
+      </div>
+      <canvas id="csm${i}" height="120"></canvas>
+    `;
+    card.style.cursor='pointer';
+    card.addEventListener('click',()=>setFocus(i));
+    grid.appendChild(card);
+    const c=card.querySelector('canvas');
+    smallCvs.push(c);
+  });
+
+  // リサイズ
+  setTimeout(()=>{
+    smallCvs.forEach(c=>{
+      const r=c.getBoundingClientRect();
+      c.width=r.width*DPR; c.height=r.height*DPR;
+      c.getContext('2d').scale(DPR,DPR);
+    });
+    const r=CMAIN.getBoundingClientRect();
+    CMAIN.width=r.width*DPR; CMAIN.height=r.height*DPR;
+    CMAIN.getContext('2d').scale(DPR,DPR);
+    redraw();
+  },50);
+
+  // トグルボタン更新
+  const toggle=document.getElementById('modeToggle');
+  toggle.innerHTML=modes.map((n,i)=>`<button id="mbtn${i}" onclick="setFocus(${i})">${n===1?'基本':n+'倍'}</button>`).join('');
+  toggle.className='toggle '+(modes.length>=3?'three':'two');
+  setFocus(0);
+}
+
+// ===== 数値カード =====
+function updateNums(){
+  const modes=getModes(), n=modes[S.focus];
+  document.getElementById('numsTitle').textContent=`現在のモード（${n}倍振動）の計算結果`;
+  document.getElementById('mainBadge').textContent=n===1?'基':n+'倍';
+  document.getElementById('mainTitle').textContent=(n===1?'基本振動':n+'倍振動')+'の詳細';
+  document.getElementById('mainSub').textContent=S.pipe==='closed'?`閉口端=節、開口端=腹（奇数倍${n}倍）`:`両端=腹（${n}倍振動）`;
+
+  const f1=freqN(1);
+  const fn=freqN(n);
+  const lam=lambdaN(n);
+  const items=[
+    {label:S.pipe==='closed'?'波長 λ = 4L/n':'波長 λ = 2L/n', val:lam.toFixed(3), unit:'m', col:'#1d4ed8'},
+    {label:'振動数 fₙ', val:fn.toFixed(2), unit:'Hz', col:'#15803d'},
+    {label:'基本振動 f₁', val:f1.toFixed(2), unit:'Hz', col:'#ea580c'},
+    {label:'f₁の何倍', val:n+'倍', unit:`（${n}×${f1.toFixed(1)}Hz）`, col:'#7c3aed'},
+  ];
+  document.getElementById('numsGrid').innerHTML=items.map(it=>`
+    <div class="num-card">
+      <div class="num-label">${it.label}</div>
+      <div class="num-val" style="color:${it.col}">${it.val}</div>
+      <div class="num-unit">${it.unit}</div>
+    </div>
+  `).join('');
+}
+
+// ===== メイン描画 =====
+function redraw(){
+  const modes=getModes();
+  smallCvs.forEach((c,i)=>{ if(c&&i<modes.length) drawPipe(c,modes[i],S.t,false); });
+  drawPipe(CMAIN,modes[S.focus],S.t,true);
+  updateNums();
+}
+
+// ===== アニメーション =====
+function tick(ts){
+  if(S.playing){ if(S.last!=null) S.t+=(ts-S.last)/1000; S.last=ts; }
+  else S.last=null;
+  redraw();
+  requestAnimationFrame(tick);
+}
+
+// ===== コントロール =====
+function syncSliders(){
+  S.L=+document.getElementById('LSlider').value;
+  S.V=+document.getElementById('VSlider').value;
+  document.getElementById('LVal').textContent=S.L.toFixed(1)+' m';
+  document.getElementById('VVal').textContent=S.V+' m/s';
+}
+function setFocus(i){
+  S.focus=i;
+  const modes=getModes();
+  modes.forEach((_,j)=>{
+    const b=document.getElementById('mbtn'+j);
+    if(b) b.classList.toggle('active',j===i);
+  });
+}
+function setPipeType(t){
+  S.pipe=t; S.focus=0;
+  document.getElementById('closedBtn').classList.toggle('active',t==='closed');
+  document.getElementById('openBtn').classList.toggle('active',t==='open');
+  document.getElementById('pipeRuleLabel').textContent=
+    t==='closed'?'閉管：開口端が腹、閉口端が節／奇数倍振動のみ':
+                 '開管：両端の開口端が腹／整数倍振動すべて';
+  buildModeGrid();
+}
+function setState(s){ S.playing=(s==='play'); }
+function doReset(){ S.t=0; S.last=null; }
+
+document.querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('input',syncSliders));
+window.addEventListener('load',()=>{ buildModeGrid(); requestAnimationFrame(tick); });
+</script>
+</body>
+</html>
