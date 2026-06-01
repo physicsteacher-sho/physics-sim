@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>波の重ね合わせ・定常波</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --line: #e2e8f0;
+    --blue: #1d4ed8; --blue-dark: #0f2f7a; --blue-soft: #eff6ff;
+    --red: #dc2626; --red-soft: #fee2e2;
+    --green: #15803d; --green-soft: #dcfce7;
+    --orange: #ea580c; --orange-soft: #fff7ed;
+    --purple: #7c3aed;
+    --w1: #1d4ed8; --w2: #dc2626; --wc: #15803d;
+  }
+  body { background: var(--bg); color: var(--text); font-family: "Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding: 20px; }
+
+  h1 { text-align:center; font-size:26px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; }
+
+  .card {
+    background: var(--card); border:1px solid var(--line); border-radius:16px;
+    box-shadow: 0 4px 16px rgba(15,23,42,0.06); overflow:hidden;
+  }
+  .card-header {
+    display:flex; align-items:center; gap:10px;
+    padding:12px 16px; border-bottom:1px solid var(--line);
+  }
+  .badge {
+    width:28px; height:28px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:900; color:white;
+    background: linear-gradient(135deg,#0f2f7a,#2563eb); flex-shrink:0;
+  }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); }
+  .card-sub   { font-size:12px; color:var(--muted); margin-left:auto; }
+
+  canvas { display:block; width:100%; }
+
+  /* サイドバー */
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; min-width:52px; text-align:right; font-weight:700; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two   { grid-template-columns:1fr 1fr; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:9px 4px; font-size:13px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; transition:all 0.15s; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .btns button { border:1px solid var(--line); border-radius:10px; padding:10px 4px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+  .btn-play  { background:var(--green-soft) !important; color:#166534 !important; }
+  .btn-pause { background:#fef9c3 !important; color:#854d0e !important; }
+  .btn-reset { background:#f1f5f9 !important; color:#475569 !important; }
+
+  /* 足し算パネル */
+  .sum-box { padding:14px 18px; }
+  .sum-label { font-size:12px; color:var(--muted); font-weight:700; margin-bottom:10px; }
+
+  /* 公式・情報ボックス */
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.7; }
+  .formula-box strong { color:var(--blue-dark); }
+  .status-box  { background:var(--orange-soft); border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; min-height:64px; }
+  .status-main { font-size:17px; font-weight:900; color:var(--orange); margin-bottom:3px; min-height:24px; }
+  .status-detail { font-size:12px; color:var(--muted); min-height:18px; }
+
+  /* 凡例 */
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; font-weight:700; color:var(--muted); padding:8px 16px; background:#f8fafc; border-top:1px solid var(--line); }
+  .legend-item { display:flex; align-items:center; gap:5px; }
+  .legend-dot  { width:20px; height:3px; border-radius:2px; }
+
+  /* §59 定常波 */
+  .node-legend { display:flex; gap:14px; padding:8px 16px; background:#f8fafc; border-top:1px solid var(--line); font-size:12px; font-weight:700; flex-wrap:wrap; }
+  .node-dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
+
+  .info-row { display:flex; gap:10px; align-items:stretch; }
+  .info-half { flex:1; background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.7; color:var(--text); }
+  .info-half strong { color:var(--blue-dark); display:block; font-size:13px; margin-bottom:6px; }
+  .info-item { margin-bottom:3px; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; border-radius:4px; padding:1px 5px; font-weight:900; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; border-radius:4px; padding:1px 5px; font-weight:900; }
+  .hl-orange { background:#ffedd5; color:#9a3412; border-radius:4px; padding:1px 5px; font-weight:900; }
+</style>
+</head>
+<body>
+
+<h1>波の重ね合わせ・定常波</h1>
+<p class="subtitle">1. 重ね合わせの原理　/　2. 注目点での足し算　/　定常波モード</p>
+
+<div class="layout">
+  <!-- ===== 左カラム ===== -->
+  <div class="main-col">
+
+    <!-- メインキャンバス -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge">1</div>
+        <span class="card-title">波の重ね合わせ</span>
+        <span class="card-sub" id="modeLabel">パルス波モード</span>
+      </div>
+      <canvas id="mainCanvas" height="200"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--w1)"></div><span style="color:var(--w1)">波1 y₁</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--w2)"></div><span style="color:var(--w2)">波2 y₂</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--wc);height:4px"></div><span style="color:var(--wc)">合成波 y=y₁+y₂</span></div>
+      </div>
+    </div>
+
+    <!-- 足し算パネル -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#166534,#16a34a)">2</div>
+        <span class="card-title">注目点での足し算</span>
+        <span class="card-sub">重ね合わせの原理：y = y₁ + y₂</span>
+      </div>
+      <canvas id="sumCanvas" height="150"></canvas>
+    </div>
+
+
+    <!-- 説明 -->
+    <div class="info-row">
+      <div class="info-half">
+        <strong>重ね合わせの原理</strong>
+        <div class="info-item">📐 合成波の変位：<span class="hl-blue">y = y₁ + y₂</span></div>
+        <div class="info-item">🌊 通過後は互いに影響せず進む</div>
+        <div class="info-item">　→ <span class="hl-blue">波の独立性</span></div>
+      </div>
+      <div class="info-half" style="background:#fdf4ff;border-color:#e9d5ff;">
+        <strong style="color:#6b21a8;">定常波（定常波モードで確認）</strong>
+        <div class="info-item">🔵 節と腹の間隔：<span class="hl-purple">λ/4</span></div>
+        <div class="info-item">🔵 節と節の間隔：<span class="hl-purple">λ/2</span></div>
+        <div class="info-item">🟠 腹の振幅：もとの波の <span class="hl-orange">2倍（2A）</span></div>
+        <div class="info-item" style="color:var(--muted);font-size:11px;margin-top:4px;">💡 注目点スライダーで節・腹を判定できます</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== 右カラム（コントロール） ===== -->
+  <div class="side-col">
+
+    <div class="card">
+      <div class="ctrl-section" style="padding:16px">
+
+        <div>
+          <h3>モード切替</h3>
+          <div style="margin-top:10px">
+            <div class="toggle three">
+              <button id="pulseBtn" class="active" onclick="setMode('pulse')">パルス波</button>
+              <button id="sineBtn" onclick="setMode('sine')">正弦波</button>
+              <button id="standingBtn" onclick="setMode('standing')">定常波</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3>表示切替</h3>
+          <div style="margin-top:10px">
+            <div class="toggle three">
+              <button id="allBtn" class="active" onclick="setDisplay('all')">全波</button>
+              <button id="sumBtn" onclick="setDisplay('sum')">合成のみ</button>
+              <button id="partsBtn" onclick="setDisplay('parts')">y₁・y₂のみ</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A₁ <span class="val" id="a1Val">1.0</span></label>
+          <input type="range" id="a1Slider" min="-1.5" max="1.5" step="0.1" value="1.0">
+          <div class="range-hint"><span>-1.5</span><span>1.5</span></div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A₂ <span class="val" id="a2Val">1.0</span></label>
+          <input type="range" id="a2Slider" min="-1.5" max="1.5" step="0.1" value="1.0">
+          <div class="range-hint"><span>-1.5</span><span>1.5</span></div>
+        </div>
+
+        <div class="control">
+          <label>波長 λ <span class="val" id="lambdaVal">4.0 m</span></label>
+          <input type="range" id="lambdaSlider" min="2" max="6" step="0.5" value="4">
+          <div class="range-hint"><span>2 m</span><span>6 m</span></div>
+        </div>
+
+        <div class="control">
+          <label>速さ v <span class="val" id="speedVal">1.5 m/s</span></label>
+          <input type="range" id="speedSlider" min="0.5" max="3.0" step="0.1" value="1.5">
+          <div class="range-hint"><span>遅い</span><span>速い</span></div>
+        </div>
+
+        <div class="control">
+          <label>注目点 x <span class="val" id="pointVal">6.0 m</span></label>
+          <input type="range" id="pointSlider" min="1" max="11" step="0.5" value="6">
+          <div class="range-hint"><span>左</span><span>右</span></div>
+        </div>
+
+        <div>
+          <h3>再生コントロール</h3>
+          <div class="btns" style="margin-top:10px">
+            <button class="btn-play"  onclick="setState('play')">▶ 再生</button>
+            <button class="btn-pause" onclick="setState('pause')">⏸ 停止</button>
+            <button class="btn-reset" onclick="doReset()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div class="status-box">
+          <div class="status-main"  id="statusMain">—</div>
+          <div class="status-detail" id="statusDetail">再生中...</div>
+        </div>
+
+        <div class="formula-box">
+          <strong>重ね合わせの原理</strong><br>
+          y = y₁ + y₂<br>
+          <span style="color:var(--muted)">（通過後は独立して進む）</span>
+        </div>
+
+      </div>
+    </div>
+
+
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const XL = 12; // 表示範囲
+
+function setupCanvas(id) {
+  const c = document.getElementById(id);
+  function resize() {
+    const r = c.getBoundingClientRect();
+    c.width  = r.width  * DPR;
+    c.height = r.height * DPR;
+    c.getContext('2d').scale(DPR, DPR);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  return c;
+}
+function W(c) { return c.getBoundingClientRect().width; }
+function H(c) { return c.getBoundingClientRect().height; }
+
+const MC = setupCanvas('mainCanvas');
+const SC = setupCanvas('sumCanvas');
+
+// ===== 状態 =====
+const S = {
+  mode:'pulse', display:'all', playing:true, last:null, t:0,
+  A1:1.0, A2:1.0, lambda:4.0, speed:1.5, focusX:6.0,
+  sLambda:3.0, sSpeed:1.5, sMode:'all'
+};
+
+// ===== 波の式 =====
+function pulse(x) { return Math.exp(-x*x/0.7); }
+function y1(x,t) {
+  if (S.mode==='pulse') return S.A1 * pulse(x - 2 - S.speed*t);
+  const k=2*Math.PI/S.lambda, w=k*S.speed;
+  return S.A1 * Math.sin(k*x - w*t);
+}
+function y2(x,t) {
+  if (S.mode==='pulse') return S.A2 * pulse(x - 10 + S.speed*t);
+  const k=2*Math.PI/S.lambda, w=k*S.speed;
+  if (S.mode==='standing') return S.A2 * Math.sin(k*x + w*t);
+  return S.A2 * Math.sin(k*x + w*t);
+}
+function ys(x,t) { return y1(x,t)+y2(x,t); }
+
+// ===== 共通描画ヘルパー =====
+function grid(ctx, x0, y0, gw, gh) {
+  ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=6;i++){const px=x0+(i/6)*gw; ctx.beginPath();ctx.moveTo(px,y0);ctx.lineTo(px,y0+gh);ctx.stroke();}
+  for(let i=0;i<=2;i++){const py=y0+(i/2)*gh; ctx.beginPath();ctx.moveTo(x0,py);ctx.lineTo(x0+gw,py);ctx.stroke();}
+}
+function axis(ctx, x0, midY, gw) {
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x0,midY); ctx.lineTo(x0+gw,midY); ctx.stroke();
+}
+function plotWave(ctx, fn, x0, gw, midY, ampPx, color, lw, dash, alpha) {
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.globalAlpha=alpha??1;
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const x=(p/(gw*2))*XL;
+    const px=x0+(x/XL)*gw;
+    const py=midY-fn(x,S.t)*ampPx;
+    p===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+}
+function arrow(ctx, x1,y1,x2,y2,color,lw) {
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||2;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(ang-0.4),y2-9*Math.sin(ang-0.4));
+  ctx.lineTo(x2-9*Math.cos(ang+0.4),y2-9*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ===== メインキャンバス描画 =====
+function drawMain() {
+  const ctx=MC.getContext('2d'), w=W(MC), h=H(MC);
+  ctx.clearRect(0,0,w*2,h*2);
+  const x0=36,gw=w-56,y0=16,gh=h-32,midY=y0+gh/2;
+  // 合成波は最大2Aになるので、1Aがgh*0.22に収まるよう設定（2A=gh*0.44で余裕あり）
+  const ampPx=gh*0.22;
+  grid(ctx,x0,y0,gw,gh); axis(ctx,x0,midY,gw);
+
+  const xToPx=x=>x0+(x/XL)*gw;
+  const fx=xToPx(S.focusX);
+
+  if(S.display!=='sum') {
+    plotWave(ctx,y1,x0,gw,midY,ampPx,'#1d4ed8',2,[6,5],0.75);
+    plotWave(ctx,y2,x0,gw,midY,ampPx,'#dc2626',2,[6,5],0.75);
+  }
+  if(S.display!=='parts') {
+    plotWave(ctx,ys,x0,gw,midY,ampPx,'#15803d',3.5,null,1);
+  }
+
+  // 注目点の縦線
+  ctx.strokeStyle='#64748b'; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(fx,y0);ctx.lineTo(fx,y0+gh);ctx.stroke();ctx.setLineDash([]);
+
+  // 注目点の丸
+  const a=y1(S.focusX,S.t), b=y2(S.focusX,S.t), s=ys(S.focusX,S.t);
+  if(S.display!=='sum'){
+    ctx.fillStyle='#1d4ed8';ctx.beginPath();ctx.arc(fx,midY-a*ampPx,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#dc2626';ctx.beginPath();ctx.arc(fx,midY-b*ampPx,5,0,Math.PI*2);ctx.fill();
+  }
+  if(S.display!=='parts'){
+    ctx.fillStyle='#15803d';ctx.beginPath();ctx.arc(fx,midY-s*ampPx,7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#15803d';ctx.font='700 12px Hiragino Sans,system-ui';
+    ctx.fillText('注目点',fx+10,midY-s*ampPx-8);
+  }
+
+  // 進行方向矢印
+  if(S.mode==='pulse'||S.mode==='sine'){
+    arrow(ctx,x0+30,y0+gh-10,x0+80,y0+gh-10,'#1d4ed8',2);
+    ctx.fillStyle='#1d4ed8';ctx.font='700 11px system-ui';ctx.fillText('波1→',x0+36,y0+gh-14);
+    arrow(ctx,x0+gw-30,y0+gh-10,x0+gw-80,y0+gh-10,'#dc2626',2);
+    ctx.fillStyle='#dc2626';ctx.textAlign='right';ctx.fillText('←波2',x0+gw-36,y0+gh-14);ctx.textAlign='left';
+  } else {
+    // 定常波モード：節・腹・λ/2・2A の注釈を強化
+    const k=2*Math.PI/S.lambda;
+    ctx.font='700 11px Hiragino Sans,system-ui';
+    for(let n=0;n*S.lambda/2<=XL;n++){
+      // 節
+      const xN=n*S.lambda/2, pxN=xToPx(xN);
+      ctx.fillStyle='rgba(124,58,237,0.08)';ctx.fillRect(pxN-4,y0,8,gh);
+      ctx.strokeStyle='#7c3aed';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(pxN,y0);ctx.lineTo(pxN,y0+gh);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#7c3aed';ctx.beginPath();ctx.arc(pxN,midY,5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#7c3aed';ctx.textAlign='center';ctx.fillText('節',pxN,y0+gh-4);
+      // 腹
+      const xA=S.lambda/4+n*S.lambda/2;
+      if(xA<=XL){
+        const pxA=xToPx(xA);
+        ctx.fillStyle='#ea580c';ctx.beginPath();ctx.arc(pxA,midY,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#ea580c';ctx.textAlign='center';ctx.fillText('腹',pxA,y0+14);
+      }
+    }
+    // λ/2 注釈（最初の節と次の節）
+    const px0=xToPx(0), px1=xToPx(S.lambda/2);
+    ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(px0,y0+gh-18);ctx.lineTo(px1,y0+gh-18);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#64748b';ctx.font='700 11px system-ui';ctx.textAlign='center';
+    ctx.fillText('← λ/2 →',(px0+px1)/2,y0+gh-22);
+    // 2A 注釈（最初の腹）
+    const pxA0=xToPx(S.lambda/4);
+    const maxAmpPx=2*Math.abs(S.A1)*ampPx;
+    ctx.strokeStyle='#ea580c';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(pxA0+18,midY-maxAmpPx);ctx.lineTo(pxA0+18,midY+maxAmpPx);ctx.stroke();
+    ctx.fillStyle='#ea580c';ctx.font='900 11px system-ui';ctx.textAlign='left';
+    ctx.fillText('2A',pxA0+22,midY);
+  }
+}
+
+// ===== 足し算パネル =====
+function drawSum() {
+  const ctx=SC.getContext('2d'), w=W(SC), h=H(SC);
+  ctx.clearRect(0,0,w*2,h*2);
+  const a=y1(S.focusX,S.t), b=y2(S.focusX,S.t), s=ys(S.focusX,S.t);
+  const cx=w/2, baseY=h*0.6, scale=38;
+
+  // 基準線
+  ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(40,baseY);ctx.lineTo(w-40,baseY);ctx.stroke();
+  ctx.fillStyle='#94a3b8';ctx.font='700 11px system-ui';
+  ctx.fillText('基準線（y=0）',44,baseY-5);
+
+  function bar(x,val,color,lbl) {
+    const ey=baseY-val*scale;
+    if(Math.abs(val)>0.01) arrow(ctx,x,baseY,x,ey,color,4);
+    ctx.fillStyle=color;ctx.font='900 13px system-ui';ctx.textAlign='center';
+    ctx.fillText(lbl,x,Math.min(baseY,ey)-12);
+    ctx.fillText(val.toFixed(2),x,Math.max(baseY,ey)+18);
+  }
+  bar(cx-100,a,'#1d4ed8','y₁');
+  ctx.fillStyle='#0f172a';ctx.font='900 24px system-ui';ctx.textAlign='center';
+  ctx.fillText('+',cx-38,baseY+8);
+  bar(cx,b,'#dc2626','y₂');
+  ctx.fillText('=',cx+56,baseY+8);
+  bar(cx+108,s,'#15803d','y');
+
+  ctx.fillStyle='#0f172a';ctx.font='700 12px system-ui';ctx.textAlign='left';
+  ctx.fillText(`x = ${S.focusX.toFixed(1)} m の変位`,24,22);
+  ctx.fillStyle='#64748b';ctx.font='700 11px system-ui';
+  ctx.fillText('同じ位置での変位を足し合わせる',24,h-10);
+}
+
+// ===== 状態更新 =====
+function updateStatus() {
+  const a=y1(S.focusX,S.t), b=y2(S.focusX,S.t), s=ys(S.focusX,S.t);
+  const main=document.getElementById('statusMain');
+  const detail=document.getElementById('statusDetail');
+  if(S.mode==='standing'){
+    const abs=Math.abs(s), max=2*Math.max(Math.abs(S.A1),0.01);
+    if(abs<0.05){main.textContent='節（変位 = 0）';main.style.color='#7c3aed';detail.textContent=`x=${S.focusX.toFixed(1)}m：常に静止している点`;}
+    else if(abs>max*0.88){main.textContent='腹（変位が最大）';main.style.color='#ea580c';detail.textContent=`x=${S.focusX.toFixed(1)}m：最も大きく振動する点`;}
+    else{main.textContent='節と腹の間';main.style.color='#15803d';detail.textContent=`y=${s.toFixed(2)}（最大 ${max.toFixed(2)}）`;}
+    return;
+  }
+  if(Math.abs(a)<0.05&&Math.abs(b)<0.05){main.textContent='まだ重なっていない';main.style.color='#64748b';detail.textContent=`y₁=${a.toFixed(2)}, y₂=${b.toFixed(2)}, y=${s.toFixed(2)}`;}
+  else if(a*b>0){main.textContent='強め合い ↑';main.style.color='#ea580c';detail.textContent=`同じ向き：y₁${a>0?'+':''} y₂ = ${s.toFixed(2)}`;}
+  else if(a*b<0){main.textContent='弱め合い ↓';main.style.color='#dc2626';detail.textContent=`逆向き：y₁${a>0?'+':''} y₂ = ${s.toFixed(2)}`;}
+  else{main.textContent='片方のみ変位あり';main.style.color='#1d4ed8';detail.textContent=`y₁=${a.toFixed(2)}, y₂=${b.toFixed(2)}`;}
+}
+
+// ===== コントロール =====
+function syncSliders(){
+  S.A1=+document.getElementById('a1Slider').value;
+  // 定常波モードはA2をA1に連動
+  if(S.mode==='standing'){
+    S.A2=S.A1;
+    document.getElementById('a2Slider').value=S.A1;
+    document.getElementById('a2Slider').disabled=true;
+    document.getElementById('a2Slider').style.opacity='0.4';
+  } else {
+    S.A2=+document.getElementById('a2Slider').value;
+    document.getElementById('a2Slider').disabled=false;
+    document.getElementById('a2Slider').style.opacity='1';
+  }
+  S.lambda=+document.getElementById('lambdaSlider').value;
+  S.speed=+document.getElementById('speedSlider').value;
+  S.focusX=+document.getElementById('pointSlider').value;
+  S.sLambda=S.lambda; S.sSpeed=S.speed; // 不使用だが互換のため保持
+  document.getElementById('a1Val').textContent=S.A1.toFixed(1);
+  document.getElementById('a2Val').textContent=S.A2.toFixed(1);
+  document.getElementById('lambdaVal').textContent=S.lambda.toFixed(1)+' m';
+  document.getElementById('speedVal').textContent=S.speed.toFixed(1)+' m/s';
+  document.getElementById('pointVal').textContent=S.focusX.toFixed(1)+' m';
+}
+function setMode(m){
+  S.mode=m;S.t=0;
+  ['pulseBtn','sineBtn','standingBtn'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById({pulse:'pulseBtn',sine:'sineBtn',standing:'standingBtn'}[m]).classList.add('active');
+  const labels={pulse:'パルス波モード',sine:'正弦波モード',standing:'定常波モード'};
+  document.getElementById('modeLabel').textContent=labels[m];
+  // 定常波モード切替時にA2をA1に即連動
+  syncSliders();
+}
+function setDisplay(d){
+  S.display=d;
+  ['allBtn','sumBtn','partsBtn'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById({all:'allBtn',sum:'sumBtn',parts:'partsBtn'}[d]).classList.add('active');
+}
+function setState(s){ S.playing=(s==='play'); }
+function doReset(){ S.t=0; S.last=null; }
+
+document.querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('input',syncSliders));
+
+// ===== アニメーションループ =====
+function tick(ts){
+  if(S.playing){
+    if(S.last!=null){ const dt=(ts-S.last)/1000; S.t+=dt; }
+    S.last=ts;
+    if(S.mode==='pulse'&&S.t>9) S.t=0;
+  } else { S.last=null; }
+  syncSliders();
+  updateStatus();
+  drawMain(); drawSum();
+  requestAnimationFrame(tick);
+}
+
+window.addEventListener('load',()=>requestAnimationFrame(tick));
+</script>
+</body>
+</html>
