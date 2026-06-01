@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>波の反射シミュレーション</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --line: #e2e8f0;
+    --blue: #1d4ed8; --blue-dark: #0f2f7a; --blue-soft: #eff6ff;
+    --red: #dc2626; --red-soft: #fee2e2;
+    --green: #15803d; --green-soft: #dcfce7;
+    --orange: #ea580c; --orange-soft: #fff7ed;
+    --purple: #7c3aed; --purple-soft: #fdf4ff;
+    --incident: #1d4ed8; --virtual: #93c5fd; --reflected: #dc2626; --composite: #15803d;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+
+  canvas { display:block; width:100%; height:150px; }
+
+  /* 凡例 */
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; font-weight:700; color:var(--muted); padding:8px 16px; background:#f8fafc; border-top:1px solid var(--line); }
+  .legend-item { display:flex; align-items:center; gap:5px; }
+  .legend-dot  { width:22px; height:3px; border-radius:2px; }
+  .legend-dot.dashed { background:repeating-linear-gradient(90deg,#93c5fd 0,#93c5fd 5px,transparent 5px,transparent 9px); height:2px; }
+
+  /* サイドバー */
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two   { grid-template-columns:1fr 1fr; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:9px 4px; font-size:13px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; transition:all 0.15s; }
+  .toggle button.active { background:var(--blue); color:white; }
+  .toggle button.active-orange { background:var(--orange); color:white; }
+  .toggle button.active-purple { background:var(--purple); color:white; }
+
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; min-width:52px; text-align:right; font-weight:700; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .btns button { border:1px solid var(--line); border-radius:10px; padding:10px 4px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+  .btn-play  { background:var(--green-soft)!important; color:#166534!important; }
+  .btn-pause { background:#fef9c3!important; color:#854d0e!important; }
+  .btn-reset { background:#f1f5f9!important; color:#475569!important; }
+
+  /* 状態ボックス */
+  .status-box { background:var(--orange-soft); border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; min-height:72px; }
+  .status-main { font-size:16px; font-weight:900; margin-bottom:4px; min-height:24px; }
+  .status-detail { font-size:12px; color:var(--muted); min-height:16px; line-height:1.6; }
+
+  /* 情報ボックス */
+  .info-row { display:flex; gap:10px; }
+  .info-half { flex:1; background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .info-half strong { color:var(--blue-dark); display:block; font-size:13px; margin-bottom:4px; }
+  .info-item { margin-bottom:2px; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-orange { background:#ffedd5; color:#9a3412; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-red    { background:#fee2e2; color:#991b1b; border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-green  { background:#dcfce7; color:#166534; border-radius:4px; padding:1px 6px; font-weight:900; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.7; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+
+<h1>波の反射シミュレーション</h1>
+<p class="subtitle">固定端反射・自由端反射のしくみを3ステップで理解する</p>
+
+<div class="layout">
+  <!-- ===== 左カラム ===== -->
+  <div class="main-col">
+
+    <!-- ① 入射波 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">①</div>
+        <span class="card-title">入射波</span>
+        <span class="card-sub">→ 左から壁（右端）に向かって進む波</span>
+      </div>
+      <canvas id="c1"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--incident)"></div><span style="color:var(--incident)">入射波 y_i</span></div>
+      </div>
+    </div>
+
+    <!-- ② 仮想波・反射波 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#6b21a8,#7c3aed)">②</div>
+        <span class="card-title" id="step2title">仮想的な波 → 折り返して反射波</span>
+        <span class="card-sub" id="step2desc">壁を透過した仮想波（破線）を折り返す</span>
+      </div>
+      <canvas id="c2"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot dashed"></div><span style="color:#60a5fa">仮想波（入射波と同じ向き）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--reflected)"></div><span style="color:var(--reflected)">反射波 y_r</span></div>
+      </div>
+    </div>
+
+    <!-- ③ 合成波 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#166534,#16a34a)">③</div>
+        <span class="card-title">合成波（入射波＋反射波）</span>
+        <span class="card-sub">重ね合わせの原理：y = y_i + y_r</span>
+      </div>
+      <canvas id="c3"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--incident);opacity:0.4"></div><span style="color:#93c5fd">入射波（薄く）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--reflected);opacity:0.4"></div><span style="color:#fca5a5">反射波（薄く）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--composite);height:4px"></div><span style="color:var(--composite)">合成波</span></div>
+      </div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-row">
+      <div class="info-half">
+        <strong>🔒 固定端反射</strong>
+        <div class="info-item">壁の点の媒質が<span class="hl-blue">固定</span>されている</div>
+        <div class="info-item">入射波が山 → 反射波は<span class="hl-red">谷</span></div>
+        <div class="info-item">→ <span class="hl-red">位相が反転（π ずれる）</span></div>
+        <div class="info-item" style="margin-top:4px">壁の変位は常に <span class="hl-blue">0（節）</span></div>
+      </div>
+      <div class="info-half" style="background:#fdf4ff;border-color:#e9d5ff;">
+        <strong style="color:#6b21a8;">🌊 自由端反射</strong>
+        <div class="info-item">壁の点の媒質が<span class="hl-orange">自由</span>に動ける</div>
+        <div class="info-item">入射波が山 → 反射波も<span class="hl-green">山</span></div>
+        <div class="info-item">→ <span class="hl-green">位相はそのまま</span></div>
+        <div class="info-item" style="margin-top:4px">壁の変位は常に <span class="hl-orange">最大（腹）</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== 右カラム ===== -->
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+
+        <div>
+          <h3>反射のタイプ</h3>
+          <div class="toggle two" style="margin-top:10px">
+            <button id="fixedBtn" class="active" onclick="setMode('fixed')">🔒 固定端</button>
+            <button id="freeBtn" onclick="setMode('free')">🌊 自由端</button>
+          </div>
+        </div>
+
+        <div>
+          <h3>表示ステップ</h3>
+          <div class="toggle three" style="margin-top:10px">
+            <button id="sAll"  class="active" onclick="setDisplay('all')">① のみ</button>
+            <button id="sRefl" onclick="setDisplay('refl')">①＋②</button>
+            <button id="sComp" onclick="setDisplay('comp')">①②③</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label>速さ v <span class="val" id="speedVal">1.0 m/s</span></label>
+          <input type="range" id="speedSlider" min="0.3" max="2.0" step="0.1" value="1.0">
+          <div class="range-hint"><span>遅い</span><span>速い</span></div>
+        </div>
+
+        <div class="control">
+          <label>振幅 A <span class="val" id="ampVal">0.7</span></label>
+          <input type="range" id="ampSlider" min="0.2" max="1.0" step="0.1" value="0.7">
+          <div class="range-hint"><span>小</span><span>大</span></div>
+        </div>
+
+        <div>
+          <h3>再生コントロール</h3>
+          <div class="btns" style="margin-top:10px">
+            <button class="btn-play"  onclick="setState('play')">▶ 再生</button>
+            <button class="btn-pause" onclick="setState('pause')">⏸ 停止</button>
+            <button class="btn-reset" onclick="doReset()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div class="status-box">
+          <div class="status-main"  id="statusMain">固定端反射</div>
+          <div class="status-detail" id="statusDetail">入射波が山ならば反射波は谷（位相反転）</div>
+        </div>
+
+        <div class="formula-box">
+          <strong>波の式（壁 x = L）</strong>
+          入射波：y_i = A sin(kx − ωt)<br>
+          <span style="color:#dc2626">固定端：y_r = −A sin(k(2L−x)−ωt)</span><br>
+          <span style="color:#15803d">自由端：y_r = +A sin(k(2L−x)−ωt)</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 状態 =====
+const S = { mode:'fixed', display:'all', speed:1.0, amp:0.7, t:0, playing:true, last:null };
+const L = 12, LAMBDA = 4;
+const DPR = window.devicePixelRatio || 1;
+
+// ===== Canvas =====
+const CVS = [document.getElementById('c1'), document.getElementById('c2'), document.getElementById('c3')];
+
+function resize() {
+  CVS.forEach(c => {
+    const r = c.getBoundingClientRect();
+    c.width  = r.width  * DPR;
+    c.height = r.height * DPR;
+    c.getContext('2d').scale(DPR, DPR);
+  });
+}
+window.addEventListener('resize', () => { resize(); redraw(); });
+
+// ===== 波の式（壁 x=L） =====
+function yi(x, t) {
+  const k=2*Math.PI/LAMBDA, w=k*S.speed;
+  return S.amp * Math.sin(k*x - w*t);
+}
+function yr(x, t) {
+  const k=2*Math.PI/LAMBDA, w=k*S.speed;
+  const sign = S.mode==='fixed' ? -1 : 1;
+  return sign * S.amp * Math.sin(k*(2*L-x) - w*t);
+}
+
+// ===== 共通描画ヘルパー =====
+function getLayout(c) {
+  const W=c.getBoundingClientRect().width, H=c.getBoundingClientRect().height;
+  const gx=28, gw=W-44, midY=H/2, ampPx=(H/2)*0.68;
+  return {W,H,gx,gw,midY,ampPx};
+}
+function drawBg(ctx, gx, gw, H, midY) {
+  ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=6;i++){const px=gx+(i/6)*gw;ctx.beginPath();ctx.moveTo(px,8);ctx.lineTo(px,H-8);ctx.stroke();}
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(gx,midY);ctx.lineTo(gx+gw,midY);ctx.stroke();
+}
+function drawWall(ctx, gx, gw, H, midY) {
+  const wx=gx+gw;
+  const wc=S.mode==='fixed'?'#ea580c':'#7c3aed';
+  ctx.fillStyle=wc; ctx.fillRect(wx,8,4,H-16);
+  ctx.strokeStyle=wc; ctx.lineWidth=1.5;
+  for(let i=0;i<7;i++){ctx.beginPath();ctx.moveTo(wx+4,12+i*14);ctx.lineTo(wx+12,12+i*14+10);ctx.stroke();}
+  ctx.fillStyle=wc; ctx.font='700 11px Hiragino Sans,system-ui'; ctx.textAlign='center';
+  ctx.fillText(S.mode==='fixed'?'固定端':'自由端',wx+2,H-4);
+}
+function plotWave(ctx, fn, gx, gw, midY, ampPx, color, lw, dash, alpha) {
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.globalAlpha=alpha??1;
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  for(let p=0;p<=gw*2;p++){
+    const x=(p/(gw*2))*L, px=gx+(x/L)*gw, py=midY-fn(x,S.t)*ampPx;
+    p===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+}
+function lbl(ctx, text, px, py, color, align) {
+  ctx.save(); ctx.fillStyle=color; ctx.font='700 11px Hiragino Sans,system-ui';
+  ctx.textAlign=align??'left'; ctx.fillText(text,px,py); ctx.restore();
+}
+function dimCanvas(c, msg) {
+  const {W,H}=getLayout(c); const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,W*3,H*3);
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1; ctx.strokeRect(1,1,W-2,H-2);
+  ctx.fillStyle='#94a3b8'; ctx.font='700 13px Hiragino Sans,system-ui'; ctx.textAlign='center';
+  ctx.fillText(msg,W/2,H/2+5);
+}
+
+// ===== 各キャンバス =====
+function drawC1() {
+  const c=CVS[0], ctx=c.getContext('2d');
+  const {W,H,gx,gw,midY,ampPx}=getLayout(c);
+  ctx.clearRect(0,0,W*3,H*3);
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,W,H);
+  drawBg(ctx,gx,gw,H,midY); drawWall(ctx,gx,gw,H,midY);
+  plotWave(ctx,yi,gx,gw,midY,ampPx,'#1d4ed8',2.5,null,1);
+  lbl(ctx,'→ 入射波',gx+6,18,'#1d4ed8','left');
+}
+
+function drawC2() {
+  const c=CVS[1], ctx=c.getContext('2d');
+  const {W,H,gx,gw,midY,ampPx}=getLayout(c);
+  ctx.clearRect(0,0,W*3,H*3);
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,W,H);
+  drawBg(ctx,gx,gw,H,midY); drawWall(ctx,gx,gw,H,midY);
+  plotWave(ctx,yi,gx,gw,midY,ampPx,'#93c5fd',1.8,[5,5],0.5);
+  plotWave(ctx,yr,gx,gw,midY,ampPx,'#dc2626',2.5,null,1);
+  lbl(ctx,'-- 仮想波',gx+6,16,'#60a5fa','left');
+  lbl(ctx,'← 反射波',gx+6,30,'#dc2626','left');
+  const phaseText=S.mode==='fixed'?'位相が反転 ↕':'位相はそのまま →';
+  const phaseColor=S.mode==='fixed'?'#ea580c':'#7c3aed';
+  lbl(ctx,phaseText,gx+gw-6,16,phaseColor,'right');
+}
+
+function drawC3() {
+  const c=CVS[2], ctx=c.getContext('2d');
+  const {W,H,gx,gw,midY,ampPx}=getLayout(c);
+  ctx.clearRect(0,0,W*3,H*3);
+  ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,W,H);
+  drawBg(ctx,gx,gw,H,midY); drawWall(ctx,gx,gw,H,midY);
+  plotWave(ctx,yi,gx,gw,midY,ampPx,'#93c5fd',1.5,[4,4],0.35);
+  plotWave(ctx,yr,gx,gw,midY,ampPx,'#fca5a5',1.5,[4,4],0.35);
+  plotWave(ctx,(x,t)=>yi(x,t)+yr(x,t),gx,gw,midY,ampPx,'#15803d',3.5,null,1);
+  lbl(ctx,'合成波 y = y_i + y_r',gx+6,16,'#15803d','left');
+  // 壁の点
+  const wx=gx+gw, wallY=midY-(yi(L,S.t)+yr(L,S.t))*ampPx;
+  const wc=S.mode==='fixed'?'#ea580c':'#7c3aed';
+  ctx.fillStyle=wc; ctx.beginPath(); ctx.arc(wx,wallY,6,0,Math.PI*2); ctx.fill();
+  const wallMsg=S.mode==='fixed'?'← 壁の変位 = 0（節）':'← 壁の変位 = 最大（腹）';
+  lbl(ctx,wallMsg,wx-8,wallY-10,wc,'right');
+}
+
+// ===== メイン描画 =====
+function redraw() {
+  drawC1();
+  if(S.display==='all'){
+    dimCanvas(CVS[1],'「①＋②」を選ぶと反射波が表示されます');
+    dimCanvas(CVS[2],'「①②③」を選ぶと合成波が表示されます');
+  } else if(S.display==='refl'){
+    drawC2();
+    dimCanvas(CVS[2],'「①②③」を選ぶと合成波が表示されます');
+  } else {
+    drawC2(); drawC3();
+  }
+  updateStatus();
+}
+
+// ===== アニメーション =====
+function tick(ts) {
+  if(S.playing){
+    if(S.last!=null) S.t+=(ts-S.last)/1000;
+    S.last=ts;
+  } else { S.last=null; }
+  redraw();
+  requestAnimationFrame(tick);
+}
+
+// ===== コントロール =====
+function updateStatus() {
+  const main=document.getElementById('statusMain');
+  const detail=document.getElementById('statusDetail');
+  if(S.mode==='fixed'){
+    main.textContent='🔒 固定端反射'; main.style.color='#ea580c';
+    detail.textContent='入射波が山ならば反射波は谷（位相反転）\n壁の変位は常に0（節）';
+  } else {
+    main.textContent='🌊 自由端反射'; main.style.color='#7c3aed';
+    detail.textContent='入射波が山ならば反射波も山（位相そのまま）\n壁の変位は常に最大（腹）';
+  }
+}
+function syncSliders() {
+  S.speed=+document.getElementById('speedSlider').value;
+  S.amp  =+document.getElementById('ampSlider').value;
+  document.getElementById('speedVal').textContent=S.speed.toFixed(1)+' m/s';
+  document.getElementById('ampVal').textContent  =S.amp.toFixed(1);
+}
+function setDisplay(d) {
+  S.display=d;
+  document.getElementById('sAll').classList.toggle('active',  d==='all');
+  document.getElementById('sRefl').classList.toggle('active', d==='refl');
+  document.getElementById('sComp').classList.toggle('active', d==='comp');
+}
+function setMode(mode) {
+  S.mode=mode; S.t=0;
+  document.getElementById('fixedBtn').className=mode==='fixed'?'active':'';
+  document.getElementById('freeBtn').className =mode==='free' ?'active':'';
+  const t2=document.getElementById('step2title');
+  const d2=document.getElementById('step2desc');
+  t2.textContent=mode==='fixed'?'仮想的な波 → 上下反転して反射波':'仮想的な波 → そのまま折り返して反射波';
+  d2.textContent=mode==='fixed'?'固定端では仮想波を上下反転させて返す':'自由端では仮想波をそのまま返す';
+  updateStatus();
+}
+function setState(s){ S.playing=(s==='play'); }
+function doReset(){ S.t=0; S.last=null; }
+
+document.querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('input',syncSliders));
+
+window.addEventListener('load',()=>{ resize(); requestAnimationFrame(tick); });
+</script>
+</body>
+</html>
