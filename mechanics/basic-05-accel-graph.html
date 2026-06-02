@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>等加速度直線運動のグラフ | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .now-bar { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; border-top:1px solid var(--line); }
+  .now-cell { padding:10px; text-align:center; border-right:1px solid var(--line); }
+  .now-cell:last-child { border-right:none; }
+  .now-label { font-size:10px; color:var(--muted); font-weight:700; margin-bottom:2px; }
+  .now-val   { font-size:20px; font-weight:900; }
+  .now-unit  { font-size:11px; color:var(--muted); font-weight:600; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .btn { border:1px solid var(--line); border-radius:10px; padding:10px 4px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-play  { background:var(--green-soft)!important; color:#166534!important; border-color:#bbf7d0!important; }
+  .btn-pause { background:#fef9c3!important; color:#854d0e!important; border-color:#fde68a!important; }
+  .btn-reset { background:#f1f5f9!important; color:var(--muted)!important; grid-column:1/-1; }
+  .btn:disabled { opacity:0.4; pointer-events:none; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+
+  .info-row { display:flex; gap:10px; }
+  .info-half { flex:1; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+</style>
+</head>
+<body>
+
+<h1>等加速度直線運動のグラフ</h1>
+<p class="subtitle">物理基礎 05 ｜ a-t グラフ・v-t グラフ・x-t グラフの読み方</p>
+
+<div class="layout">
+  <div class="main-col">
+
+    <!-- 3グラフカード -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#ea580c,#f97316)">a-t</div>
+        <span class="card-title">a-t グラフ（加速度－時刻）</span>
+        <span class="card-sub">t 軸に平行な直線　面積 = 速度の変化量 Δv</span>
+      </div>
+      <canvas id="atCanvas" height="150"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#6b21a8,#7c3aed)">v-t</div>
+        <span class="card-title">v-t グラフ（速度－時刻）</span>
+        <span class="card-sub">傾き = 加速度 a　　面積 = 変位 x</span>
+      </div>
+      <canvas id="vtCanvas" height="180"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">x-t</div>
+        <span class="card-title">x-t グラフ（位置－時刻）</span>
+        <span class="card-sub">接線の傾き = 速度 v　　放物線になる</span>
+      </div>
+      <canvas id="xtCanvas" height="180"></canvas>
+    </div>
+
+    <!-- 現在値 -->
+    <div class="card">
+      <div class="now-bar">
+        <div class="now-cell">
+          <div class="now-label">時刻 t</div>
+          <div class="now-val" style="color:var(--muted)"><span id="m-t">0.0</span><span class="now-unit"> s</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label">加速度 a（一定）</div>
+          <div class="now-val" style="color:var(--orange)"><span id="m-a">2.0</span><span class="now-unit"> m/s²</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label">速度 v = v₀ + at</div>
+          <div class="now-val" style="color:var(--purple)"><span id="m-v">0.0</span><span class="now-unit"> m/s</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label">位置 x = v₀t + ½at²</div>
+          <div class="now-val" style="color:var(--blue)"><span id="m-x">0.0</span><span class="now-unit"> m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-row">
+      <div class="info-half" style="background:var(--orange-soft);border:1px solid #fed7aa;">
+        <strong style="color:#9a3412;display:block;margin-bottom:4px">v-t グラフのポイント</strong>
+        <div>傾き = <span class="hl hl-orange">加速度 a</span></div>
+        <div>面積 = <span class="hl hl-purple">変位 x</span>（v₀t + ½at²）</div>
+        <div style="margin-top:4px;color:var(--muted)">a &gt; 0 → 右上がり　a &lt; 0 → 右下がり</div>
+      </div>
+      <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+        <strong style="color:var(--blue-dark);display:block;margin-bottom:4px">x-t グラフのポイント</strong>
+        <div>放物線になる</div>
+        <div>接線の傾き = <span class="hl hl-purple">速度 v</span></div>
+        <div style="margin-top:4px;color:var(--muted)">a &gt; 0 → 上に凸　a &lt; 0 → 下に凸（初速次第）</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- サイドバー -->
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <h3>設定</h3>
+
+        <div class="control">
+          <label>初速度 v₀ <span class="val" id="v0-label">0.0 m/s</span></label>
+          <input type="range" id="v0-slider" min="-8" max="8" value="0" step="0.5">
+          <div class="range-hint"><span>← 負</span><span>正 →</span></div>
+        </div>
+
+        <div class="control">
+          <label>加速度 a <span class="val" id="a-label">2.0 m/s²</span></label>
+          <input type="range" id="a-slider" min="-5" max="5" value="2" step="0.5">
+          <div class="range-hint"><span>← 負（減速）</span><span>正（加速）→</span></div>
+        </div>
+
+        <div class="control">
+          <label>再生速度 <span class="val" id="speed-label">1.0×</span></label>
+          <input type="range" id="speed-slider" min="0.3" max="3" value="1" step="0.1">
+          <div class="range-hint"><span>ゆっくり</span><span>速く</span></div>
+        </div>
+
+        <div>
+          <h3>再生コントロール</h3>
+          <div class="btns" style="margin-top:10px">
+            <button class="btn btn-play"  id="btn-start" onclick="startAnim()">▶ 再生</button>
+            <button class="btn btn-pause" id="btn-pause" onclick="togglePause()" disabled>⏸ 停止</button>
+            <button class="btn btn-reset" onclick="resetAll()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          <strong>等加速度運動の公式</strong>
+          v = v₀ + at<br>
+          x = v₀t + ½at²<br>
+          v² − v₀² = 2ax
+        </div>
+
+        <!-- v-t面積表示 -->
+        <div style="background:var(--purple-soft);border:1px solid #e9d5ff;border-radius:12px;padding:12px 14px;">
+          <div style="color:#6b21a8;font-size:11px;font-weight:700;margin-bottom:4px">v-t グラフの面積（= 変位）</div>
+          <div style="font-size:20px;font-weight:900;color:#6b21a8"><span id="area-val">0.0</span> m</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="area-formula">= v₀t + ½at²</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+function setupCanvas(id) {
+  const c = document.getElementById(id);
+  function rs() {
+    const r = c.getBoundingClientRect();
+    c.width = r.width*DPR; c.height = r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  }
+  rs(); window.addEventListener('resize',()=>{rs();redraw();});
+  return c;
+}
+const ATC = setupCanvas('atCanvas');
+const VTC = setupCanvas('vtCanvas');
+const XTC = setupCanvas('xtCanvas');
+
+let state='idle', animId=null, paused=false;
+let animT=0, animSpeed=1.0, startTime=null, savedT=0;
+const T_MAX=8;
+
+function getP() {
+  return {
+    v0: parseFloat(document.getElementById('v0-slider').value),
+    a:  parseFloat(document.getElementById('a-slider').value),
+  };
+}
+function vAt(t){ const {v0,a}=getP(); return v0+a*t; }
+function xAt(t){ const {v0,a}=getP(); return v0*t+0.5*a*t*t; }
+
+// ===== 共通グラフ描画 =====
+const PAD={l:52,r:20,t:14,b:32};
+
+function drawGrid(ctx,W,H,sx,sy,nX,nY){
+  ctx.strokeStyle='rgba(0,0,0,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=nX;i++){const x=PAD.l+(i/nX)*(W-PAD.l-PAD.r);ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();}
+  for(let i=0;i<=nY;i++){const y=PAD.t+(i/nY)*(H-PAD.t-PAD.b);ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();}
+}
+function drawAxes(ctx,W,H){
+  ctx.strokeStyle='rgba(15,23,42,0.25)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(PAD.l,H-PAD.b);ctx.lineTo(W-PAD.r,H-PAD.b);ctx.stroke();
+}
+function drawZeroLine(ctx,W,sy0){
+  ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(PAD.l,sy0);ctx.lineTo(W-PAD.r,sy0);ctx.stroke();
+  ctx.setLineDash([]);
+}
+function drawTick(ctx,W,H,sx,sy,yMin,yMax,label){
+  ctx.fillStyle='#64748b';ctx.font='10px system-ui';
+  ctx.textAlign='center';
+  for(let i=0;i<=T_MAX;i+=2) ctx.fillText(i,sx(i),H-PAD.b+14);
+  ctx.fillText('t(s)',W-PAD.r,H-PAD.b+14);
+  ctx.textAlign='right';
+  const step=(yMax-yMin)/4;
+  for(let i=0;i<=4;i++){const yv=yMin+step*i;ctx.fillText(yv.toFixed(0),PAD.l-5,sy(yv)+4);}
+  ctx.save();ctx.translate(13,PAD.t+(H-PAD.t-PAD.b)/2);ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center';ctx.fillText(label,0,0);ctx.restore();
+}
+
+// ===== a-t グラフ =====
+function drawAT(){
+  const ctx=ATC.getContext('2d');
+  const W=ATC.getBoundingClientRect().width, H=ATC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const {a}=getP();
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+  const aMax=Math.max(Math.abs(a)*1.5,3);
+  const sx=t=>PAD.l+t/T_MAX*gW;
+  const sy=v=>PAD.t+gH-(v+aMax)/(2*aMax)*gH;
+
+  drawGrid(ctx,W,H,sx,sy,T_MAX/2,4);
+  drawZeroLine(ctx,W,sy(0));
+  drawAxes(ctx,W,H);
+  drawTick(ctx,W,H,sx,sy,-aMax,aMax,'a(m/s²)');
+
+  // 面積塗りつぶし（速度変化量）
+  const tNow=state==='idle'?0:animT;
+  if(tNow>0.01&&Math.abs(a)>0.01){
+    ctx.save();
+    ctx.fillStyle=a>0?'rgba(234,88,12,0.15)':'rgba(124,58,237,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(sx(0),sy(0));ctx.lineTo(sx(0),sy(a));
+    ctx.lineTo(sx(tNow),sy(a));ctx.lineTo(sx(tNow),sy(0));
+    ctx.closePath();ctx.fill();ctx.restore();
+    ctx.fillStyle='#ea580c';ctx.font='700 11px system-ui';ctx.textAlign='center';
+    ctx.fillText(`面積 = Δv = ${(a*tNow).toFixed(1)}m/s`,sx(tNow/2),sy(a/2));
+  }
+
+  // a直線
+  ctx.strokeStyle='#ea580c';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(sx(0),sy(a));ctx.lineTo(sx(T_MAX),sy(a));ctx.stroke();
+
+  // 現在点
+  if(state!=='idle'){
+    ctx.beginPath();ctx.arc(sx(animT),sy(a),6,0,Math.PI*2);
+    ctx.fillStyle='#ea580c';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }
+
+  ctx.fillStyle='#ea580c';ctx.font='700 11px system-ui';ctx.textAlign='left';
+  ctx.fillText(`a = ${a.toFixed(1)} m/s²（一定）`,PAD.l+6,PAD.t+14);
+}
+
+// ===== v-t グラフ =====
+function drawVT(){
+  const ctx=VTC.getContext('2d');
+  const W=VTC.getBoundingClientRect().width, H=VTC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const {v0,a}=getP();
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+
+  // v範囲
+  const vEnd=vAt(T_MAX);
+  let vMin=Math.min(v0,vEnd,0), vMax=Math.max(v0,vEnd,0);
+  const vPad=Math.max((vMax-vMin)*0.15,2); vMin-=vPad; vMax+=vPad;
+
+  const sx=t=>PAD.l+t/T_MAX*gW;
+  const sy=v=>PAD.t+gH-(v-vMin)/(vMax-vMin)*gH;
+
+  drawGrid(ctx,W,H,sx,sy,T_MAX/2,4);
+  if(vMin<0&&vMax>0) drawZeroLine(ctx,W,sy(0));
+  drawAxes(ctx,W,H);
+  drawTick(ctx,W,H,sx,sy,vMin,vMax,'v(m/s)');
+
+  // 面積塗りつぶし（変位）
+  const tNow=state==='idle'?0:animT;
+  if(tNow>0.01){
+    const steps=100;
+    ctx.save();
+    ctx.fillStyle='rgba(124,58,237,0.15)';
+    ctx.beginPath();ctx.moveTo(sx(0),sy(0));
+    for(let i=0;i<=steps;i++){
+      const t=tNow*i/steps;
+      ctx.lineTo(sx(t),sy(vAt(t)));
+    }
+    ctx.lineTo(sx(tNow),sy(0));ctx.closePath();ctx.fill();ctx.restore();
+  }
+
+  // 全体v-t線（薄く）
+  ctx.strokeStyle='rgba(124,58,237,0.2)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(sx(0),sy(v0));ctx.lineTo(sx(T_MAX),sy(vEnd));ctx.stroke();
+
+  // 実際の軌跡
+  if(tNow>0){
+    ctx.strokeStyle='#7c3aed';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(sx(0),sy(v0));ctx.lineTo(sx(tNow),sy(vAt(tNow)));ctx.stroke();
+  }
+
+  // 現在点
+  if(state!=='idle'){
+    ctx.beginPath();ctx.arc(sx(animT),sy(vAt(animT)),6,0,Math.PI*2);
+    ctx.fillStyle='#7c3aed';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }
+
+  // 傾き注釈
+  ctx.fillStyle='#7c3aed';ctx.font='700 11px system-ui';ctx.textAlign='left';
+  ctx.fillText(`傾き = a = ${a.toFixed(1)} m/s²`,PAD.l+6,PAD.t+14);
+  // 面積ラベル
+  if(tNow>1){
+    const xDisp=xAt(tNow);
+    ctx.fillStyle='#7c3aed';ctx.font='700 11px system-ui';ctx.textAlign='center';
+    ctx.fillText(`面積 = ${xDisp.toFixed(1)} m`,sx(tNow/2),sy((v0+vAt(tNow))/2)+4);
+  }
+}
+
+// ===== x-t グラフ =====
+function drawXT(){
+  const ctx=XTC.getContext('2d');
+  const W=XTC.getBoundingClientRect().width, H=XTC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const {v0,a}=getP();
+  const gW=W-PAD.l-PAD.r, gH=H-PAD.t-PAD.b;
+
+  // x範囲
+  let xMin=0,xMax=0;
+  for(let t=0;t<=T_MAX;t+=0.1){const x=xAt(t);xMin=Math.min(xMin,x);xMax=Math.max(xMax,x);}
+  const xPad=Math.max((xMax-xMin)*0.12,2);xMin-=xPad;xMax+=xPad;
+
+  const sx=t=>PAD.l+t/T_MAX*gW;
+  const sy=x=>PAD.t+gH-(x-xMin)/(xMax-xMin)*gH;
+
+  drawGrid(ctx,W,H,sx,sy,T_MAX/2,4);
+  if(xMin<0&&xMax>0) drawZeroLine(ctx,W,sy(0));
+  drawAxes(ctx,W,H);
+  drawTick(ctx,W,H,sx,sy,xMin,xMax,'x(m)');
+
+  const tNow=state==='idle'?0:animT;
+
+  // 全体曲線（薄く）
+  ctx.strokeStyle='rgba(29,78,216,0.2)';ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){const t=i/200*T_MAX;if(i===0)ctx.moveTo(sx(t),sy(xAt(t)));else ctx.lineTo(sx(t),sy(xAt(t)));}
+  ctx.stroke();
+
+  // 実際の軌跡
+  if(tNow>0){
+    ctx.strokeStyle='#1d4ed8';ctx.lineWidth=3;
+    ctx.beginPath();
+    const steps=Math.ceil(tNow/T_MAX*200);
+    for(let i=0;i<=steps;i++){const t=tNow*i/steps;if(i===0)ctx.moveTo(sx(t),sy(xAt(t)));else ctx.lineTo(sx(t),sy(xAt(t)));}
+    ctx.stroke();
+  }
+
+  // 接線（現在の速度）
+  if(state!=='idle'){
+    const v=vAt(animT), x=xAt(animT);
+    const dt=0.8;
+    const tx1=Math.max(0,animT-dt), tx2=Math.min(T_MAX,animT+dt);
+    ctx.strokeStyle='rgba(21,128,61,0.7)';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(sx(tx1),sy(x+v*(tx1-animT)));ctx.lineTo(sx(tx2),sy(x+v*(tx2-animT)));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#15803d';ctx.font='700 10px system-ui';ctx.textAlign='left';
+    ctx.fillText(`接線の傾き = v = ${v.toFixed(1)}`,sx(animT)+8,sy(x)-8);
+  }
+
+  // 現在点
+  if(state!=='idle'){
+    ctx.beginPath();ctx.arc(sx(animT),sy(xAt(animT)),6,0,Math.PI*2);
+    ctx.fillStyle='#1d4ed8';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }
+
+  ctx.fillStyle='#1d4ed8';ctx.font='700 11px system-ui';ctx.textAlign='left';
+  ctx.fillText('接線の傾き = 速度 v',PAD.l+6,PAD.t+14);
+}
+
+// ===== 共通縦線（現在時刻） =====
+function drawTimeLine(ctx,W,H,tNow){
+  if(tNow<=0) return;
+  const gW=W-PAD.l-PAD.r;
+  const sx=PAD.l+tNow/T_MAX*gW;
+  ctx.save();ctx.strokeStyle='rgba(15,23,42,0.15)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(sx,PAD.t);ctx.lineTo(sx,H-PAD.b);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+}
+
+function updateNow(){
+  const {v0,a}=getP();
+  const tNow=state==='idle'?0:animT;
+  const v=vAt(tNow), x=xAt(tNow);
+  document.getElementById('m-t').textContent=tNow.toFixed(1);
+  document.getElementById('m-a').textContent=a.toFixed(1);
+  document.getElementById('m-v').textContent=v.toFixed(1);
+  document.getElementById('m-x').textContent=x.toFixed(1);
+  document.getElementById('area-val').textContent=x.toFixed(1);
+  document.getElementById('area-formula').textContent=`= ${v0.toFixed(1)}×${tNow.toFixed(1)} + ½×${a.toFixed(1)}×${tNow.toFixed(1)}²`;
+}
+
+function redraw(){
+  updateNow();
+  // 縦線を各グラフに追加
+  const tNow=state==='idle'?0:animT;
+  drawAT(); drawVT(); drawXT();
+  [ATC,VTC,XTC].forEach(c=>{
+    const ctx=c.getContext('2d');
+    const W=c.getBoundingClientRect().width, H=c.getBoundingClientRect().height;
+    drawTimeLine(ctx,W,H,tNow);
+  });
+}
+
+// ===== アニメーション =====
+function startAnim(){
+  if(state==='running') return;
+  state='running';paused=false;animT=0;savedT=0;startTime=null;
+  document.getElementById('btn-start').textContent='実行中...';
+  document.getElementById('btn-pause').textContent='⏸ 停止';
+  document.getElementById('btn-pause').disabled=false;
+  function step(ts){
+    if(!startTime) startTime=ts;
+    animT=Math.min(savedT+(ts-startTime)/1000*animSpeed,T_MAX);
+    redraw();
+    if(animT>=T_MAX){state='done';document.getElementById('btn-start').textContent='▶ 再生';document.getElementById('btn-pause').disabled=true;return;}
+    animId=requestAnimationFrame(step);
+  }
+  animId=requestAnimationFrame(step);
+}
+function togglePause(){
+  if(state!=='running') return; paused=!paused;
+  const btn=document.getElementById('btn-pause');
+  if(paused){btn.textContent='▶ 再開';cancelAnimationFrame(animId);animId=null;savedT=animT;startTime=null;}
+  else{
+    btn.textContent='⏸ 停止';startTime=null;
+    function r(ts){if(!startTime)startTime=ts;animT=Math.min(savedT+(ts-startTime)/1000*animSpeed,T_MAX);redraw();if(animT>=T_MAX){state='done';document.getElementById('btn-start').textContent='▶ 再生';document.getElementById('btn-pause').disabled=true;return;}animId=requestAnimationFrame(r);}
+    animId=requestAnimationFrame(r);
+  }
+}
+function resetAll(){
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  state='idle';paused=false;animT=0;savedT=0;startTime=null;
+  document.getElementById('btn-start').textContent='▶ 再生';
+  document.getElementById('btn-pause').disabled=true;
+  document.getElementById('btn-pause').textContent='⏸ 停止';
+  redraw();
+}
+
+// ===== スライダー =====
+document.getElementById('v0-slider').addEventListener('input',()=>{
+  document.getElementById('v0-label').textContent=parseFloat(document.getElementById('v0-slider').value).toFixed(1)+' m/s';
+  if(state==='idle'||state==='done') redraw();
+});
+document.getElementById('a-slider').addEventListener('input',()=>{
+  document.getElementById('a-label').textContent=parseFloat(document.getElementById('a-slider').value).toFixed(1)+' m/s²';
+  if(state==='idle'||state==='done') redraw();
+});
+document.getElementById('speed-slider').addEventListener('input',()=>{
+  animSpeed=parseFloat(document.getElementById('speed-slider').value);
+  document.getElementById('speed-label').textContent=animSpeed.toFixed(1)+'×';
+});
+
+redraw();
+</script>
+</body>
+</html>
