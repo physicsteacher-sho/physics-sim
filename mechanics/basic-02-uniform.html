@@ -219,7 +219,7 @@ function xAt(t) { const {v,x0}=getP(); return x0+v*t; }
 // ===== 数直線 =====
 function drawMain() {
   const ctx=MC.getContext('2d');
-  const W=MC.getBoundingClientRect().width, H=150;
+  const W=MC.getBoundingClientRect().width, H=MC.getBoundingClientRect().height;
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
   const {v,x0}=getP();
 
@@ -306,7 +306,7 @@ function drawMain() {
 // ===== x-t グラフ =====
 function drawXT() {
   const ctx=XTC.getContext('2d');
-  const W=XTC.getBoundingClientRect().width, H=200;
+  const W=XTC.getBoundingClientRect().width, H=XTC.getBoundingClientRect().height;
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
   const {v,x0}=getP();
   const PAD={l:48,r:16,t:14,b:32};
@@ -369,7 +369,7 @@ function drawXT() {
 // ===== v-t グラフ =====
 function drawVT() {
   const ctx=VTC.getContext('2d');
-  const W=VTC.getBoundingClientRect().width, H=200;
+  const W=VTC.getBoundingClientRect().width, H=VTC.getBoundingClientRect().height;
   ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
   const {v,x0}=getP();
   const PAD={l:48,r:16,t:14,b:32};
