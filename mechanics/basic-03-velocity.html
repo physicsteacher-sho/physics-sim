@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>速度の合成と相対速度 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --line: #e2e8f0;
+    --blue: #1d4ed8; --blue-dark: #0f2f7a; --blue-soft: #eff6ff;
+    --green: #15803d; --green-soft: #dcfce7;
+    --orange: #ea580c; --orange-soft: #fff7ed;
+    --purple: #7c3aed; --purple-soft: #fdf4ff;
+    --red: #dc2626; --red-soft: #fee2e2;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .now-bar { display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid var(--line); }
+  .now-cell { padding:10px; text-align:center; border-right:1px solid var(--line); }
+  .now-cell:last-child { border-right:none; }
+  .now-label { font-size:10px; color:var(--muted); font-weight:700; margin-bottom:2px; }
+  .now-val   { font-size:22px; font-weight:900; }
+  .now-unit  { font-size:11px; color:var(--muted); font-weight:600; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle button { border:0; padding:9px 4px; font-size:13px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; transition:all 0.15s; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+
+  .result-box { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.8; }
+
+  .info-row { display:flex; gap:10px; }
+  .info-half { flex:1; border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+  .hl-red    { background:#fee2e2; color:#991b1b; }
+</style>
+</head>
+<body>
+
+<h1>速度の合成と相対速度</h1>
+<p class="subtitle">物理基礎 03 ｜ v = vA + vB　／　相対速度 vAB = vB − vA</p>
+
+<div class="layout">
+  <div class="main-col">
+
+    <!-- 合成速度キャンバス -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">合</div>
+        <span class="card-title">速度の合成</span>
+        <span class="card-sub">観測者から見た合成速度 v = vA + vB</span>
+      </div>
+      <canvas id="compositeCanvas" height="130"></canvas>
+      <div class="now-bar">
+        <div class="now-cell">
+          <div class="now-label">電車の速度 vA</div>
+          <div class="now-val" style="color:var(--blue)"><span id="m-vA">3.0</span><span class="now-unit"> m/s</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label">人の速度 vB（電車内）</div>
+          <div class="now-val" style="color:var(--orange)"><span id="m-vB">2.0</span><span class="now-unit"> m/s</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label">合成速度 v = vA + vB</div>
+          <div class="now-val" style="color:var(--green)"><span id="m-v">5.0</span><span class="now-unit"> m/s</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 相対速度キャンバス -->
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#6b21a8,#7c3aed)">相</div>
+        <span class="card-title">相対速度</span>
+        <span class="card-sub" id="relSub">A から見た B の速度 vAB = vB − vA</span>
+      </div>
+      <canvas id="relativeCanvas" height="130"></canvas>
+      <div class="now-bar">
+        <div class="now-cell">
+          <div class="now-label" id="rel1-label">A から見た B（vAB）</div>
+          <div class="now-val" style="color:var(--purple)"><span id="m-vAB">—</span><span class="now-unit"> m/s</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label" id="rel2-label">B から見た A（vBA）</div>
+          <div class="now-val" style="color:var(--red)"><span id="m-vBA">—</span><span class="now-unit"> m/s</span></div>
+        </div>
+        <div class="now-cell">
+          <div class="now-label">速度の差（|vAB|）</div>
+          <div class="now-val" style="color:var(--muted)"><span id="m-diff">—</span><span class="now-unit"> m/s</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 情報ボックス -->
+    <div class="info-row">
+      <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+        <strong style="color:var(--blue-dark);display:block;margin-bottom:4px">速度の合成</strong>
+        <div>合成速度 <span class="hl hl-green">v = vA + vB</span></div>
+        <div style="margin-top:4px;color:var(--muted)">例：電車（vA）に乗って歩く人（vB）を地上から見ると v = vA + vB</div>
+      </div>
+      <div class="info-half" style="background:var(--purple-soft);border:1px solid #e9d5ff;">
+        <strong style="color:#6b21a8;display:block;margin-bottom:4px">相対速度</strong>
+        <div>A から見た B：<span class="hl hl-purple">vAB = vB − vA</span></div>
+        <div>B から見た A：<span class="hl hl-red">vBA = vA − vB</span></div>
+        <div style="margin-top:4px;color:var(--muted)">vAB = −vBA（逆向きで同じ大きさ）</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- サイドバー -->
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+
+        <div class="control">
+          <label>物体 A の速度 vA <span class="val" id="vA-label">3.0 m/s</span></label>
+          <input type="range" id="vA-slider" min="-10" max="10" value="3" step="0.5">
+          <div class="range-hint"><span>← 左向き</span><span>右向き →</span></div>
+        </div>
+
+        <div class="control">
+          <label>物体 B の速度 vB <span class="val" id="vB-label">2.0 m/s</span></label>
+          <input type="range" id="vB-slider" min="-10" max="10" value="2" step="0.5">
+          <div class="range-hint"><span>← 左向き</span><span>右向き →</span></div>
+        </div>
+
+        <div class="formula-box">
+          <strong>速度の合成</strong>
+          v = vA + vB<br>
+          <strong style="margin-top:8px">相対速度</strong>
+          vAB = vB − vA（A から見た B）<br>
+          vBA = vA − vB（B から見た A）
+        </div>
+
+        <!-- リアルタイム計算結果 -->
+        <div class="result-box" style="background:var(--green-soft);border:1px solid #bbf7d0;">
+          <div style="color:#166534;font-size:11px;font-weight:700;margin-bottom:6px">合成速度</div>
+          <div style="font-size:18px;font-weight:900;color:#166534">v = <span id="res-v">5.0</span> m/s</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">= <span id="res-formula">3.0 + 2.0</span></div>
+        </div>
+
+        <div class="result-box" style="background:var(--purple-soft);border:1px solid #e9d5ff;">
+          <div style="color:#6b21a8;font-size:11px;font-weight:700;margin-bottom:6px">相対速度</div>
+          <div style="font-size:15px;font-weight:900;color:#6b21a8">vAB = <span id="res-vAB">-1.0</span> m/s</div>
+          <div style="font-size:15px;font-weight:900;color:var(--red);margin-top:2px">vBA = <span id="res-vBA">1.0</span> m/s</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+function setupCanvas(id) {
+  const c = document.getElementById(id);
+  function rs() {
+    const r = c.getBoundingClientRect();
+    c.width  = r.width  * DPR;
+    c.height = r.height * DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  }
+  rs(); window.addEventListener('resize', () => { rs(); redraw(); });
+  return c;
+}
+const CC = setupCanvas('compositeCanvas');
+const RC = setupCanvas('relativeCanvas');
+
+let mode = 'composite';
+
+function getP() {
+  return {
+    vA: parseFloat(document.getElementById('vA-slider').value),
+    vB: parseFloat(document.getElementById('vB-slider').value),
+  };
+}
+
+// ===== 矢印描画ヘルパー =====
+function drawArrow(ctx, x1, y1, x2, y2, color, lw, label) {
+  if (Math.abs(x2-x1) < 2) return;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw||2.5;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const dir = x2 > x1 ? 1 : -1;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - dir*10, y2 - 5);
+  ctx.lineTo(x2 - dir*10, y2 + 5);
+  ctx.closePath(); ctx.fill();
+  if (label) {
+    ctx.font = '700 12px Hiragino Sans,system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, (x1+x2)/2, y1 - 8);
+  }
+  ctx.restore();
+}
+
+function drawNumberLine(ctx, W, H, midY, xMin, xMax) {
+  const gx=40, gw=W-80;
+  const tick = Math.max(1, Math.ceil((xMax-xMin)/14));
+
+  // グリッド
+  ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1;
+  for(let xi=Math.ceil(xMin/tick)*tick; xi<=xMax; xi+=tick){
+    const sx=gx+(xi-xMin)/(xMax-xMin)*gw;
+    ctx.beginPath();ctx.moveTo(sx,20);ctx.lineTo(sx,H-20);ctx.stroke();
+  }
+  // 数直線
+  ctx.strokeStyle='rgba(15,23,42,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(gx,midY);ctx.lineTo(gx+gw,midY);ctx.stroke();
+  ctx.fillStyle='rgba(15,23,42,0.2)';
+  ctx.beginPath();ctx.moveTo(gx+gw,midY);ctx.lineTo(gx+gw-9,midY-4);ctx.lineTo(gx+gw-9,midY+4);ctx.closePath();ctx.fill();
+
+  // 目盛り
+  for(let xi=Math.ceil(xMin/tick)*tick; xi<=xMax; xi+=tick){
+    const sx=gx+(xi-xMin)/(xMax-xMin)*gw;
+    if(sx<gx||sx>gx+gw) continue;
+    ctx.strokeStyle='rgba(15,23,42,0.18)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(sx,midY-4);ctx.lineTo(sx,midY+4);ctx.stroke();
+    ctx.fillStyle='#64748b';ctx.font='10px system-ui';ctx.textAlign='center';
+    ctx.fillText(xi.toFixed(0),sx,midY+16);
+  }
+
+  return {gx, gw, toSX: xi => gx+(xi-xMin)/(xMax-xMin)*gw};
+}
+
+// ===== 合成速度キャンバス =====
+function drawComposite() {
+  const ctx=CC.getContext('2d');
+  const W=CC.getBoundingClientRect().width, H=CC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const {vA,vB}=getP();
+  const v=vA+vB;
+
+  const allVals=[0, vA, vB, v];
+  const xMin=Math.min(...allVals)*1.15-1;
+  const xMax=Math.max(...allVals)*1.15+1;
+  const midY=H/2;
+  const {gx,gw,toSX}=drawNumberLine(ctx,W,H,midY,xMin,xMax);
+
+  // 原点
+  const so=toSX(0);
+  ctx.fillStyle='rgba(15,23,42,0.25)';ctx.beginPath();ctx.arc(so,midY,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#64748b';ctx.font='700 11px system-ui';ctx.textAlign='center';ctx.fillText('O',so,midY-10);
+
+  // vA矢印（青、上段）
+  const y1=midY-32;
+  drawArrow(ctx, so, y1, toSX(vA), y1, '#1d4ed8', 3, `vA = ${vA.toFixed(1)}`);
+
+  // vB矢印（オレンジ、中段）
+  const y2=midY-10;
+  drawArrow(ctx, toSX(vA), y2, toSX(vA+vB), y2, '#ea580c', 3, `vB = ${vB.toFixed(1)}`);
+
+  // 合成速度矢印（緑、下段）
+  const y3=midY+20;
+  drawArrow(ctx, so, y3, toSX(v), y3, '#15803d', 3.5, `v = ${v.toFixed(1)}`);
+
+  // ラベル
+  ctx.fillStyle='#1d4ed8';ctx.font='700 11px system-ui';ctx.textAlign='left';
+  ctx.fillText('vA：電車の速度',gx+4,16);
+  ctx.fillStyle='#ea580c';ctx.fillText('vB：電車内の人の速度',gx+4,30);
+  ctx.fillStyle='#15803d';ctx.textAlign='right';
+  ctx.fillText('v = vA + vB：地上から見た速度',gx+gw-4,16);
+}
+
+// ===== 相対速度キャンバス =====
+function drawRelative() {
+  const ctx=RC.getContext('2d');
+  const W=RC.getBoundingClientRect().width, H=RC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const {vA,vB}=getP();
+  const vAB=vB-vA; // A から見た B
+  const vBA=vA-vB; // B から見た A
+
+  const allVals2=[0, vA, vB, vAB, vBA];
+  const xMin=Math.min(...allVals2)*1.15-1;
+  const xMax=Math.max(...allVals2)*1.15+1;
+  const midY=H/2;
+  const {gx,gw,toSX}=drawNumberLine(ctx,W,H,midY,xMin,xMax);
+
+  const so=toSX(0);
+  ctx.fillStyle='rgba(15,23,42,0.25)';ctx.beginPath();ctx.arc(so,midY,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#64748b';ctx.font='700 11px system-ui';ctx.textAlign='center';ctx.fillText('O',so,midY-10);
+
+  // vA矢印（青、上段）
+  const y1=midY-28;
+  drawArrow(ctx, so, y1, toSX(vA), y1, '#1d4ed8', 2, `vA = ${vA.toFixed(1)}`);
+
+  // vB矢印（オレンジ、上段）
+  const y2=midY-28;
+
+  // vAB矢印（紫、下段1）
+  const y3=midY+16;
+  drawArrow(ctx, so, y3, toSX(vAB), y3, '#7c3aed', 3, `vAB = ${vAB.toFixed(1)}`);
+
+  // vBA矢印（赤、下段2）
+  const y4=midY+40;
+  drawArrow(ctx, so, y4, toSX(vBA), y4, '#dc2626', 3, `vBA = ${vBA.toFixed(1)}`);
+
+  // ラベル
+  ctx.fillStyle='#1d4ed8';ctx.font='700 11px system-ui';ctx.textAlign='left';
+  ctx.fillText(`vA = ${vA.toFixed(1)}  vB = ${vB.toFixed(1)}`,gx+4,16);
+  ctx.fillStyle='#7c3aed';ctx.textAlign='right';
+  ctx.fillText('vAB = vB − vA（A から見た B）',gx+gw-4,16);
+  ctx.fillStyle='#dc2626';
+  ctx.fillText('vBA = vA − vB（B から見た A）',gx+gw-4,30);
+}
+
+function updateNow() {
+  const {vA,vB}=getP();
+  const v=vA+vB, vAB=vB-vA, vBA=vA-vB;
+  document.getElementById('m-vA').textContent=vA.toFixed(1);
+  document.getElementById('m-vB').textContent=vB.toFixed(1);
+  document.getElementById('m-v').textContent=v.toFixed(1);
+  document.getElementById('m-vAB').textContent=vAB.toFixed(1);
+  document.getElementById('m-vBA').textContent=vBA.toFixed(1);
+  document.getElementById('m-diff').textContent=Math.abs(vAB).toFixed(1);
+  document.getElementById('res-v').textContent=v.toFixed(1);
+  document.getElementById('res-formula').textContent=`${vA.toFixed(1)} + ${vB.toFixed(1)}`;
+  document.getElementById('res-vAB').textContent=vAB.toFixed(1);
+  document.getElementById('res-vBA').textContent=vBA.toFixed(1);
+}
+
+function redraw() { updateNow(); drawComposite(); drawRelative(); }
+
+['vA-slider','vB-slider'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    const vA=parseFloat(document.getElementById('vA-slider').value);
+    const vB=parseFloat(document.getElementById('vB-slider').value);
+    document.getElementById('vA-label').textContent=vA.toFixed(1)+' m/s';
+    document.getElementById('vB-label').textContent=vB.toFixed(1)+' m/s';
+    redraw();
+  });
+});
+
+redraw();
+</script>
+</body>
+</html>
