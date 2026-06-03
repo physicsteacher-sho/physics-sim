@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仕事と仕事率 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:11px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.9; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+</style>
+</head>
+<body>
+<h1>仕事と仕事率</h1>
+<p class="subtitle">物理基礎 13 ｜ W = Fx・W = Fcosθ·x・P = W/t = Fv</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">W</div>
+        <span class="card-title" id="mainTitle">仕事</span>
+        <span class="card-sub" id="mainSub">W = Fx</span>
+      </div>
+      <canvas id="mainCanvas" height="200"></canvas>
+    </div>
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+      <strong style="color:var(--blue-dark)" id="infoTitle">仕事</strong>
+      <span id="infoBody"><span class="hl hl-blue">W = Fx</span>。力の向きと移動方向が一致するとき。単位はジュール [J] = [N·m]。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>場面</h3>
+          <div class="toggle three" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('work')">仕事</button>
+            <button id="tab2" onclick="setTab('principle')">仕事の原理</button>
+            <button id="tab3" onclick="setTab('power')">仕事率</button>
+          </div>
+        </div>
+
+        <div id="workCtrls">
+          <div class="control">
+            <label>力 F <span class="val" id="F-label">20 N</span></label>
+            <input type="range" id="F-slider" min="1" max="60" value="20" step="1">
+            <div class="range-hint"><span>1 N</span><span>60 N</span></div>
+          </div>
+          <div class="control">
+            <label>角度 θ <span class="val" id="th-label">0°</span></label>
+            <input type="range" id="th-slider" min="0" max="90" value="0" step="5">
+            <div class="range-hint"><span>0°</span><span>90°</span></div>
+          </div>
+          <div class="control">
+            <label>移動距離 x <span class="val" id="x-label">3.0 m</span></label>
+            <input type="range" id="x-slider" min="0.5" max="8" value="3" step="0.5">
+            <div class="range-hint"><span>0.5 m</span><span>8 m</span></div>
+          </div>
+        </div>
+
+        <div id="principleCtrls" style="display:none">
+          <div class="control">
+            <label>重さ W <span class="val" id="pw-label">20 N</span></label>
+            <input type="range" id="pw-slider" min="5" max="60" value="20" step="5">
+          </div>
+          <div class="control">
+            <label>持ち上げる高さ h <span class="val" id="ph-label">1.5 m</span></label>
+            <input type="range" id="ph-slider" min="0.5" max="4" value="1.5" step="0.5">
+          </div>
+          <div class="control">
+            <label>斜面角度 θ <span class="val" id="pth-label">30°</span></label>
+            <input type="range" id="pth-slider" min="10" max="60" value="30" step="5">
+          </div>
+        </div>
+
+        <div id="powerCtrls" style="display:none">
+          <div class="control">
+            <label>力 F <span class="val" id="pF-label">20 N</span></label>
+            <input type="range" id="pF-slider" min="1" max="100" value="20" step="1">
+            <div class="range-hint"><span>1 N</span><span>100 N</span></div>
+          </div>
+          <div class="control">
+            <label>移動距離 x <span class="val" id="px-label">6.0 m</span></label>
+            <input type="range" id="px-slider" min="1" max="20" value="6" step="1">
+            <div class="range-hint"><span>1 m</span><span>20 m</span></div>
+          </div>
+          <div class="control">
+            <label>時間 t <span class="val" id="pt-label">3.0 s</span></label>
+            <input type="range" id="pt-slider" min="0.5" max="10" value="3" step="0.5">
+            <div class="range-hint"><span>0.5 s</span><span>10 s</span></div>
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>仕事</strong>W = Fcosθ · x<br>
+          <span style="color:var(--muted);font-size:11px">θ=0° → W=Fx（最大）　θ=90° → W=0</span>
+        </div>
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          W = 60.0 J
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const g = 9.8;
+let tab = 'work';
+let animId = null, animX = 0, animV = 0, lastTs = null;
+let princAnimId = null, princT = 0, princLastTs = null;
+
+const CVS = document.getElementById('mainCanvas');
+function resizeC(){
+  const r=CVS.getBoundingClientRect(); if(!r.width) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeC();
+window.addEventListener('resize',()=>{ resizeC(); redraw(); });
+
+function arrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx),hs=11;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dashedArrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||2;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  const ang=Math.atan2(dy,dx),hs=9;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dot(ctx,x,y,color){
+  ctx.save(); ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+}
+function lbl(ctx,x,y,text,color,align,base){
+  ctx.save(); ctx.fillStyle=color||'#334155';
+  ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign=align||'center'; ctx.textBaseline=base||'alphabetic';
+  ctx.fillText(text,x,y); ctx.restore();
+}
+function block(ctx,cx,gy,bw,bh,color){
+  ctx.save();
+  ctx.fillStyle=color||'#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-bw/2,gy-bh,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function ground(ctx,W,H,gy){
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,gy,W,H-gy);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+}
+
+// ===== 仕事 =====
+function drawWork(bx){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const F=parseFloat(document.getElementById('F-slider').value);
+  const thD=parseFloat(document.getElementById('th-slider').value);
+  const x=parseFloat(document.getElementById('x-slider').value);
+  const th=thD*Math.PI/180;
+  const Fx=F*Math.cos(th);
+  const Wk=Fx*x;
+
+  const gy=H*0.70, bw=52, bh=38;
+  ground(ctx,W,H,gy);
+
+  // 移動距離の矢印（地面上）
+  const startX=W*0.12, xScale=Math.min((W*0.76)/8, W*0.095);
+  const endX=startX+x*xScale;
+  const cx=Math.max(bw/2+4, Math.min(bx||startX+bw/2, endX));
+
+  // x軸の矢印
+  ctx.save(); ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(startX,gy+20); ctx.lineTo(endX,gy+20); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  arrow(ctx,startX,gy+20, endX,gy+20,'#64748b',1.5);
+  lbl(ctx,(startX+endX)/2,gy+34,`x = ${x} m`,'#64748b','center');
+
+  // ブロック
+  block(ctx,cx,gy,bw,bh);
+
+  // 力矢印（右面の作用点から）
+  const apX=cx+bw/2, apY=gy-bh/2;
+  const fLen=Math.min(F*2.25,120);
+  const fx_tip=apX+fLen*Math.cos(th);
+  const fy_tip=apY-fLen*Math.sin(th);
+  dot(ctx,apX,apY,'#ea580c');
+  arrow(ctx,apX,apY, fx_tip,fy_tip,'#ea580c',2.5);
+  lbl(ctx,fx_tip+8,fy_tip,`F=${F}N`,'#ea580c','left');
+
+  // Fcosθ成分（破線・水平）
+  if(thD>5 && thD<175){
+    const fxLen=Math.abs(Fx)/F*fLen;
+    dashedArrow(ctx,apX,apY, apX+fxLen*(Fx>=0?1:-1),apY,'#1d4ed8',1.5);
+    lbl(ctx,apX+fxLen*(Fx>=0?0.5:-0.5),apY-12,`Fcosθ=${Fx.toFixed(1)}N`,'#1d4ed8','center');
+  }
+
+  // 角度マーク
+  if(thD>5 && thD<175){
+    ctx.save(); ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(apX,apY, 26, 0, -th, true); ctx.stroke();
+    lbl(ctx,apX+34,apY-14,'θ','#64748b','center');
+    ctx.restore();
+  }
+
+  // 仕事の計算
+  const color = Wk>0?'#15803d':Wk<0?'#dc2626':'#64748b';
+  const wStr = thD===0 ? `W = Fx = ${F}×${x} = ${Wk.toFixed(1)} J`
+    : thD===90 ? `W = Fcos90°·x = 0 J（仕事なし）`
+    : thD>90 ? `W = Fcos${thD}°·x = ${Fx.toFixed(1)}×${x} = ${Wk.toFixed(1)} J（負の仕事）`
+    : `W = Fcos${thD}°·x = ${Fx.toFixed(1)}×${x} = ${Wk.toFixed(1)} J`;
+  ctx.save(); ctx.fillStyle=color; ctx.font='700 18px Hiragino Sans,system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.fillText(wStr, W/2, H-10); ctx.restore();
+}
+
+// ===== 仕事の原理 =====
+function drawPrinciple(t){
+  t = t || 0;
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const Wt=parseFloat(document.getElementById('pw-slider').value);
+  const h=parseFloat(document.getElementById('ph-slider').value);
+  const thD=parseFloat(document.getElementById('pth-slider').value);
+  const th=thD*Math.PI/180;
+  const L=h/Math.sin(th); // 斜面の長さ
+  const F=Wt*Math.sin(th); // 必要な力
+  const Wdirect=Wt*h;   // 直接持ち上げる仕事
+  const Wslope=F*L;      // 斜面を使った仕事
+
+  // 左：直接持ち上げ
+  const lx=W*0.22;
+  const baseY=H*0.82, topY=baseY-h*28;
+
+  // 地面
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,baseY,W/2-10,H-baseY);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,baseY); ctx.lineTo(W/2-10,baseY); ctx.stroke();
+
+  // h矢印
+  ctx.save(); ctx.strokeStyle='#334155'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(lx-30,baseY); ctx.lineTo(lx-30,topY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx-36,baseY); ctx.lineTo(lx-24,baseY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx-36,topY); ctx.lineTo(lx-24,topY); ctx.stroke();
+  ctx.restore();
+  lbl(ctx,lx-42,(baseY+topY)/2,`h=${h}m`,'#334155','right');
+
+  // 物体（t=0:底、t=1:上端）
+  const liftY = baseY - t*(baseY-topY);
+  block(ctx,lx,liftY,44,32,'#dbeafe');
+  // 力矢印（上面の作用点から上向き）
+  const blockTop=liftY-32;
+  dot(ctx,lx,blockTop,'#ea580c');
+  arrow(ctx,lx,blockTop, lx,blockTop-50,'#ea580c',2.5);
+  lbl(ctx,lx+8,blockTop-42,`W=${Wt}N`,'#ea580c','left');
+
+  // 仕事
+  lbl(ctx,lx,topY-48,`W直 = ${Wt}×${h} = ${Wdirect.toFixed(1)} J`,'#1d4ed8','center');
+
+
+  // 右：斜面
+  const rx=W*0.73;
+  const slBase={x:W*0.5+10,y:H*0.82};
+  const slLen=L*28;
+  const slTop={x:slBase.x+slLen*Math.cos(th), y:slBase.y-slLen*Math.sin(th)};
+
+  // 地面（右）
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(W/2+10,slBase.y,W,H-slBase.y);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(W/2+10,slBase.y); ctx.lineTo(W,slBase.y); ctx.stroke();
+
+  // 斜面
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath(); ctx.moveTo(slBase.x,slBase.y); ctx.lineTo(slTop.x,slBase.y); ctx.lineTo(slTop.x,slTop.y); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(slBase.x,slBase.y); ctx.lineTo(slTop.x,slTop.y); ctx.stroke();
+  // θ
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(slBase.x,slBase.y,28,-th,0); ctx.stroke();
+  lbl(ctx,slBase.x+38,slBase.y-10,'θ','#64748b','center');
+
+  // 物体（斜面、t=0:下端、t=1:上端）
+  const bh2=32,bw2=44;
+  const along=t * slLen;
+  const ox=slBase.x+along*Math.cos(th), oy=slBase.y-along*Math.sin(th);
+  const nx=-Math.sin(th),ny=-Math.cos(th);
+  const bcx=ox+nx*bh2/2, bcy=oy+ny*bh2/2;
+  ctx.save(); ctx.translate(bcx,bcy); ctx.rotate(-th);
+  ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-bw2/2,-bh2/2,bw2,bh2,4); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // 力矢印（斜面の下面作用点から斜面上向き）
+  const fLen2=Math.min(F*1.8,50);
+  const apSx=bcx+Math.cos(th)*bw2/2, apSy=bcy-Math.sin(th)*bw2/2;
+  dot(ctx,apSx,apSy,'#ea580c');
+  arrow(ctx,apSx,apSy, apSx+Math.cos(th)*fLen2,apSy-Math.sin(th)*fLen2,'#ea580c',2.5);
+  lbl(ctx,apSx+Math.cos(th)*fLen2+8,apSy-Math.sin(th)*fLen2,`F=${F.toFixed(1)}N`,'#ea580c','left');
+
+  // Lラベル（斜面上側）
+  const offP=52;
+  const lMidX = slBase.x + nx*offP + (slTop.x-slBase.x)*0.5;
+  const lMidY = slBase.y + ny*offP + (slTop.y-slBase.y)*0.5;
+  ctx.save(); ctx.strokeStyle='#334155'; ctx.lineWidth=1.2;
+  // 寸法線（斜面に平行、上側）
+  ctx.beginPath(); ctx.moveTo(slBase.x+nx*offP, slBase.y+ny*offP); ctx.lineTo(slTop.x+nx*offP, slTop.y+ny*offP); ctx.stroke();
+  // チックマーク（法線方向に垂直 = 斜面方向に沿う）
+  const tickLen=7;
+  ctx.beginPath(); ctx.moveTo(slBase.x+nx*(offP-tickLen), slBase.y+ny*(offP-tickLen)); ctx.lineTo(slBase.x+nx*(offP+tickLen), slBase.y+ny*(offP+tickLen)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(slTop.x+nx*(offP-tickLen),  slTop.y+ny*(offP-tickLen));  ctx.lineTo(slTop.x+nx*(offP+tickLen),  slTop.y+ny*(offP+tickLen));  ctx.stroke();
+  ctx.restore();
+  lbl(ctx, lMidX + nx*20, lMidY + ny*20, `L=${L.toFixed(1)}m`, '#334155', 'center');
+
+  // 計算式と比較（下部）
+  const y1=H-44, y2=H-26, y3=H-10;
+  lbl(ctx, lx,   y1, `W直 = ${Wt}×${h} = ${Wdirect.toFixed(1)} J`, '#1d4ed8','center');
+  lbl(ctx, rx,   y1, `W斜 = ${F.toFixed(1)}×${L.toFixed(1)} = ${Wslope.toFixed(1)} J`, '#7c3aed','center');
+  ctx.save(); ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(W*0.48,y1-14); ctx.lineTo(W*0.48,y2+4); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.fillStyle='#15803d'; ctx.font='700 14px Hiragino Sans,system-ui';
+  ctx.textAlign='center';
+  ctx.fillText(`→ 仕事は同じ！　${Wdirect.toFixed(1)} J = ${Wslope.toFixed(1)} J`, W/2, y2);
+  ctx.restore();
+  lbl(ctx,lx,y3,'直接持ち上げ','#64748b','center');
+  lbl(ctx,rx,y3,'斜面を使う','#64748b','center');
+}
+
+// ===== 仕事率 =====
+function drawPower(bx){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const F=parseFloat(document.getElementById('pF-slider').value);
+  const x=parseFloat(document.getElementById('px-slider').value);
+  const t=parseFloat(document.getElementById('pt-slider').value);
+  const Wk=F*x;
+  const P=Wk/t;
+  const v=x/t;
+
+  const gy=H*0.68, bw=52, bh=38;
+  ground(ctx,W,H,gy);
+
+  // 移動距離の目盛り
+  const startX=W*0.08, xScale=Math.min((W*0.82)/20, W*0.041);
+  const endX=startX+x*xScale;
+  ctx.save(); ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(startX,gy+18); ctx.lineTo(endX,gy+18); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  arrow(ctx,startX,gy+18,endX,gy+18,'#64748b',1.5);
+  lbl(ctx,(startX+endX)/2,gy+32,`x = ${x} m`,'#64748b','center');
+
+  const cx=Math.max(bw/2+4, Math.min(bx||startX+bw/2, endX));
+  block(ctx,cx,gy,bw,bh);
+
+  // F矢印（右面）
+  const fLen=Math.min(F,90);
+  dot(ctx,cx+bw/2,gy-bh/2,'#ea580c');
+  arrow(ctx,cx+bw/2,gy-bh/2, cx+bw/2+fLen,gy-bh/2,'#ea580c',2.5);
+  lbl(ctx,cx+bw/2+fLen/2,gy-bh/2-12,`F=${F}N`,'#ea580c','center');
+
+  // v矢印（上面）
+  const vLen=Math.min(v*8,70);
+  if(vLen>4){
+    arrow(ctx,cx-bw/2,gy-bh-16, cx-bw/2+vLen,gy-bh-16,'#1d4ed8',2);
+    lbl(ctx,cx-bw/2+vLen+6,gy-bh-12,`v=${v.toFixed(1)}m/s`,'#1d4ed8','left');
+  }
+
+  // 計算式（下部）
+  ctx.save();
+  ctx.fillStyle='#334155'; ctx.font='700 15px Hiragino Sans,system-ui'; ctx.textAlign='center';
+  ctx.fillText(`W = Fx = ${F}×${x} = ${Wk.toFixed(0)} J`, W/2, H-28);
+  ctx.fillStyle='#15803d'; ctx.font='700 18px Hiragino Sans,system-ui';
+  ctx.fillText(`P = W/t = ${Wk.toFixed(0)}/${t} = ${P.toFixed(1)} W　（= Fv = ${F}×${v.toFixed(1)} = ${P.toFixed(1)} W）`, W/2, H-8);
+  ctx.restore();
+}
+
+// ===== アニメ =====
+function startAnim(){
+  if(animId) cancelAnimationFrame(animId);
+  animX=0; animV=0; lastTs=null;
+  function loop(ts){
+    if(!lastTs) lastTs=ts;
+    const dt=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+    const W=CVS.getBoundingClientRect().width;
+    const startX=W*0.12+30;
+    const endX=W-40;
+
+    if(tab==='work'){
+      const F=parseFloat(document.getElementById('F-slider').value);
+      const thD=parseFloat(document.getElementById('th-slider').value);
+      const th=thD*Math.PI/180;
+      const Fx=F*Math.cos(th);
+      const m=5, a=Math.max(0,Fx)/m;
+      animV+=a*dt;
+      animX+=animV*dt*40;
+      const cx=startX+animX;
+      if(cx>endX){ animX=0; animV=0; }
+      drawWork(startX+animX);
+    } else {
+      const x=parseFloat(document.getElementById('px-slider').value);
+      const t=parseFloat(document.getElementById('pt-slider').value);
+      const W2=CVS.getBoundingClientRect().width;
+      const pStartX=W2*0.08+26;
+      const xScale=Math.min((W2*0.82)/20, W2*0.041);
+      const pEndX=pStartX-26+x*xScale;
+      animX+=dt; // 経過時間を積算
+      const progress=Math.min(animX/t,1);
+      const cx=pStartX+(pEndX-pStartX)*progress;
+      if(animX>=t){ animX=0; }
+      drawPower(cx);
+    }
+    animId=requestAnimationFrame(loop);
+  }
+  animId=requestAnimationFrame(loop);
+}
+
+function startPrincAnim(){
+  if(princAnimId) cancelAnimationFrame(princAnimId);
+  princT=0; princLastTs=null;
+  function loop(ts){
+    if(!princLastTs) princLastTs=ts;
+    const dt=Math.min((ts-princLastTs)/1000,0.05); princLastTs=ts;
+    princT+=dt*0.4;
+    if(princT>1.1) princT=0;
+    drawPrinciple(Math.min(princT,1));
+    princAnimId=requestAnimationFrame(loop);
+  }
+  princAnimId=requestAnimationFrame(loop);
+}
+function stopPrincAnim(){
+  if(princAnimId){ cancelAnimationFrame(princAnimId); princAnimId=null; }
+}
+
+function stopAnim(){
+  if(animId){ cancelAnimationFrame(animId); animId=null; }
+  stopPrincAnim();
+}
+
+// ===== UI =====
+function updateUI(){
+  const titles={work:'仕事',principle:'仕事の原理',power:'仕事率'};
+  const subs={work:'W = Fcosθ · x',principle:'道具を使っても仕事は変わらない',power:'P = W/t = Fv'};
+  document.getElementById('mainTitle').textContent=titles[tab];
+  document.getElementById('mainSub').textContent=subs[tab];
+  document.getElementById('infoTitle').textContent=titles[tab];
+
+  const infos={
+    work:'<span class="hl hl-blue">W = Fcosθ·x</span>。θ=0°で最大、θ=90°でゼロ（仕事なし）、θ>90°で負の仕事。',
+    principle:`<span class="hl hl-orange">道具を使っても仕事は変わらない。</span><br><br>
+<b>（1）斜面を使う場合</b><br>
+必要な力 F₁ = mg sinθ（mg より<span class="hl hl-blue">小さい力</span>）<br>
+引く距離 s₁ = h / sinθ（h より<span class="hl hl-orange">長い距離</span>）<br>
+∴ W₁ = F₁ × s₁ = mg sinθ × h/sinθ = <span class="hl hl-green">mgh</span><br><br>
+<b>（2）直接持ち上げる場合</b><br>
+W₂ = mg × h = <span class="hl hl-green">mgh</span><br><br>
+→ 力が小さくなった分、距離が長くなるので仕事は同じ！`,
+    power:'<span class="hl hl-blue">P = Fv</span>。単位時間あたりの仕事。単位はワット [W] = [J/s]。',
+  };
+  document.getElementById('infoBody').innerHTML=infos[tab];
+
+  const formulas={
+    work:'<strong>仕事</strong>W = Fcosθ · x<br><span style="color:var(--muted);font-size:11px">θ=0°→W=Fx　θ=90°→W=0　θ>90°→W&lt;0</span>',
+    principle:'<strong>仕事の原理</strong>W = Fx = F\'L<br><span style="color:var(--muted);font-size:11px">道具を使っても仕事（エネルギー）は変わらない</span>',
+    power:'<strong>仕事率</strong>P = W/t = Fv<br><span style="color:var(--muted);font-size:11px">単位：W（ワット）= J/s</span>',
+  };
+  document.getElementById('formulaBox').innerHTML=formulas[tab];
+
+  if(tab==='work'){
+    const F=parseFloat(document.getElementById('F-slider').value);
+    const thD=parseFloat(document.getElementById('th-slider').value);
+    const x=parseFloat(document.getElementById('x-slider').value);
+    const W=F*Math.cos(thD*Math.PI/180)*x;
+    document.getElementById('resultCard').textContent=`W = ${W.toFixed(1)} J`;
+    document.getElementById('resultCard').style.color=W>0?'var(--orange)':W<0?'var(--red)':'var(--muted)';
+  } else if(tab==='principle'){
+    const Wt=parseFloat(document.getElementById('pw-slider').value);
+    const h=parseFloat(document.getElementById('ph-slider').value);
+    document.getElementById('resultCard').textContent=`仕事 = ${(Wt*h).toFixed(1)} J（どちらも同じ）`;
+    document.getElementById('resultCard').style.color='var(--orange)';
+  } else {
+    const F=parseFloat(document.getElementById('pF-slider').value);
+    const x=parseFloat(document.getElementById('px-slider').value);
+    const t=parseFloat(document.getElementById('pt-slider').value);
+    document.getElementById('resultCard').textContent=`P = ${(F*x/t).toFixed(1)} W`;
+    document.getElementById('resultCard').style.color='var(--orange)';
+  }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='work') drawWork(animX>0?animX:null);
+  else if(tab==='principle') drawPrinciple();
+  else drawPower(animX>0?animX:null);
+}
+
+function setTab(t){
+  tab=t; stopAnim(); animX=0; animV=0;
+  ['work','principle','power'].forEach((x,i)=>{
+    document.getElementById('tab'+(i+1)).classList.toggle('active',t===x);
+    document.getElementById(x+'Ctrls').style.display=t===x?'contents':'none';
+  });
+  setTimeout(()=>{ resizeC(); updateUI();
+    if(t==='work'||t==='power') startAnim();
+    else startPrincAnim();
+  },30);
+}
+
+[['F','F-label',v=>v+' N'],
+ ['th','th-label',v=>v+'°'],
+ ['x','x-label',v=>parseFloat(v).toFixed(1)+' m'],
+ ['pw','pw-label',v=>v+' N'],
+ ['ph','ph-label',v=>parseFloat(v).toFixed(1)+' m'],
+ ['pth','pth-label',v=>v+'°'],
+ ['pF','pF-label',v=>v+' N'],
+ ['px','px-label',v=>parseFloat(v).toFixed(1)+' m'],
+ ['pt','pt-label',v=>parseFloat(v).toFixed(1)+' s'],
+].forEach(([name,labelId,fmt])=>{
+  const el=document.getElementById(name+'-slider');
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmt(el.value);
+    if(tab==='principle') { updateUI(); startPrincAnim(); }
+    else { updateUI(); if(tab==='work'||tab==='power') startAnim(); }
+  });
+});
+
+setTimeout(()=>{ resizeC(); updateUI(); startAnim(); },50);
+</script>
+</body>
+</html>
