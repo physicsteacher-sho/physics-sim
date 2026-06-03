@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>運動の3法則 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle.two { grid-template-columns:1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:11px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:14px; font-weight:900; line-height:1.8; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+  .hl-red    { background:#fee2e2; color:#991b1b; }
+
+  /* 図解カード */
+  .diagram-card { padding:24px; display:flex; flex-direction:column; gap:20px; }
+  .law-block { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .law-block h3 { font-size:14px; font-weight:900; color:var(--blue-dark); margin-bottom:8px; }
+  .law-block p  { font-size:13px; font-weight:600; color:#334155; line-height:1.8; }
+  .law-formula  { display:inline-block; background:#0f172a; color:#fff; font-size:15px; font-weight:900; padding:4px 16px; border-radius:8px; margin:6px 0; letter-spacing:0.05em; }
+
+  .btn-run { width:100%; padding:10px; border:0; border-radius:10px; background:var(--blue); color:white; font-size:13px; font-weight:900; cursor:pointer; font-family:inherit; }
+  .btn-run:hover { background:var(--blue-dark); }
+  .btn-reset { width:100%; padding:8px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--muted); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<h1>運動の3法則</h1>
+<p class="subtitle">物理基礎 09 ｜ 慣性の法則・運動の法則・作用反作用の法則</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">慣</div>
+        <span class="card-title" id="mainTitle">慣性の法則</span>
+        <span class="card-sub" id="mainSub">第1法則</span>
+      </div>
+
+      <!-- 慣性の法則：図解カード -->
+      <div id="panel-inertia" class="diagram-card">
+        <canvas id="inertiaCanvas" height="130"></canvas>
+        <div class="law-block">
+          <h3>慣性の法則（第1法則）</h3>
+          <p>物体に<span class="hl hl-blue">力がはたらかない</span>か、<span class="hl hl-blue">合力がゼロ</span>のとき、<br>
+          静止している物体は<strong>静止し続け</strong>、<br>
+          運動している物体は<strong>等速直線運動を続ける</strong>。</p>
+        </div>
+        <div class="law-block">
+          <h3>慣性とは</h3>
+          <p>物体が現在の運動状態を<span class="hl hl-orange">維持しようとする性質</span>。<br>
+          質量が大きいほど慣性も大きい。</p>
+        </div>
+      </div>
+
+      <!-- 運動の法則：アニメ -->
+      <div id="panel-motion" style="display:none">
+        <canvas id="motionCanvas" height="130"></canvas>
+      </div>
+
+      <!-- 作用反作用：図解カード -->
+      <div id="panel-action" style="display:none">
+        <canvas id="actionCanvas" height="130"></canvas>
+        <div class="diagram-card" style="padding-top:0">
+          <div class="law-block">
+            <h3>作用・反作用の法則（第3法則）</h3>
+            <p>物体Aが物体Bに力（作用）を及ぼすとき、<br>
+            物体BはAに対して<span class="hl hl-red">同一直線上・逆向き・同じ大きさ</span>の力（反作用）を及ぼす。</p>
+          </div>
+          <div class="law-block">
+            <h3>注意</h3>
+            <p>作用・反作用は<span class="hl hl-orange">異なる物体</span>にはたらく力。<br>
+            つり合いの2力（同一物体）と混同しないこと。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;" id="infoBox">
+      <strong style="color:var(--blue-dark)" id="infoTitle">慣性の法則</strong>
+      <span id="infoBody">力がゼロ（または合力ゼロ）→<span class="hl hl-blue">運動状態は変化しない</span>。静止→静止、等速→等速直線運動。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>法則を選ぶ</h3>
+          <div class="toggle three" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('inertia')">第1法則<br><span style="font-weight:600;font-size:10px">慣性</span></button>
+            <button id="tab2" onclick="setTab('motion')">第2法則<br><span style="font-weight:600;font-size:10px">運動</span></button>
+            <button id="tab3" onclick="setTab('action')">第3法則<br><span style="font-weight:600;font-size:10px">作用反作用</span></button>
+          </div>
+        </div>
+
+        <!-- 慣性コントロール -->
+        <div id="ctrl-inertia">
+          <div class="toggle two" style="margin-top:4px">
+            <button id="inertia-noforce" class="active" onclick="setInertia('noforce')">力なし</button>
+            <button id="inertia-force"   onclick="setInertia('force')">力あり</button>
+          </div>
+        </div>
+
+        <!-- 運動コントロール -->
+        <div id="ctrl-motion" style="display:none">
+          <div class="control">
+            <label>力 F <span class="val" id="F-label">10 N</span></label>
+            <input type="range" id="F-slider" min="1" max="30" value="10" step="1">
+            <div class="range-hint"><span>1 N</span><span>30 N</span></div>
+          </div>
+          <div class="control">
+            <label>質量 m <span class="val" id="m-label">2.0 kg</span></label>
+            <input type="range" id="m-slider" min="0.5" max="10" value="2" step="0.5">
+            <div class="range-hint"><span>0.5 kg</span><span>10 kg</span></div>
+          </div>
+          <button class="btn-run" onclick="startMotion()">▶ スタート</button>
+          <button class="btn-reset" onclick="resetMotion()">リセット</button>
+        </div>
+
+        <!-- 作用反作用コントロール -->
+        <div id="ctrl-action" style="display:none">
+          <div class="control">
+            <label>力の大きさ F <span class="val" id="FA-label">20 N</span></label>
+            <input type="range" id="FA-slider" min="5" max="50" value="20" step="5">
+            <div class="range-hint"><span>5 N</span><span>50 N</span></div>
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>慣性の法則（第1法則）</strong>
+          合力 = 0 → 運動状態は変化しない
+        </div>
+
+        <div class="result-card" id="resultCard" style="background:var(--blue-soft);border:1px solid #bfdbfe;color:var(--blue-dark)">
+          静止 → 静止し続ける<br>等速 → 等速直線運動
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+function initCanvas(id) {
+  const c = document.getElementById(id);
+  function rs() {
+    const r = c.getBoundingClientRect();
+    if(r.width === 0) return;
+    c.width = r.width*DPR; c.height = r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  }
+  rs();
+  return c;
+}
+const IC = initCanvas('inertiaCanvas');
+const MC = initCanvas('motionCanvas');
+const AC = initCanvas('actionCanvas');
+window.addEventListener('resize', () => {
+  [IC,MC,AC].forEach(c => {
+    const r = c.getBoundingClientRect();
+    if(r.width===0) return;
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  });
+  redraw();
+});
+
+let tab = 'inertia';
+let inertiaMode = 'noforce';
+let actionType = 'push';
+let motionRunning = false;
+let motionAnimId = null;
+let blockX = 0, blockV = 0, blockT = 0;
+const g = 9.8;
+
+// ===== ユーティリティ =====
+function arrow(ctx, x1,y1,x2,y2, color, lw) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx), hs=11;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4), y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4), y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function lbl(ctx,x,y,text,color,align,baseline) {
+  ctx.save();
+  ctx.fillStyle=color||'#0f172a'; ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign=align||'center'; ctx.textBaseline=baseline||'alphabetic';
+  ctx.fillText(text,x,y);
+  ctx.restore();
+}
+
+function drawGround(ctx,W,H,gy) {
+  ctx.save();
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,gy,W,H-gy);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+  ctx.restore();
+}
+
+function drawBlock(ctx,cx,gy,w,h,color) {
+  const top=gy-h;
+  ctx.save();
+  ctx.fillStyle=color||'#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-w/2,top,w,h,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  return {top, cy:gy-h/2};
+}
+
+// ===== 慣性の法則 =====
+let inertiaX = null;
+let inertiaAnimId = null;
+let inertiaDt = 0;
+
+function drawInertia() {
+  const ctx = IC.getContext('2d');
+  const W = IC.getBoundingClientRect().width, H = IC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const gy = H*0.70;
+  drawGround(ctx,W,H,gy);
+
+  const bw=60,bh=40;
+
+  if(inertiaMode==='noforce') {
+    // 力なし：等速で動く物体（ループ）
+    if(inertiaX===null) inertiaX = W*0.15;
+    const cx = inertiaX;
+    const {cy} = drawBlock(ctx,cx,gy,bw,bh,'#dbeafe');
+    // 速度矢印
+    arrow(ctx, cx+bw/2,cy, cx+bw/2+50,cy, '#1d4ed8',2.5);
+    lbl(ctx, cx+bw/2+56,cy+4,'v（一定）','#1d4ed8','left');
+    lbl(ctx,W/2,H-14,'合力 = 0 → 速度変化なし（等速直線運動）','#64748b','center');
+  } else {
+    // 未完成バナー
+    ctx.save();
+    ctx.fillStyle='#fef9c3';
+    ctx.fillRect(0,0,W,32);
+    ctx.strokeStyle='#ca8a04'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(0,32); ctx.lineTo(W,32); ctx.stroke();
+    ctx.fillStyle='#854d0e'; ctx.font='700 13px Hiragino Sans,system-ui';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⚠️  この図は第1法則の説明としては不完全（運動状態が変化している）', W/2, 16);
+    ctx.restore();
+
+    // 力あり：加速する物体
+    if(inertiaX===null) inertiaX = W*0.15;
+    const cx = Math.min(inertiaX, W*0.82);
+    const {cy} = drawBlock(ctx,cx,gy,bw,bh,'#fee2e2');
+    const vLen = Math.min(20+inertiaDt*18, 90);
+    arrow(ctx, cx+bw/2,cy, cx+bw/2+vLen,cy, '#dc2626',2.5);
+    lbl(ctx, cx+bw/2+vLen+6,cy+4,'v（増加中）','#dc2626','left');
+    // 力矢印：作用点（左面）から右向き
+    ctx.save();
+    ctx.fillStyle='#ea580c';
+    ctx.beginPath(); ctx.arc(cx-bw/2, cy, 4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    arrow(ctx, cx-bw/2, cy, cx-bw/2+44, cy, '#ea580c', 2.5);
+    lbl(ctx, cx-bw/2-6, cy-12, 'F', '#ea580c', 'center');
+    lbl(ctx,W/2,H-14,'合力 ≠ 0 → 加速（運動状態が変化）','#64748b','center');
+  }
+}
+
+function inertiaLoop(ts) {
+  const speed = inertiaMode==='noforce' ? 1.2 : 0;
+  const accel = inertiaMode==='force' ? 0.4 : 0;
+  if(inertiaX===null) inertiaX = IC.getBoundingClientRect().width * 0.15;
+  inertiaX += speed;
+  inertiaDt += 0.016;
+  if(inertiaMode==='force') inertiaX += inertiaDt * accel;
+  const W = IC.getBoundingClientRect().width;
+  if(inertiaX > W*0.85 || (inertiaMode==='force' && inertiaX > W*0.82)) {
+    inertiaX = W*0.15;
+    inertiaDt = 0;
+  }
+  drawInertia();
+  inertiaAnimId = requestAnimationFrame(inertiaLoop);
+}
+
+function startInertiaAnim() {
+  if(inertiaAnimId) cancelAnimationFrame(inertiaAnimId);
+  inertiaX = null; inertiaDt = 0;
+  inertiaAnimId = requestAnimationFrame(inertiaLoop);
+}
+
+// ===== 運動の法則 =====
+function drawMotion(bx, bv) {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const gy = H*0.68;
+  drawGround(ctx,W,H,gy);
+
+  const F = parseFloat(document.getElementById('F-slider').value);
+  const m = parseFloat(document.getElementById('m-slider').value);
+  const a = F/m;
+  const bw=60,bh=44;
+  const cx = Math.max(bw/2+4, Math.min(bx, W-bw/2-4));
+  const {cy,top} = drawBlock(ctx,cx,gy,bw,bh,'#dbeafe');
+
+  // 力矢印：作用点（左面）から右向き、ブロック下寄り
+  const fLen = Math.min(F*3, 80);
+  const forceY = cy + 10;
+  ctx.save(); ctx.fillStyle='#ea580c';
+  ctx.beginPath(); ctx.arc(cx-bw/2, forceY, 4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  arrow(ctx, cx-bw/2, forceY, cx-bw/2+fLen, forceY, '#ea580c', 2.5);
+  lbl(ctx, cx-bw/2+fLen/2, forceY+14, `F = ${F} N`, '#ea580c', 'center');
+
+  // 速度矢印（動いていれば）ブロック上寄り
+  if(bv > 0.5) {
+    const vLen = Math.min(bv*8, 90);
+    const velY = cy - 10;
+    arrow(ctx, cx+bw/2, velY, cx+bw/2+vLen, velY, '#1d4ed8', 2.5);
+    lbl(ctx, cx+bw/2+vLen+6, velY+4, `v = ${bv.toFixed(1)} m/s`, '#1d4ed8', 'left');
+  }
+
+  // 加速度表示
+  lbl(ctx,W/2,H-14,`a = F/m = ${F}/${m} = ${a.toFixed(2)} m/s²`,'#15803d','center');
+}
+
+function startMotion() {
+  if(motionRunning) return;
+  motionRunning = true;
+  blockX = 60; blockV = 0; blockT = 0;
+  let last = null;
+  const F = parseFloat(document.getElementById('F-slider').value);
+  const m = parseFloat(document.getElementById('m-slider').value);
+  const a = F/m;
+  function loop(ts) {
+    if(!last) last=ts;
+    const dt = Math.min((ts-last)/1000, 0.05);
+    last = ts;
+    blockV += a*dt;
+    blockX += blockV*dt*60;
+    const W = MC.getBoundingClientRect().width;
+    drawMotion(blockX, blockV);
+    if(blockX < W-40) {
+      motionAnimId = requestAnimationFrame(loop);
+    } else {
+      motionRunning = false;
+    }
+  }
+  motionAnimId = requestAnimationFrame(loop);
+}
+
+function resetMotion() {
+  if(motionAnimId) cancelAnimationFrame(motionAnimId);
+  motionRunning = false;
+  blockX=60; blockV=0;
+  drawMotion(blockX,0);
+}
+
+// ===== 作用反作用 =====
+function drawAction() {
+  const ctx = AC.getContext('2d');
+  const W = AC.getBoundingClientRect().width, H = AC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const F = parseFloat(document.getElementById('FA-slider').value);
+  const gy = H*0.68;
+  drawGround(ctx,W,H,gy);
+
+  const bw=64,bh=44;
+  const cx = W/2;
+  const cxA = cx - bw/2;   // Aの右面 = cx
+  const cxB = cx + bw/2;   // Bの左面 = cx
+
+  const {cy:cyA} = drawBlock(ctx,cxA,gy,bw,bh,'#dbeafe');
+  const {cy:cyB} = drawBlock(ctx,cxB,gy,bw,bh,'#dcfce7');
+
+  // ラベル
+  lbl(ctx,cxA,gy-bh-8,'A','#1d4ed8','center');
+  lbl(ctx,cxB,gy-bh-8,'B','#15803d','center');
+
+  const fScale = Math.min(F*1.8, 80);
+  const contactY = cyA; // 接触面の高さ
+
+  if(actionType==='push') {
+    // 作用：AがBを押す → 作用点はB左面(=cx)から右向き
+    ctx.save(); ctx.fillStyle='#15803d';
+    ctx.beginPath(); ctx.arc(cx, contactY-8, 4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    arrow(ctx, cx, contactY-8, cx+fScale, contactY-8, '#15803d', 3);
+    lbl(ctx, cx+fScale+6, contactY-8, '作用', '#15803d', 'left');
+    lbl(ctx, cx+fScale+6, contactY+6, `F = ${F} N →`, '#15803d', 'left');
+
+    // 反作用：BがAを押す → 作用点はA右面(=cx)から左向き
+    ctx.save(); ctx.fillStyle='#dc2626';
+    ctx.beginPath(); ctx.arc(cx, contactY+8, 4, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    arrow(ctx, cx, contactY+8, cx-fScale, contactY+8, '#dc2626', 3);
+    lbl(ctx, cx-fScale-6, contactY+8, '反作用', '#dc2626', 'right');
+    lbl(ctx, cx-fScale-6, contactY+22, `← F = ${F} N`, '#dc2626', 'right');
+  }
+
+  lbl(ctx,W/2,H-14,'作用と反作用：同一直線上・逆向き・同じ大きさ','#64748b','center');
+}
+
+// ===== タブ切替 =====
+function setTab(t) {
+  tab = t;
+  ['inertia','motion','action'].forEach(x => {
+    document.getElementById('panel-'+x).style.display = t===x ? 'block':'none';
+    document.getElementById('ctrl-'+x).style.display  = t===x ? 'contents':'none';
+    document.getElementById('tab'+(x==='inertia'?1:x==='motion'?2:3)).classList.toggle('active',t===x);
+  });
+  // パネルはdiv単位で表示制御
+  document.getElementById('panel-inertia').style.display = t==='inertia' ? 'block':'none';
+  document.getElementById('panel-motion').style.display  = t==='motion'  ? 'block':'none';
+  document.getElementById('panel-action').style.display  = t==='action'  ? 'block':'none';
+
+  const badges  = {inertia:'慣', motion:'運', action:'作'};
+  const titles  = {inertia:'慣性の法則', motion:'運動の法則', action:'作用・反作用の法則'};
+  const subs    = {inertia:'第1法則', motion:'第2法則', action:'第3法則'};
+  document.getElementById('mainBadge').textContent = badges[t];
+  document.getElementById('mainTitle').textContent = titles[t];
+  document.getElementById('mainSub').textContent   = subs[t];
+
+  const formulas = {
+    inertia: '<strong>慣性の法則（第1法則）</strong>合力 = 0 → 運動状態は変化しない',
+    motion:  '<strong>運動の法則（第2法則）</strong>ma = F<br><span style="color:var(--muted);font-size:12px">加速度は力に比例、質量に反比例</span>',
+    action:  '<strong>作用・反作用の法則（第3法則）</strong>F_AB = −F_BA<br><span style="color:var(--muted);font-size:12px">大きさ等しく・逆向き・同一直線上</span>',
+  };
+  const results = {
+    inertia: '静止 → 静止し続ける<br>等速 → 等速直線運動',
+    motion:  `a = F/m = ${document.getElementById('F-slider').value}/${document.getElementById('m-slider').value} m/s²`,
+    action:  '作用 = 反作用（大きさ同じ・向き逆）',
+  };
+  document.getElementById('formulaBox').innerHTML = formulas[t];
+  document.getElementById('resultCard').innerHTML = results[t];
+
+  const infos = {
+    inertia: '力がゼロ（または合力ゼロ）→<span class="hl hl-blue">運動状態は変化しない</span>。静止→静止、等速→等速直線運動。',
+    motion:  '<span class="hl hl-orange">ma = F</span>。加速度は力に<span class="hl hl-green">比例</span>、質量に<span class="hl hl-red">反比例</span>。F・mを変えて確認しよう。',
+    action:  'AがBに力を及ぼすとき、BはAに<span class="hl hl-red">同じ大きさ・逆向き</span>の力を及ぼす。<span class="hl hl-orange">異なる物体</span>にはたらく点がつり合いと異なる。',
+  };
+  document.getElementById('infoTitle').textContent = titles[t];
+  document.getElementById('infoBody').innerHTML = infos[t];
+
+  // アニメ停止・再開
+  if(inertiaAnimId) { cancelAnimationFrame(inertiaAnimId); inertiaAnimId=null; }
+  if(motionAnimId)  { cancelAnimationFrame(motionAnimId);  motionAnimId=null; motionRunning=false; }
+
+  setTimeout(() => {
+    [IC,MC,AC].forEach(c => {
+      const r=c.getBoundingClientRect();
+      if(r.width===0) return;
+      c.width=r.width*DPR; c.height=r.height*DPR;
+      c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+    });
+    if(t==='inertia') startInertiaAnim();
+    if(t==='motion')  drawMotion(60,0);
+    if(t==='action')  drawAction();
+  }, 30);
+}
+
+function setInertia(m) {
+  inertiaMode = m;
+  document.getElementById('inertia-noforce').classList.toggle('active', m==='noforce');
+  document.getElementById('inertia-force').classList.toggle('active', m==='force');
+  inertiaX=null; inertiaDt=0;
+}
+
+function setAction(t) {}  // unused
+
+// スライダー
+document.getElementById('F-slider').addEventListener('input', e => {
+  document.getElementById('F-label').textContent = e.target.value+' N';
+  updateMotionResult();
+  if(!motionRunning) drawMotion(blockX, blockV);
+});
+document.getElementById('m-slider').addEventListener('input', e => {
+  document.getElementById('m-label').textContent = parseFloat(e.target.value).toFixed(1)+' kg';
+  updateMotionResult();
+  if(!motionRunning) drawMotion(blockX, blockV);
+});
+document.getElementById('FA-slider').addEventListener('input', e => {
+  document.getElementById('FA-label').textContent = e.target.value+' N';
+  drawAction();
+});
+
+function updateMotionResult() {
+  const F = parseFloat(document.getElementById('F-slider').value);
+  const m = parseFloat(document.getElementById('m-slider').value);
+  document.getElementById('resultCard').textContent = `a = F/m = ${F}/${m} = ${(F/m).toFixed(2)} m/s²`;
+}
+
+function redraw() {
+  if(tab==='inertia') drawInertia();
+  if(tab==='motion')  drawMotion(blockX,blockV);
+  if(tab==='action')  drawAction();
+}
+
+// 初期化
+setTimeout(()=>{
+  [IC,MC,AC].forEach(c=>{
+    const r=c.getBoundingClientRect();
+    if(r.width===0) return;
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  });
+  startInertiaAnim();
+}, 50);
+</script>
+</body>
+</html>
