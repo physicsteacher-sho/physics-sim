@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>力の合成と分解 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two { grid-template-columns:1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.8; }
+
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+</style>
+</head>
+<body>
+
+<h1>力の合成と分解</h1>
+<p class="subtitle">物理基礎 08 ｜ 平行四辺形の法則・成分への分解</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">合</div>
+        <span class="card-title" id="mainTitle">力の合成</span>
+        <span class="card-sub" id="mainSub">2力の合力を求める（平行四辺形の法則）</span>
+      </div>
+      <canvas id="mainCanvas" height="200"></canvas>
+    </div>
+
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;" id="infoBox">
+      <strong style="color:var(--blue-dark)" id="infoTitle">力の合成</strong>
+      <span id="infoBody">2力を2辺とする<span class="hl hl-blue">平行四辺形の対角線</span>が合力。大きさは<span class="hl hl-orange">F = √(F₁²+F₂²+2F₁F₂cosθ)</span></span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>表示モード</h3>
+          <div class="toggle two" style="margin-top:10px">
+            <button id="modeComp" class="active" onclick="setMode('comp')">力の合成</button>
+            <button id="modeDecomp" onclick="setMode('decomp')">力の分解</button>
+          </div>
+        </div>
+
+        <!-- 合成モードのスライダー -->
+        <div id="compCtrls">
+          <div class="control">
+            <label>F₁の大きさ <span class="val" id="f1-label">40 N</span></label>
+            <input type="range" id="f1-slider" min="10" max="80" value="40" step="5">
+            <div class="range-hint"><span>10 N</span><span>80 N</span></div>
+          </div>
+          <div class="control">
+            <label>F₂の大きさ <span class="val" id="f2-label">40 N</span></label>
+            <input type="range" id="f2-slider" min="10" max="80" value="40" step="5">
+            <div class="range-hint"><span>10 N</span><span>80 N</span></div>
+          </div>
+          <div class="control">
+            <label>2力のなす角 θ <span class="val" id="theta-label">60°</span></label>
+            <input type="range" id="theta-slider" min="0" max="180" value="60" step="5">
+            <div class="range-hint"><span>0°（同方向）</span><span>180°（逆向き）</span></div>
+          </div>
+        </div>
+
+        <!-- 分解モードのスライダー -->
+        <div id="decompCtrls" style="display:none">
+          <div class="control">
+            <label>力Fの大きさ <span class="val" id="fd-label">60 N</span></label>
+            <input type="range" id="fd-slider" min="10" max="100" value="60" step="5">
+            <div class="range-hint"><span>10 N</span><span>100 N</span></div>
+          </div>
+          <div class="control" id="alphaCtrl">
+            <label>力の角度 θ <span class="val" id="alpha-label">30°</span></label>
+            <input type="range" id="alpha-slider" min="0" max="90" value="30" step="5">
+            <div class="range-hint"><span>0°（水平）</span><span>90°（鉛直）</span></div>
+          </div>
+          <div>
+            <h3 style="margin-top:4px">分解の方向</h3>
+            <div class="toggle two" style="margin-top:10px">
+              <button id="decompXY" class="active" onclick="setDecompType('xy')">水平・鉛直</button>
+              <button id="decompSlope" onclick="setDecompType('slope')">斜面方向</button>
+            </div>
+          </div>
+          <div class="control" id="slopeAngleCtrl" style="display:none">
+            <label>斜面角度 θ <span class="val" id="phi-label">30°</span></label>
+            <input type="range" id="phi-slider" min="5" max="60" value="30" step="5">
+            <div class="range-hint"><span>5°</span><span>60°</span></div>
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>力の合成（平行四辺形の法則）</strong>
+          F = √(F₁²+F₂²+2F₁F₂cosθ)
+        </div>
+
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          F = 40.0 N
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const MC = (() => {
+  const c = document.getElementById('mainCanvas');
+  function rs() {
+    const r = c.getBoundingClientRect();
+    c.width = r.width*DPR; c.height = r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  }
+  rs(); window.addEventListener('resize', () => { rs(); redraw(); });
+  return c;
+})();
+
+let mode = 'comp';
+let decompType = 'xy';
+
+function arrow(ctx, x1, y1, x2, y2, color, lw) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx), hs=12;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4), y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4), y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function dashedArrow(ctx, x1, y1, x2, y2, color, lw) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||2;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  const ang=Math.atan2(dy,dx);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-10*Math.cos(ang-0.4), y2-10*Math.sin(ang-0.4));
+  ctx.lineTo(x2-10*Math.cos(ang+0.4), y2-10*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function label(ctx, x, y, text, color, align, baseline) {
+  ctx.save();
+  ctx.fillStyle = color||'#0f172a';
+  ctx.font = '700 13px Hiragino Sans,system-ui';
+  ctx.textAlign = align||'center';
+  ctx.textBaseline = baseline||'alphabetic';
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function arrowTip(x1,y1,x2,y2,offsetPx) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  return { lx: x2+(dx/len)*offsetPx, ly: y2+(dy/len)*offsetPx };
+}
+
+// ===== 合成モード =====
+function drawComp() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const F1 = parseFloat(document.getElementById('f1-slider').value);
+  const F2 = parseFloat(document.getElementById('f2-slider').value);
+  const th = parseFloat(document.getElementById('theta-slider').value)*Math.PI/180;
+
+  const scale = (H*0.35) / 80; // 80Nを最大として
+  const f1len = F1 * scale;
+  const f2len = F2 * scale;
+
+  // 原点：画面中央やや左下
+  const ox = W * 0.38, oy = H * 0.60;
+
+  // F1：右水平
+  const f1x = ox + f1len, f1y = oy;
+  // F2：F1からθの角度（上向き）
+  const f2x = ox + f2len * Math.cos(th), f2y = oy - f2len * Math.sin(th);
+  // 合力の先端
+  const frx = f1x + f2len * Math.cos(th), fry = f1y - f2len * Math.sin(th);
+
+  // 平行四辺形の4頂点
+  // O, F1tip, Resultant, F2tip
+  // 破線：F1tip→Resultant, F2tip→Resultant
+  dashedArrow(ctx, f1x, f1y, frx, fry, '#94a3b8', 1.5);
+  dashedArrow(ctx, f2x, f2y, frx, fry, '#94a3b8', 1.5);
+
+  // 力矢印
+  arrow(ctx, ox, oy, f1x, f1y, '#1d4ed8', 3);
+  arrow(ctx, ox, oy, f2x, f2y, '#15803d', 3);
+  arrow(ctx, ox, oy, frx, fry, '#dc2626', 3.5);
+
+  // ラベル
+  const FR = Math.sqrt(F1*F1 + F2*F2 + 2*F1*F2*Math.cos(th));
+
+  // F1ラベル（右寄り or 下寄り）
+  let t1 = arrowTip(ox,oy,f1x,f1y,16);
+  label(ctx, t1.lx, t1.ly+4, `F₁ = ${F1} N`, '#1d4ed8', 'left');
+
+  // F2ラベル（先端の外側）
+  let t2 = arrowTip(ox,oy,f2x,f2y,16);
+  const a2 = Math.atan2(f2y-oy, f2x-ox);
+  const lx2 = f2x + Math.cos(a2)*16, ly2 = f2y + Math.sin(a2)*16;
+  label(ctx, lx2, ly2-6, `F₂ = ${F2} N`, '#15803d', 'center');
+
+  // 合力ラベル
+  const ang_r = Math.atan2(fry-oy, frx-ox);
+  const lxr = frx + Math.cos(ang_r)*16, lyr = fry + Math.sin(ang_r)*16;
+  label(ctx, lxr+4, lyr-6, `F = ${FR.toFixed(1)} N`, '#dc2626', 'left');
+
+  // 角度マーク
+  if(th > 0.05 && th < Math.PI - 0.05) {
+    const arcR = 36;
+    ctx.save();
+    ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ox,oy, arcR, -th, 0); ctx.stroke();
+    // θラベル
+    const mid = -th/2;
+    label(ctx, ox+Math.cos(mid)*(arcR+14), oy+Math.sin(mid)*(arcR+14), 'θ', '#64748b', 'center');
+    ctx.restore();
+  }
+
+  // 作用点
+  ctx.save();
+  ctx.fillStyle='#0f172a';
+  ctx.beginPath(); ctx.arc(ox,oy,5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // 特殊ケース注記
+  if(th < 0.05) {
+    label(ctx, W/2, H-22, `同方向：F = F₁+F₂ = ${FR.toFixed(1)} N（最大）`, '#64748b', 'center');
+  } else if(th > Math.PI-0.05) {
+    label(ctx, W/2, H-22, `逆方向：F = |F₁−F₂| = ${FR.toFixed(1)} N（最小）`, '#64748b', 'center');
+  } else if(Math.abs(th - Math.PI/2) < 0.05) {
+    label(ctx, W/2, H-22, `直角：F = √(F₁²+F₂²) = ${FR.toFixed(1)} N`, '#64748b', 'center');
+  } else {
+    label(ctx, W/2, H-22, `F = √(F₁²+F₂²+2F₁F₂cosθ) = ${FR.toFixed(1)} N`, '#64748b', 'center');
+  }
+}
+
+// ===== 分解モード（水平・鉛直） =====
+function drawDecompXY() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const F  = parseFloat(document.getElementById('fd-slider').value);
+  const al = parseFloat(document.getElementById('alpha-slider').value)*Math.PI/180;
+
+  const scale = (H*0.38) / 100;
+  const flen = F * scale;
+
+  const ox = W/2, oy = H*0.65;
+
+  const Fx = F * Math.cos(al);
+  const Fy = F * Math.sin(al);
+  const fxlen = Fx * scale;
+  const fylen = Fy * scale;
+
+  // 軸
+  ctx.save();
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(ox-W*0.4,oy); ctx.lineTo(ox+W*0.4,oy); ctx.stroke(); // x軸
+  ctx.beginPath(); ctx.moveTo(ox,oy+20); ctx.lineTo(ox,oy-H*0.5); ctx.stroke(); // y軸
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // 補助線（成分の破線）
+  // Fx成分（水平）
+  dashedArrow(ctx, ox, oy, ox+fxlen, oy, '#1d4ed8', 2);
+  // Fy成分（鉛直）
+  dashedArrow(ctx, ox, oy, ox, oy-fylen, '#15803d', 2);
+  // 矩形の残り2辺（点線）
+  ctx.save();
+  ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(ox+fxlen, oy); ctx.lineTo(ox+fxlen, oy-fylen); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox, oy-fylen); ctx.lineTo(ox+fxlen, oy-fylen); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // 合力
+  arrow(ctx, ox, oy, ox+fxlen, oy-fylen, '#dc2626', 3.5);
+
+  // 角度マーク
+  if(al > 0.05) {
+    const arcR = 40;
+    ctx.save();
+    ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ox, oy, arcR, -al, 0); ctx.stroke();
+    const midAng = -al / 2;
+    label(ctx, ox + Math.cos(midAng)*(arcR+16), oy + Math.sin(midAng)*(arcR+16), 'θ', '#64748b', 'center');
+    ctx.restore();
+  }
+
+  // 作用点
+  ctx.save();
+  ctx.fillStyle='#0f172a';
+  ctx.beginPath(); ctx.arc(ox,oy,5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // ラベル
+  label(ctx, ox+fxlen+8, oy+16, `Fx = Fcosθ = ${Fx.toFixed(1)} N`, '#1d4ed8', 'left');
+  label(ctx, ox-10, oy-fylen-10, `Fy = Fsinθ = ${Fy.toFixed(1)} N`, '#15803d', 'right');
+  // 合力ラベル（先端）
+  const ang_f = Math.atan2(-(oy-fylen-oy), (ox+fxlen)-ox);
+  label(ctx, ox+fxlen+14, oy-fylen-4, `F = ${F} N`, '#dc2626', 'left');
+
+  label(ctx, W/2, H-22, `Fx = Fcosθ = ${Fx.toFixed(1)} N，　Fy = Fsinθ = ${Fy.toFixed(1)} N`, '#64748b', 'center');
+}
+
+// ===== 分解モード（斜面方向） =====
+function drawDecompSlope() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const F  = parseFloat(document.getElementById('fd-slider').value);
+  const al = parseFloat(document.getElementById('alpha-slider').value)*Math.PI/180;
+  const phi= parseFloat(document.getElementById('phi-slider').value)*Math.PI/180;
+
+  const scale = (H*0.35) / 100;
+  const flen = F * scale;
+
+  // 斜面描画
+  const baseX = W*0.08, baseY = H*0.82;
+  const slLen = W*0.84;
+  const slH = slLen * Math.tan(phi);
+  ctx.save();
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY); ctx.lineTo(baseX+slLen, baseY); ctx.lineTo(baseX+slLen, baseY-slH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen, baseY-slH); ctx.stroke();
+  // 角度マーク
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(baseX, baseY, 36, -phi, 0); ctx.stroke();
+  const midPhi = -phi/2;
+  label(ctx, baseX + Math.cos(midPhi)*52, baseY + Math.sin(midPhi)*52, 'θ', '#64748b', 'center');
+  ctx.restore();
+
+  // 斜面上の物体位置
+  const along = slLen * 0.42;
+  const sx = baseX + along * Math.cos(phi);
+  const sy = baseY - along * Math.sin(phi);
+
+  // 斜面方向・法線方向の単位ベクトル
+  const tx =  Math.cos(phi), ty = -Math.sin(phi); // 斜面上向き
+  const nx = -Math.sin(phi), ny = -Math.cos(phi); // 法線上向き（外向き）
+
+  // 物体描画
+  const bh=50, bw=70;
+  const cx_b = sx + nx*bh/2, cy_b = sy + ny*bh/2;
+  ctx.save();
+  ctx.translate(cx_b, cy_b); ctx.rotate(-phi);
+  ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-bw/2,-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // 重力（鉛直下向き）
+  const W_N = F;
+  const wlen = F * scale;
+  const gx1=cx_b, gy1=cy_b, gx2=cx_b, gy2=cy_b+wlen;
+  arrow(ctx, gx1,gy1, gx2,gy2, '#dc2626', 3.5);
+  label(ctx, gx2+8, gy2, `W = ${F} N`, '#dc2626', 'left');
+
+  // 斜面平行成分：W sinθ（斜面下向き）
+  const sinComp = F * Math.sin(phi);
+  const sinLen  = sinComp * scale;
+  // 斜面平行下向き = (-tx, -ty)
+  dashedArrow(ctx, cx_b,cy_b, cx_b+(-tx)*sinLen, cy_b+(-ty)*sinLen, '#ea580c', 2.5);
+  const lx_sin = cx_b+(-tx)*sinLen, ly_sin = cy_b+(-ty)*sinLen;
+  label(ctx, lx_sin-6, ly_sin+16, `W sinθ = ${sinComp.toFixed(1)} N`, '#ea580c', 'right');
+
+  // 法線成分：W cosθ（法線逆向き＝斜面内向き）
+  const cosComp = F * Math.cos(phi);
+  const cosLen  = cosComp * scale;
+  // 法線内向き = (-nx, -ny)
+  dashedArrow(ctx, cx_b,cy_b, cx_b+(-nx)*cosLen, cy_b+(-ny)*cosLen, '#7c3aed', 2.5);
+  const lx_cos = cx_b+(-nx)*cosLen, ly_cos = cy_b+(-ny)*cosLen;
+  label(ctx, lx_cos+12, ly_cos+4, `W cosθ = ${cosComp.toFixed(1)} N`, '#7c3aed', 'left');
+
+  // 作用点
+  ctx.save();
+  ctx.fillStyle='#0f172a';
+  ctx.beginPath(); ctx.arc(cx_b,cy_b,5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  label(ctx, W/2, H-22,
+    `斜面平行：W sinθ = ${sinComp.toFixed(1)} N　　法線：W cosθ = ${cosComp.toFixed(1)} N`,
+    '#64748b', 'center');
+}
+
+// ===== UI更新 =====
+function updateUI() {
+  const F1 = parseFloat(document.getElementById('f1-slider').value);
+  const F2 = parseFloat(document.getElementById('f2-slider').value);
+  const th = parseFloat(document.getElementById('theta-slider').value);
+  const F  = parseFloat(document.getElementById('fd-slider').value);
+  const al = parseFloat(document.getElementById('alpha-slider').value);
+  const phi= parseFloat(document.getElementById('phi-slider').value);
+
+  if(mode === 'comp') {
+    const thR = th * Math.PI/180;
+    const FR = Math.sqrt(F1*F1 + F2*F2 + 2*F1*F2*Math.cos(thR));
+    document.getElementById('resultCard').textContent = `合力 F = ${FR.toFixed(1)} N`;
+    document.getElementById('formulaBox').innerHTML =
+      '<strong>力の合成（平行四辺形の法則）</strong>F = √(F₁²+F₂²+2F₁F₂cosθ)';
+    document.getElementById('infoBody').innerHTML =
+      '2力を2辺とする<span class="hl hl-blue">平行四辺形の対角線</span>が合力。なす角θ=0°で最大（F₁+F₂），θ=180°で最小（|F₁−F₂|）。';
+  } else if(decompType === 'xy') {
+    const alR = al * Math.PI/180;
+    const Fx = (F*Math.cos(alR)).toFixed(1);
+    const Fy = (F*Math.sin(alR)).toFixed(1);
+    document.getElementById('resultCard').innerHTML =
+      `Fx = Fcosθ = <strong>${Fx} N</strong><br>Fy = Fsinθ = <strong>${Fy} N</strong>`;
+    document.getElementById('formulaBox').innerHTML =
+      '<strong>力の分解（水平・鉛直）</strong>Fx = Fcosθ<br>Fy = Fsinθ';
+    document.getElementById('infoBody').innerHTML =
+      '1つの力を<span class="hl hl-blue">2方向の成分</span>に分解。水平成分<span class="hl hl-blue">Fx = Fcosθ</span>，鉛直成分<span class="hl hl-green">Fy = Fsinθ</span>。';
+  } else {
+    const phiR = phi * Math.PI/180;
+    const sinC = (F*Math.sin(phiR)).toFixed(1);
+    const cosC = (F*Math.cos(phiR)).toFixed(1);
+    document.getElementById('resultCard').innerHTML =
+      `斜面平行：W sinθ = <strong>${sinC} N</strong><br>法線方向：W cosθ = <strong>${cosC} N</strong>`;
+    document.getElementById('formulaBox').innerHTML =
+      '<strong>力の分解（斜面）</strong>斜面平行：W sinθ<br>法線方向：W cosθ';
+    document.getElementById('infoBody').innerHTML =
+      '重力Wを斜面に沿う方向と<span class="hl hl-purple">法線方向（面に垂直）</span>に分解。法線成分が<span class="hl hl-green">垂直抗力 N = Wcosθ</span>と釣り合う。';
+  }
+}
+
+function redraw() {
+  updateUI();
+  if(mode === 'comp') {
+    drawComp();
+  } else if(decompType === 'xy') {
+    drawDecompXY();
+  } else {
+    drawDecompSlope();
+  }
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeComp').classList.toggle('active', m==='comp');
+  document.getElementById('modeDecomp').classList.toggle('active', m==='decomp');
+  document.getElementById('compCtrls').style.display = m==='comp' ? 'contents' : 'none';
+  document.getElementById('decompCtrls').style.display = m==='decomp' ? 'contents' : 'none';
+  document.getElementById('mainBadge').textContent = m==='comp' ? '合' : '分';
+  document.getElementById('mainTitle').textContent = m==='comp' ? '力の合成' : '力の分解';
+  document.getElementById('mainSub').textContent = m==='comp'
+    ? '2力の合力を求める（平行四辺形の法則）'
+    : '1つの力を2方向の成分に分解する';
+  redraw();
+}
+
+function setDecompType(t) {
+  decompType = t;
+  document.getElementById('decompXY').classList.toggle('active', t==='xy');
+  document.getElementById('decompSlope').classList.toggle('active', t==='slope');
+  document.getElementById('slopeAngleCtrl').style.display = t==='slope' ? 'flex' : 'none';
+  if(t==='slope') document.getElementById('slopeAngleCtrl').style.flexDirection='column';
+  document.getElementById('alphaCtrl').style.display = t==='slope' ? 'none' : 'flex';
+  if(t==='xy') document.getElementById('alphaCtrl').style.flexDirection='column';
+  redraw();
+}
+
+// スライダーイベント
+[
+  ['f1','f1-label', v => v+' N'],
+  ['f2','f2-label', v => v+' N'],
+  ['theta','theta-label', v => v+'°'],
+  ['fd','fd-label', v => v+' N'],
+  ['alpha','alpha-label', v => v+'°'],
+  ['phi','phi-label', v => v+'°'],
+].forEach(([name, labelId, fmt]) => {
+  const el = document.getElementById(name+'-slider');
+  el.addEventListener('input', () => {
+    document.getElementById(labelId).textContent = fmt(el.value);
+    redraw();
+  });
+});
+
+redraw();
+</script>
+</body>
+</html>
