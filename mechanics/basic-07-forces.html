@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>さまざまな力 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.five { grid-template-columns:1fr 1fr 1fr 1fr 1fr; }
+  .toggle button { border:0; padding:8px 2px; font-size:11px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:14px; font-weight:900; }
+
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+</style>
+</head>
+<body>
+
+<h1>さまざまな力</h1>
+<p class="subtitle">物理基礎 07 ｜ 重力・垂直抗力・摩擦力・張力・弾性力</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">重</div>
+        <span class="card-title" id="mainTitle">重力</span>
+        <span class="card-sub" id="mainSub">地球が物体を引きつける力</span>
+      </div>
+      <canvas id="mainCanvas" height="340"></canvas>
+    </div>
+
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;" id="infoBox">
+      <strong style="color:var(--blue-dark)" id="infoTitle">重力</strong>　
+      <span id="infoBody">地球が物体を引きつける力。向き：鉛直下向き。大きさ：<span class="hl hl-orange">W = mg</span></span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>力の種類</h3>
+          <div class="toggle five" style="margin-top:10px">
+            <button id="modeGrav"   class="active" onclick="setMode('grav')">重力</button>
+            <button id="modeNorm"   onclick="setMode('norm')">抗力</button>
+            <button id="modeFric"   onclick="setMode('fric')">摩擦</button>
+            <button id="modeTens"   onclick="setMode('tens')">張力</button>
+            <button id="modeSpring" onclick="setMode('spring')">弾性力</button>
+          </div>
+        </div>
+
+        <div class="control" id="massCtrl">
+          <label>質量 m <span class="val" id="mass-label">5.0 kg</span></label>
+          <input type="range" id="mass-slider" min="1" max="10" value="5" step="0.5">
+          <div class="range-hint"><span>1 kg</span><span>10 kg</span></div>
+        </div>
+
+        <div class="control" id="angleCtrl" style="display:none">
+          <label>斜面の角度 θ <span class="val" id="angle-label">30°</span></label>
+          <input type="range" id="angle-slider" min="0" max="55" value="30" step="5">
+          <div class="range-hint"><span>0°（水平）</span><span>55°</span></div>
+        </div>
+
+        <div class="control" id="muCtrl" style="display:none">
+          <label>摩擦係数 μ <span class="val" id="mu-label">0.30</span></label>
+          <input type="range" id="mu-slider" min="0.1" max="0.8" value="0.3" step="0.05">
+        </div>
+
+        <div class="control" id="kCtrl" style="display:none">
+          <label>ばね定数 k <span class="val" id="k-label">20 N/m</span></label>
+          <input type="range" id="k-slider" min="5" max="100" value="20" step="5">
+          <div class="range-hint"><span>5 N/m</span><span>100 N/m</span></div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>重力</strong>W = mg<br>
+          <span style="color:var(--muted);font-size:12px">g = 9.8 m/s²</span>
+        </div>
+
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          W = 49.0 N
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const MC = (() => {
+  const c = document.getElementById('mainCanvas');
+  function rs() {
+    const r = c.getBoundingClientRect();
+    c.width = r.width*DPR; c.height = r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  }
+  rs(); window.addEventListener('resize', () => { rs(); redraw(); });
+  return c;
+})();
+
+let mode = 'grav';
+const g = 9.8;
+
+function getP() {
+  return {
+    m:  parseFloat(document.getElementById('mass-slider').value),
+    th: parseFloat(document.getElementById('angle-slider').value) * Math.PI / 180,
+    mu: parseFloat(document.getElementById('mu-slider').value),
+    k:  parseFloat(document.getElementById('k-slider').value),
+  };
+}
+
+// ===== 矢印：作用点(x1,y1)から先端(x2,y2)へ =====
+function arrow(ctx, x1, y1, x2, y2, color, lw) {
+  const dx = x2-x1, dy = y2-y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  if (len < 4) return;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw || 3;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const ang = Math.atan2(dy, dx);
+  const hs = 12;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - hs*Math.cos(ang-0.4), y2 - hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2 - hs*Math.cos(ang+0.4), y2 - hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// 矢印＋ラベル（先端の外側に表示）
+function arrowLabel(ctx, x1, y1, x2, y2, color, lw, label) {
+  arrow(ctx, x1, y1, x2, y2, color, lw);
+  // ラベルを先端の外側（矢印方向に少し伸ばした位置）に
+  const dx = x2-x1, dy = y2-y1;
+  const len = Math.sqrt(dx*dx+dy*dy);
+  const ux = dx/len, uy = dy/len;
+  const lx = x2 + ux*14, ly = y2 + uy*14;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = '700 13px Hiragino Sans,system-ui';
+  // 方向に応じてテキストアライン調整
+  if (ux > 0.3) ctx.textAlign = 'left';
+  else if (ux < -0.3) ctx.textAlign = 'right';
+  else ctx.textAlign = 'center';
+  ctx.fillText(label, lx, ly + (uy > 0 ? 14 : -4));
+  ctx.restore();
+}
+
+// 破線矢印
+function dashedArrow(ctx, x1, y1, x2, y2, color, lw) {
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||2;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  const ang=Math.atan2(dy,dx);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-10*Math.cos(ang-0.4), y2-10*Math.sin(ang-0.4));
+  ctx.lineTo(x2-10*Math.cos(ang+0.4), y2-10*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// 作用点マーク
+function dot(ctx, x, y, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// 斜面描画（左下を基点に右上がり）→ 物体の接地座標を返す
+function drawSlope(ctx, W, H, th) {
+  const baseX = W*0.1, baseY = H*0.82;
+  const slLen = W*0.8;
+  const slH = slLen * Math.tan(th);
+
+  ctx.save();
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY);
+  ctx.lineTo(baseX+slLen, baseY);
+  ctx.lineTo(baseX+slLen, baseY-slH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY);
+  ctx.lineTo(baseX+slLen, baseY-slH);
+  ctx.stroke();
+
+  if (th > 0.01) {
+    ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(baseX, baseY, 36, -th, 0); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.font = '700 13px system-ui'; ctx.textAlign = 'left';
+    ctx.fillText('θ', baseX+38, baseY-8);
+  }
+  ctx.restore();
+
+  // 斜面上の接地点：斜面の直線上の点（斜面長の40%地点）
+  // 斜面方向の単位ベクトル: (cos th, -sin th) ← 左下から右上へ
+  const along = slLen * 0.42;
+  const sx = baseX + along * Math.cos(th);
+  const sy = baseY - along * Math.sin(th);
+  return { sx, sy };
+}
+
+// 水平面描画 → 接地y座標を返す
+function drawGround(ctx, W, H) {
+  const gy = H * 0.62;
+  ctx.save();
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillRect(0, gy, W, H - gy);
+  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+  ctx.restore();
+  return gy;
+}
+
+// 物体描画（水平面）
+function drawBlock(ctx, cx, groundY, w, h) {
+  const cy = groundY - h/2;
+  ctx.save();
+  ctx.fillStyle = '#dbeafe'; ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(cx-w/2, cy-h/2, w, h, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  return cy;
+}
+
+// 斜面上の物体描画：接地点(sx,sy)から法線方向にh/2オフセットして重心
+function drawBlockOnSlope(ctx, sx, sy, th, w, h) {
+  // 法線方向（斜面から外向き上方）: (sin th, -cos th)
+  const nx = -Math.sin(th);  // テストで確定
+  const ny = -Math.cos(th);
+  const cx = sx + nx * h/2;
+  const cy = sy + ny * h/2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-th);
+  ctx.fillStyle = '#dbeafe'; ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-w/2, -h/2, w, h, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // 底面中央（接地点）: 重心から法線逆方向にh/2
+  const botX = cx - nx * h/2;
+  const botY = cy - ny * h/2;
+  return { cx, cy, botX, botY, nx, ny };
+}
+
+// ===== 各モード描画 =====
+
+// 共通スケール：最大80px を W_N_max(98N)に対応
+function scaleN(N) { return Math.max(20, N * 80/98); }
+
+function drawGrav() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const { m } = getP();
+  const W_N = m * g;
+
+  const cx = W/2, bcy = H*0.38;
+
+  // 物体（床なし・中央に）
+  ctx.save();
+  ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-40, bcy-30, 80, 60, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // 重力：重心から下向き
+  const len = scaleN(W_N);
+  dot(ctx, cx, bcy, '#dc2626');
+  arrowLabel(ctx, cx, bcy, cx, bcy+len, '#dc2626', 3, `W = ${W_N.toFixed(1)} N`);
+}
+
+function drawNorm() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const { m, th } = getP();
+  const W_N = m*g, N = W_N*Math.cos(th);
+
+  if (th < 0.01) {
+    // 水平面
+    const gy = drawGround(ctx, W, H);
+    const cx = W/2;
+    const bcy = drawBlock(ctx, cx, gy, 80, 60);
+    const botY = gy; // 底面中央（接地点）
+    const wLen = scaleN(W_N), nLen = scaleN(N);
+
+    // 重力：重心から下（少し左にずらす）
+    dot(ctx, cx-12, bcy, '#dc2626');
+    arrowLabel(ctx, cx-12, bcy, cx-12, bcy+wLen, '#dc2626', 3, `W = ${W_N.toFixed(1)} N`);
+
+    // 垂直抗力：底面中央から上（少し右にずらす）
+    dot(ctx, cx+12, botY, '#15803d');
+    arrowLabel(ctx, cx+12, botY, cx+12, botY-nLen, '#15803d', 3, `N = ${N.toFixed(1)} N`);
+
+    ctx.fillStyle='#64748b'; ctx.font='700 12px system-ui'; ctx.textAlign='center';
+    ctx.fillText('2力つり合い：同一線上・逆向き・大きさ等しい', cx, H-22);
+  } else {
+    const { sx, sy } = drawSlope(ctx, W, H, th);
+    const nx = -Math.sin(th);  // 法線x（テストで確定）
+    const ny = -Math.cos(th);  // 法線y
+    const tx =  Math.cos(th);  // 斜面上向きx
+    const ty = -Math.sin(th);  // 斜面上向きy
+    const bh = 50, bw = 70;
+    const cx = sx + nx * bh/2;
+    const cy = sy + ny * bh/2;
+
+    // 物体描画
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(-th);
+    ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(-bw/2,-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    const wLen = scaleN(W_N), nLen = scaleN(N);
+
+    // 重力：重心から鉛直下向き
+    dot(ctx, cx, cy, '#dc2626');
+    arrowLabel(ctx, cx, cy, cx, cy+wLen, '#dc2626', 3, 'W');
+
+    // 重力の分解（破線）：重心から
+    const cosLen = scaleN(W_N*Math.cos(th));
+    const sinLen = scaleN(W_N*Math.sin(th));
+    dashedArrow(ctx, cx, cy, cx+(-nx)*cosLen, cy+(-ny)*cosLen, '#dc2626', 2);
+    ctx.fillStyle='#dc2626'; ctx.font='700 11px system-ui'; ctx.textAlign='left';
+    ctx.fillText(`mg cosθ`, cx+(-nx)*cosLen+4, cy+(-ny)*cosLen+4);
+    dashedArrow(ctx, cx, cy, cx+(-tx)*sinLen, cy+(-ty)*sinLen, '#dc2626', 2);
+    ctx.fillStyle='#dc2626'; ctx.font='700 11px system-ui'; ctx.textAlign='right';
+    ctx.fillText(`mg sinθ`, cx+(-tx)*sinLen-4, cy+(-ty)*sinLen+14);
+
+    // 垂直抗力：接地点から法線方向
+    dot(ctx, sx+tx*10, sy+ty*10, '#15803d');
+    arrowLabel(ctx, sx+tx*10, sy+ty*10, sx+tx*10+nx*nLen, sy+ty*10+ny*nLen, '#15803d', 3, `N = ${N.toFixed(1)} N`);
+
+    ctx.fillStyle='#64748b'; ctx.font='700 12px system-ui'; ctx.textAlign='center';
+    ctx.fillText(`N = W cosθ = ${N.toFixed(1)} N`, W/2, H-22);
+  }
+}
+
+function drawFric() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const { m, th, mu } = getP();
+  const W_N = m*g, N = W_N*Math.cos(th), f = mu*N;
+
+  if (th < 0.01) {
+    const gy = drawGround(ctx, W, H);
+    const cx = W/2;
+    const bcy = drawBlock(ctx, cx, gy, 80, 60);
+    const botY = gy;
+    const wLen = scaleN(W_N), nLen = scaleN(N), fLen = scaleN(f);
+
+    // 重力：重心から下
+    dot(ctx, cx, bcy, '#dc2626');
+    arrowLabel(ctx, cx, bcy, cx, bcy+wLen, '#dc2626', 3, `W = ${W_N.toFixed(1)} N`);
+
+    // 垂直抗力：底面中央から上
+    dot(ctx, cx, botY, '#15803d');
+    arrowLabel(ctx, cx, botY, cx, botY-nLen, '#15803d', 3, `N = ${N.toFixed(1)} N`);
+
+    // 摩擦力：底面中央から左（運動を妨げる向き）
+    arrowLabel(ctx, cx, botY, cx-fLen, botY, '#ea580c', 3, `f = ${f.toFixed(1)} N`);
+
+    // 外力：重心から右
+    arrowLabel(ctx, cx, bcy, cx+fLen+10, bcy, '#7c3aed', 3, '外力');
+
+    ctx.fillStyle='#64748b'; ctx.font='700 12px system-ui'; ctx.textAlign='center';
+    ctx.fillText('摩擦力：底面が作用点・運動を妨げる向き', cx, H-22);
+  } else {
+    const { sx, sy } = drawSlope(ctx, W, H, th);
+    const nx = -Math.sin(th);  // テストで確定   // 法線x（右）
+    const ny = -Math.cos(th);   // 法線y（上、canvas負）
+    const tx =  Math.cos(th);   // 斜面上向きx
+    const ty = -Math.sin(th);   // 斜面上向きy（canvas負）
+    const bh = 50, bw = 70;
+    const cx = sx + nx*bh/2, cy = sy + ny*bh/2;
+
+    // 物体描画
+    ctx.save();
+    ctx.translate(cx,cy); ctx.rotate(-th);
+    ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.roundRect(-bw/2,-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    const wLen=scaleN(W_N), nLen=scaleN(N);
+    const cosLen = scaleN(W_N*Math.cos(th));
+    const sinLen = scaleN(W_N*Math.sin(th));
+
+    // 重力：重心から下
+    dot(ctx, cx, cy, '#dc2626');
+    arrowLabel(ctx, cx, cy, cx, cy+wLen, '#dc2626', 3, 'W');
+
+    // 重力の分解（破線）
+    dashedArrow(ctx, cx, cy, cx+(-nx)*cosLen, cy+(-ny)*cosLen, '#dc2626', 2);
+    ctx.fillStyle='#dc2626'; ctx.font='700 11px system-ui'; ctx.textAlign='left';
+    ctx.fillText(`mg cosθ`, cx+(-nx)*cosLen+4, cy+(-ny)*cosLen+4);
+    dashedArrow(ctx, cx, cy, cx+(-tx)*sinLen, cy+(-ty)*sinLen, '#dc2626', 2);
+    ctx.fillStyle='#dc2626'; ctx.font='700 11px system-ui'; ctx.textAlign='right';
+    ctx.fillText(`mg sinθ`, cx+(-tx)*sinLen-4, cy+(-ty)*sinLen+14);
+
+    // 垂直抗力：接地点から法線方向（少し右）
+    const sx2=sx+tx*8, sy2=sy+ty*8;
+    dot(ctx, sx2, sy2, '#15803d');
+    arrowLabel(ctx, sx2, sy2, sx2+nx*nLen, sy2+ny*nLen, '#15803d', 3, 'N');
+
+    // 摩擦力：sinLenと同じ長さ（つり合いを表現）
+    const sx3=sx+tx*16, sy3=sy+ty*16;
+    dot(ctx, sx3, sy3, '#ea580c');
+    arrowLabel(ctx, sx3, sy3, sx3+tx*sinLen, sy3+ty*sinLen, '#ea580c', 3, `f = ${f.toFixed(1)} N`);
+
+    ctx.fillStyle='#64748b'; ctx.font='700 12px system-ui'; ctx.textAlign='center';
+    ctx.fillText(`f = μN = ${f.toFixed(1)} N`, W/2, H-22);
+  }
+}
+
+function drawTens() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const { m } = getP();
+  const W_N = m*g, T = W_N;
+
+  const topY = 30, cx = W/2, blockY = H*0.5;
+  const tLen = scaleN(T), wLen = scaleN(W_N);
+
+  // 天井
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,0,W,topY);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,topY); ctx.lineTo(W,topY); ctx.stroke();
+  for(let i=0;i<W;i+=20){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+20,topY); ctx.stroke(); }
+
+  // 糸
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(cx,topY); ctx.lineTo(cx,blockY-30); ctx.stroke();
+
+  // 物体
+  ctx.save();
+  ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-40,blockY-30,80,60,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  const topSurf = blockY-30; // 上面（張力の作用点）
+  const cenY = blockY;        // 重心
+
+  // 張力：上面（糸との接点）から上向き
+  dot(ctx, cx, topSurf, '#7c3aed');
+  arrowLabel(ctx, cx, topSurf, cx, topSurf-tLen, '#7c3aed', 3.5, `T = ${T.toFixed(1)} N`);
+
+  // 重力：重心から下向き
+  dot(ctx, cx, cenY, '#dc2626');
+  arrowLabel(ctx, cx, cenY, cx, cenY+wLen, '#dc2626', 3, `W = ${W_N.toFixed(1)} N`);
+
+  ctx.fillStyle='#15803d'; ctx.font='700 13px system-ui'; ctx.textAlign='center';
+  ctx.fillText('T = W = mg　つり合っている', cx, H-22);
+}
+
+function drawSpring() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+  const { m, k } = getP();
+  const W_N = m*g;
+  const x = W_N / k; // 自然長からの伸び（つり合い条件）
+  const F = k*x;
+
+  const topY = 30, cx = W/2;
+  const naturalLen = 100;
+  // xの最大値 = m_max*g/k_min = 10*9.8/5 = 19.6m → これを maxStretch pxにマップ
+  const maxX = 10*9.8/5;
+  const maxStretch = (H - topY - 10 - naturalLen - 120);
+  const stretchPx = (x / maxX) * maxStretch;
+  const springBot = topY + 10 + naturalLen + stretchPx;
+  const blockTop = springBot;
+  const blockH = 60;
+  const cenY = blockTop + blockH/2;
+
+  // 天井
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,0,W,topY);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,topY); ctx.lineTo(W,topY); ctx.stroke();
+  for(let i=0;i<W;i+=20){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+20,topY); ctx.stroke(); }
+
+  // ばね（ジグザグ）
+  const springTop = topY+10;
+  const coils = 8, coilW = 22;
+  const segH = (springBot - springTop) / coils;
+  ctx.strokeStyle='#ea580c'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(cx, springTop);
+  for(let i=0;i<coils;i++){
+    const y0=springTop+i*segH, y1=y0+segH/2, y2=y0+segH;
+    ctx.lineTo(cx+(i%2===0?coilW:-coilW), y1);
+    ctx.lineTo(cx, y2);
+  }
+  ctx.stroke();
+
+  // 自然長の点線
+  const naturalEndY = topY+10+naturalLen;
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(cx-60,naturalEndY); ctx.lineTo(cx+60,naturalEndY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#94a3b8'; ctx.font='700 11px system-ui'; ctx.textAlign='right';
+  ctx.fillText('自然長', cx-64, naturalEndY+4);
+
+  // 伸びの注釈
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(cx+54,naturalEndY); ctx.lineTo(cx+54,springBot); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#ea580c'; ctx.font='700 12px system-ui'; ctx.textAlign='left';
+  ctx.fillText(`x = ${x.toFixed(3)} m`, cx+58, (naturalEndY+springBot)/2+4);
+
+  // 物体
+  ctx.save();
+  ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-40,blockTop,80,blockH,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  const tLen = scaleN(F), wLen = scaleN(W_N);
+
+  // 弾性力：上面（ばねとの接点）から上向き
+  dot(ctx, cx, blockTop, '#15803d');
+  arrowLabel(ctx, cx, blockTop, cx, blockTop-tLen, '#15803d', 3.5, `F = kx = ${F.toFixed(1)} N`);
+
+  // 重力：重心から下向き
+  dot(ctx, cx, cenY, '#dc2626');
+  arrowLabel(ctx, cx, cenY, cx, cenY+wLen, '#dc2626', 3, `W = ${W_N.toFixed(1)} N`);
+
+  ctx.fillStyle='#15803d'; ctx.font='700 13px system-ui'; ctx.textAlign='center';
+  ctx.fillText(`F = kx = W = mg　つり合っている`, cx, H-22);
+}
+
+// ===== UI =====
+function updateUI() {
+  const { m, th, mu, k } = getP();
+  const W_N = m*g;
+
+  document.getElementById('angleCtrl').style.display = ['norm','fric'].includes(mode) ? 'flex':'none';
+  if(['norm','fric'].includes(mode)) document.getElementById('angleCtrl').style.flexDirection='column';
+  document.getElementById('muCtrl').style.display = mode==='fric' ? 'flex':'none';
+  if(mode==='fric') document.getElementById('muCtrl').style.flexDirection='column';
+  document.getElementById('kCtrl').style.display = mode==='spring' ? 'flex':'none';
+  if(mode==='spring') document.getElementById('kCtrl').style.flexDirection='column';
+
+  const formulas = {
+    grav:   '<strong>重力</strong>W = mg<br><span style="color:var(--muted);font-size:12px">g = 9.8 m/s²　鉛直下向き</span>',
+    norm:   '<strong>垂直抗力</strong>N = mg cosθ<br><span style="color:var(--muted);font-size:12px">面に垂直（法線方向）・面から物体へ</span>',
+    fric:   '<strong>摩擦力</strong>f = μN<br><span style="color:var(--muted);font-size:12px">面に平行・運動を妨げる向き</span>',
+    tens:   '<strong>張力</strong>T = mg（つり合い）<br><span style="color:var(--muted);font-size:12px">糸に沿って引く向き</span>',
+    spring: '<strong>弾性力（フックの法則）</strong>F = kx<br>つり合い：x = mg/k<br><span style="color:var(--muted);font-size:12px">k：ばね定数　x：伸び</span>',
+  };
+  document.getElementById('formulaBox').innerHTML = formulas[mode];
+
+  const results = {
+    grav:   `W = ${W_N.toFixed(1)} N`,
+    norm:   `N = ${(W_N*Math.cos(th)).toFixed(1)} N`,
+    fric:   `f = ${(mu*W_N*Math.cos(th)).toFixed(1)} N`,
+    tens:   `T = W = ${W_N.toFixed(1)} N`,
+    spring: `x = mg/k = ${(W_N/k).toFixed(3)} m`,
+  };
+  document.getElementById('resultCard').textContent = results[mode];
+
+  const infos = {
+    grav:   '地球が物体を引きつける力。向き：鉛直下向き。大きさ：<span class="hl hl-orange">W = mg</span>',
+    norm:   '面が物体を押す力。向き：面に垂直（外向き）。大きさ：<span class="hl hl-green">N = mg cosθ</span>',
+    fric:   '面が物体に及ぼす力。向き：<span class="hl hl-orange">運動を妨げる方向</span>。大きさ：<span class="hl hl-orange">f = μN</span>',
+    tens:   '糸が物体を引く力。向き：糸に沿って引く向き。つり合い時：<span class="hl hl-purple">T = W = mg</span>',
+    spring: 'ばねの復元力。<span class="hl hl-green">F = kx</span>（フックの法則）。つり合い条件：<span class="hl hl-orange">kx = mg</span>',
+  };
+  document.getElementById('infoBody').innerHTML = infos[mode];
+
+  const titles = { grav:'重力', norm:'垂直抗力', fric:'摩擦力', tens:'張力', spring:'弾性力' };
+  document.getElementById('mainTitle').textContent = titles[mode];
+}
+
+function redraw() {
+  updateUI();
+  if      (mode==='grav')   drawGrav();
+  else if (mode==='norm')   drawNorm();
+  else if (mode==='fric')   drawFric();
+  else if (mode==='tens')   drawTens();
+  else                      drawSpring();
+}
+
+function setMode(m) {
+  mode = m;
+  ['grav','norm','fric','tens','spring'].forEach(x => {
+    const id = 'mode'+x.charAt(0).toUpperCase()+x.slice(1);
+    document.getElementById(id).classList.toggle('active', m===x);
+  });
+  redraw();
+}
+
+// スライダー
+['mass','angle','mu','k'].forEach(name => {
+  const el = document.getElementById(name+'-slider');
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    const labels = {
+      mass: v.toFixed(1)+' kg',
+      angle: v.toFixed(0)+'°',
+      mu: v.toFixed(2),
+      k: v.toFixed(0)+' N/m',
+    };
+    document.getElementById(name+'-label').textContent = labels[name];
+    redraw();
+  });
+});
+
+redraw();
+</script>
+</body>
+</html>
