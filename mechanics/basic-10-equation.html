@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>運動方程式 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two { grid-template-columns:1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.9; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+
+  .btn-run   { width:100%; padding:10px; border:0; border-radius:10px; background:var(--blue); color:white; font-size:13px; font-weight:900; cursor:pointer; font-family:inherit; }
+  .btn-run:hover { background:var(--blue-dark); }
+  .btn-reset { width:100%; padding:8px; border:1px solid var(--line); border-radius:10px; background:white; color:var(--muted); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<h1>運動方程式</h1>
+<p class="subtitle">物理基礎 10 ｜ ma = F（合力）</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">ma</div>
+        <span class="card-title" id="mainTitle">水平面上の運動方程式</span>
+        <span class="card-sub" id="mainSub">ma = F</span>
+      </div>
+      <canvas id="mainCanvas" height="200"></canvas>
+    </div>
+
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+      <strong style="color:var(--blue-dark)" id="infoTitle">運動方程式</strong>
+      <span id="infoBody"><span class="hl hl-blue">ma = F合</span>。加速度の向きは合力の向きと一致。各力を図示してから合力を求めよう。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>場面</h3>
+          <div class="toggle two" style="margin-top:10px">
+            <button id="modeH" class="active" onclick="setMode('horiz')">水平面</button>
+            <button id="modeS" onclick="setMode('slope')">斜面</button>
+          </div>
+        </div>
+
+        <!-- 水平コントロール -->
+        <div id="horizCtrls">
+          <div class="control">
+            <label>質量 m <span class="val" id="m-label">2.0 kg</span></label>
+            <input type="range" id="m-slider" min="0.5" max="10" value="2" step="0.5">
+            <div class="range-hint"><span>0.5 kg</span><span>10 kg</span></div>
+          </div>
+          <div class="control">
+            <label>力 F <span class="val" id="F-label">10 N</span></label>
+            <input type="range" id="F-slider" min="1" max="40" value="10" step="1">
+            <div class="range-hint"><span>1 N</span><span>40 N</span></div>
+          </div>
+          <button class="btn-run" onclick="startAnim()">▶ スタート</button>
+          <button class="btn-reset" onclick="resetAnim()">リセット</button>
+        </div>
+
+        <!-- 斜面コントロール -->
+        <div id="slopeCtrls" style="display:none">
+          <div class="control">
+            <label>質量 m <span class="val" id="ms-label">2.0 kg</span></label>
+            <input type="range" id="ms-slider" min="0.5" max="10" value="2" step="0.5">
+            <div class="range-hint"><span>0.5 kg</span><span>10 kg</span></div>
+          </div>
+          <div class="control">
+            <label>斜面角度 θ <span class="val" id="th-label">30°</span></label>
+            <input type="range" id="th-slider" min="5" max="60" value="30" step="5">
+            <div class="range-hint"><span>5°</span><span>60°</span></div>
+          </div>
+          <button class="btn-run" onclick="startAnim()">▶ スタート</button>
+          <button class="btn-reset" onclick="resetAnim()">リセット</button>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>運動方程式（水平面）</strong>
+          ma = F<br>
+          <span style="color:var(--muted);font-size:12px">a = F/m</span>
+        </div>
+
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          a = 5.00 m/s²
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const CVS = document.getElementById('mainCanvas');
+function resizeCanvas() {
+  const r = CVS.getBoundingClientRect();
+  if(r.width===0) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeCanvas();
+window.addEventListener('resize',()=>{ resizeCanvas(); redraw(); });
+
+const g=9.8;
+let mode='horiz', animId=null, running=false;
+let bx=60, bv=0, sd=60, sv=0;
+
+function dashedArrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||2;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  const ang=Math.atan2(dy,dx),hs=9;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function arrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx),hs=11;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dot(ctx,x,y,color){
+  ctx.save(); ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+}
+function lbl(ctx,x,y,text,color,align,base){
+  ctx.save(); ctx.fillStyle=color||'#334155';
+  ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign=align||'center'; ctx.textBaseline=base||'alphabetic';
+  ctx.fillText(text,x,y); ctx.restore();
+}
+
+// ===== 水平面 =====
+function drawHoriz(bxPx, bvMs) {
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m=parseFloat(document.getElementById('m-slider').value);
+  const F=parseFloat(document.getElementById('F-slider').value);
+  const a=F/m;
+
+  const gy=H*0.68;
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,gy,W,H-gy);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+
+  const bw=64,bh=44;
+  const cx=Math.max(bw/2+4, Math.min(bxPx,W-bw/2-8));
+  const top=gy-bh, cy=gy-bh/2, botY=gy;
+
+  ctx.save(); ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-bw/2,top,bw,bh,6); ctx.fill(); ctx.stroke(); ctx.restore();
+
+  const scaleW=50, scaleN=50;
+
+  // 重力（重心・中央・下向き）
+  dot(ctx,cx,cy,'#dc2626');
+  arrow(ctx,cx,cy, cx,cy+scaleW,'#dc2626',2.5);
+  lbl(ctx,cx-6,cy+scaleW+12,`W=${(m*g).toFixed(0)}N`,'#dc2626','right');
+
+  // 垂直抗力（底面・少し右・上向き）
+  dot(ctx,cx+12,botY,'#15803d');
+  arrow(ctx,cx+12,botY, cx+12,botY-scaleN,'#15803d',2.5);
+  lbl(ctx,cx+18,botY-scaleN-6,`N=${(m*g).toFixed(0)}N`,'#15803d','left');
+
+  // 力F（右面の作用点から右向き）
+  dot(ctx,cx+bw/2,cy,'#ea580c');
+  const fLen=Math.min(F*2.5,80);
+  arrow(ctx,cx+bw/2,cy, cx+bw/2+fLen,cy,'#ea580c',2.5);
+  lbl(ctx,cx+bw/2+fLen/2,cy-12,`F=${F}N`,'#ea580c','center');
+
+  // 速度（物体上面の上方）
+  if(bvMs>0.3){
+    const vLen=Math.min(bvMs*12,85);
+    arrow(ctx,cx-bw/2,top-44, cx-bw/2+vLen,top-44,'#1d4ed8',2.5);
+    lbl(ctx,cx-bw/2+vLen+6,top-40,`v=${bvMs.toFixed(1)}m/s`,'#1d4ed8','left');
+  }
+
+  lbl(ctx,W/2,H-12,`a = F/m = ${F}/${m} = ${a.toFixed(2)} m/s²`,'#15803d','center');
+}
+
+// ===== 斜面 =====
+function drawSlope(sdPx, svMs) {
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m=parseFloat(document.getElementById('ms-slider').value);
+  const thD=parseFloat(document.getElementById('th-slider').value);
+  const th=thD*Math.PI/180;
+  const N=m*g*Math.cos(th);
+  const a=g*Math.sin(th);
+
+  const baseX=W*0.06, baseY=H*0.84, slLen=W*0.88;
+  const slH=slLen*Math.tan(th);
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen,baseY); ctx.lineTo(baseX+slLen,baseY-slH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen,baseY-slH); ctx.stroke();
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(baseX,baseY,34,-th,0); ctx.stroke();
+  lbl(ctx,baseX+Math.cos(-th/2)*48,baseY+Math.sin(-th/2)*48,'θ','#64748b','center');
+
+  const maxDist=slLen*0.80;
+  // sdPx=0が上端、増加で下方向
+  const along=Math.max(4, maxDist - Math.min(sdPx, maxDist-4));
+  const sx=baseX+along*Math.cos(th), sy=baseY-along*Math.sin(th);
+  const nx=-Math.sin(th), ny=-Math.cos(th);
+  const tx=-Math.cos(th), ty=Math.sin(th); // 斜面下向き
+
+  const bh=44,bw=58;
+  const cx=sx+nx*bh/2, cy=sy+ny*bh/2;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(-th);
+  ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-bw/2,-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // 矢印長さ：スライダー最大値基準でリニアスケール（最大80px）
+  const mMax=10, scale=130/(mMax*g);
+  const wLen=(m*g)*scale, nLen=N*scale;
+
+  // 重力
+  dot(ctx,cx,cy,'#dc2626');
+  arrow(ctx,cx,cy, cx,cy+wLen,'#dc2626',2.5);
+  lbl(ctx,cx+8,cy+wLen+10,`W=${(m*g).toFixed(0)}N`,'#dc2626','left');
+
+  // 重力の分解（破線）
+  const sinLen=(m*g*Math.sin(th))*scale;
+  const cosLen=(m*g*Math.cos(th))*scale;
+  // 斜面平行成分（下向き = tx,ty方向）　ラベルは法線方向（左上側）にオフセット
+  dashedArrow(ctx,cx,cy, cx+tx*sinLen,cy+ty*sinLen,'#dc2626',1.5);
+  const sinTipX=cx+tx*sinLen, sinTipY=cy+ty*sinLen;
+  lbl(ctx, sinTipX+nx*20, sinTipY+ny*20, 'mg sinθ', '#dc2626', 'right');
+  // 法線成分（斜面内向き = -nx,-ny方向）　ラベルは斜面下方向（右下側）にオフセット
+  dashedArrow(ctx,cx,cy, cx+(-nx)*cosLen,cy+(-ny)*cosLen,'#dc2626',1.5);
+  const cosTipX=cx+(-nx)*cosLen, cosTipY=cy+(-ny)*cosLen;
+  lbl(ctx, cosTipX+(-tx)*20, cosTipY+(-ty)*20, 'mg cosθ', '#dc2626', 'left');
+
+  // 垂直抗力（接地点から少し斜面上方にずらす）
+  const nsx=sx+(-tx)*12, nsy=sy+(-ty)*12;
+  dot(ctx,nsx,nsy,'#15803d');
+  arrow(ctx,nsx,nsy, nsx+nx*nLen,nsy+ny*nLen,'#15803d',2.5);
+  lbl(ctx,nsx+nx*nLen+8,nsy+ny*nLen-4,`N=${N.toFixed(1)}N`,'#15803d','left');
+
+  // 速度（斜面下向き・物体上面から離れた位置）
+  if(svMs>0.3){
+    const vLen=Math.min(svMs*14,80);
+    const vox=cx+nx*40, voy=cy+ny*40;
+    arrow(ctx,vox,voy, vox+tx*vLen,voy+ty*vLen,'#1d4ed8',2.5);
+    lbl(ctx,vox+tx*vLen+nx*16,voy+ty*vLen+ny*16,`v=${svMs.toFixed(1)}m/s`,'#1d4ed8','center');
+  }
+
+  const aStr=`a = g sinθ = ${a.toFixed(2)} m/s²（mに無関係）`;
+  lbl(ctx,W/2,H-12,aStr,'#15803d','center');
+}
+
+// ===== アニメ =====
+function startAnim(){
+  if(running) return;
+  running=true; bx=60; bv=0; sd=60; sv=0;
+  let last=null;
+  function loop(ts){
+    if(!last) last=ts;
+    const dt=Math.min((ts-last)/1000,0.05); last=ts;
+    if(mode==='horiz'){
+      const m=parseFloat(document.getElementById('m-slider').value);
+      const F=parseFloat(document.getElementById('F-slider').value);
+      const a=F/m;
+      bv+=a*dt; bx+=bv*dt*60;
+      drawHoriz(bx,bv);
+      if(bx<CVS.getBoundingClientRect().width-40){ animId=requestAnimationFrame(loop); } else { running=false; }
+    } else {
+      const thD=parseFloat(document.getElementById('th-slider').value);
+      const a=g*Math.sin(thD*Math.PI/180);
+      sv+=a*dt; sd+=sv*dt*60;
+      drawSlope(sd,sv);
+      const maxSD = CVS.getBoundingClientRect().width * 0.88 * 0.80;
+      if(sd < maxSD-10){ animId=requestAnimationFrame(loop); } else { running=false; }
+    }
+  }
+  animId=requestAnimationFrame(loop);
+}
+
+function resetAnim(){
+  if(animId) cancelAnimationFrame(animId);
+  running=false; bx=60; bv=0; sd=60; sv=0;
+  redraw();
+}
+
+// ===== UI =====
+function updateUI(){
+  if(mode==='horiz'){
+    const m=parseFloat(document.getElementById('m-slider').value);
+    const F=parseFloat(document.getElementById('F-slider').value);
+    const a=F/m;
+    document.getElementById('formulaBox').innerHTML=
+      '<strong>運動方程式（水平面）</strong>ma = F<br><span style="color:var(--muted);font-size:12px">a = F/m</span>';
+    document.getElementById('resultCard').textContent=`a = F/m = ${F}/${m} = ${a.toFixed(2)} m/s²`;
+    document.getElementById('infoBody').innerHTML=
+      '<span class="hl hl-blue">ma = F</span>。Fが大きいほど・mが小さいほど加速度は大きくなる。';
+    document.getElementById('mainTitle').textContent='水平面上の運動方程式';
+    document.getElementById('mainSub').textContent='ma = F';
+  } else {
+    const m=parseFloat(document.getElementById('ms-slider').value);
+    const thD=parseFloat(document.getElementById('th-slider').value);
+    const th=thD*Math.PI/180;
+    const a=g*Math.sin(th);
+    document.getElementById('formulaBox').innerHTML=
+      '<strong>運動方程式（斜面）</strong>ma = mg sinθ<br><span style="color:var(--muted);font-size:12px">a = g sinθ（mに無関係）</span>';
+    document.getElementById('resultCard').textContent=`a = g sinθ = ${a.toFixed(2)} m/s²`;
+    document.getElementById('infoBody').innerHTML=
+      '斜面方向：<span class="hl hl-orange">ma = mg sinθ</span>　→　<span class="hl hl-green">a = g sinθ</span>。質量mに無関係！';
+    document.getElementById('mainTitle').textContent='斜面上の運動方程式';
+    document.getElementById('mainSub').textContent='ma = mg sinθ';
+  }
+}
+
+function redraw(){ updateUI(); if(mode==='horiz') drawHoriz(bx,bv); else drawSlope(sd,sv); }
+
+function setMode(m){
+  mode=m;
+  if(animId){ cancelAnimationFrame(animId); animId=null; running=false; }
+  bx=60;bv=0;sd=60;sv=0;
+  document.getElementById('modeH').classList.toggle('active',m==='horiz');
+  document.getElementById('modeS').classList.toggle('active',m==='slope');
+  document.getElementById('horizCtrls').style.display=m==='horiz'?'contents':'none';
+  document.getElementById('slopeCtrls').style.display=m==='slope'?'contents':'none';
+  redraw();
+}
+
+[['m','m-label',v=>parseFloat(v).toFixed(1)+' kg'],
+ ['F','F-label',v=>v+' N'],
+ ['ms','ms-label',v=>parseFloat(v).toFixed(1)+' kg'],
+ ['th','th-label',v=>v+'°'],
+].forEach(([name,labelId,fmt])=>{
+  const el=document.getElementById(name+'-slider');
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmt(el.value);
+    redraw();
+  });
+});
+
+setTimeout(()=>{ resizeCanvas(); redraw(); },50);
+</script>
+</body>
+</html>
