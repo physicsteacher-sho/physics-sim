@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圧力と浮力 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626; --cyan:#0891b2;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:64px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.four { grid-template-columns:1fr 1fr 1fr 1fr; }
+  .toggle button { border:0; padding:7px 2px; font-size:10px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.9; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-cyan   { background:#cffafe; color:#0e7490; }
+</style>
+</head>
+<body>
+
+<h1>圧力と浮力</h1>
+<p class="subtitle">物理基礎 12 ｜ 圧力・水圧・浮力・終端速度</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#0891b2,#1d4ed8)">p</div>
+        <span class="card-title" id="mainTitle">圧力</span>
+        <span class="card-sub" id="mainSub">p = F/S</span>
+      </div>
+      <canvas id="mainCanvas" height="200"></canvas>
+    </div>
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+      <strong style="color:var(--blue-dark)" id="infoTitle">圧力</strong>
+      <span id="infoBody"><span class="hl hl-blue">p = F/S</span>。単位面積あたりの力。1 N/m² = 1 Pa。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>場面</h3>
+          <div class="toggle four" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('pressure')">圧力</button>
+            <button id="tab2" onclick="setTab('water')">水圧</button>
+            <button id="tab3" onclick="setTab('buoy')">浮力</button>
+            <button id="tab4" onclick="setTab('terminal')">終端速度</button>
+          </div>
+        </div>
+
+        <!-- 圧力コントロール -->
+        <div id="pressureCtrls">
+          <div class="control">
+            <label>力 F <span class="val" id="pF-label">20 N</span></label>
+            <input type="range" id="pF-slider" min="1" max="100" value="20" step="1">
+            <div class="range-hint"><span>1 N</span><span>100 N</span></div>
+          </div>
+          <div class="control">
+            <label>面積 S <span class="val" id="pS-label">0.10 m²</span></label>
+            <input type="range" id="pS-slider" min="0.01" max="1.0" value="0.1" step="0.01">
+            <div class="range-hint"><span>0.01 m²</span><span>1.0 m²</span></div>
+          </div>
+        </div>
+
+        <!-- 水圧コントロール -->
+        <div id="waterCtrls" style="display:none">
+          <div class="control">
+            <label>深さ h <span class="val" id="wh-label">2.0 m</span></label>
+            <input type="range" id="wh-slider" min="0" max="10" value="2" step="0.1">
+            <div class="range-hint"><span>0 m（水面）</span><span>10 m</span></div>
+          </div>
+        </div>
+
+        <!-- 浮力コントロール -->
+        <div id="buoyCtrls" style="display:none">
+          <div class="control">
+            <label>物体密度 ρ_obj <span class="val" id="brho-label">800</span></label>
+            <input type="range" id="brho-slider" min="200" max="3000" value="800" step="50">
+            <div class="range-hint"><span>200</span><span>3000 kg/m³</span></div>
+          </div>
+          <div class="control">
+            <label>体積 V <span class="val" id="bV-label">0.001 m³</span></label>
+            <input type="range" id="bV-slider" min="0.0001" max="0.005" value="0.001" step="0.0001">
+            <div class="range-hint"><span>小</span><span>大</span></div>
+          </div>
+        </div>
+
+        <!-- 終端速度コントロール -->
+        <div id="terminalCtrls" style="display:none">
+          <div class="control">
+            <label>質量 m <span class="val" id="tm-label">0.10 kg</span></label>
+            <input type="range" id="tm-slider" min="0.01" max="1.0" value="0.1" step="0.01">
+          </div>
+          <div class="control">
+            <label>抵抗係数 k <span class="val" id="tk-label">0.50</span></label>
+            <input type="range" id="tk-slider" min="0.05" max="3.0" value="0.5" step="0.05">
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>圧力</strong>p = F/S<br>
+          <span style="font-size:11px;color:var(--muted)">単位：N/m² = Pa</span>
+        </div>
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          p = 200 Pa
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const g = 9.8, p0 = 1.013e5;
+const rhoWater = 1000;
+let tab = 'pressure';
+let termAnimId = null, termLastTs = null;
+let termV = 0, termY = 0;
+// 浮力アニメ状態
+let buoyAnimId = null, buoyLastTs = null;
+let buoyY = 0, buoyV = 0;
+
+const CVS = document.getElementById('mainCanvas');
+function resizeC(){
+  const r=CVS.getBoundingClientRect(); if(!r.width) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeC();
+window.addEventListener('resize',()=>{ resizeC(); redraw(); });
+
+function arrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx),hs=10;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dot(ctx,x,y,color){
+  ctx.save(); ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+}
+function lbl(ctx,x,y,text,color,align,base){
+  ctx.save(); ctx.fillStyle=color||'#334155';
+  ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign=align||'center'; ctx.textBaseline=base||'alphabetic';
+  ctx.fillText(text,x,y); ctx.restore();
+}
+
+// ===== 圧力 =====
+function drawPressure(){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const F=parseFloat(document.getElementById('pF-slider').value);
+  const S=parseFloat(document.getElementById('pS-slider').value);
+  const p=F/S;
+
+  // 平行四辺形の面（Sに比例してサイズ変化）
+  const baseW = 120 + S/1.0 * 140;
+  const baseH = 30 + S/1.0 * 30;
+  const skew = baseW * 0.35;
+  const cx = W/2, cy = H*0.62;
+
+  // 4頂点（平行四辺形）
+  const p1 = {x: cx - baseW/2 + skew, y: cy - baseH/2};
+  const p2 = {x: cx + baseW/2 + skew, y: cy - baseH/2};
+  const p3 = {x: cx + baseW/2 - skew, y: cy + baseH/2};
+  const p4 = {x: cx - baseW/2 - skew, y: cy + baseH/2};
+
+  // 面の塗り
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+  ctx.lineTo(p3.x,p3.y); ctx.lineTo(p4.x,p4.y);
+  ctx.closePath();
+  ctx.fillStyle='rgba(255,255,255,0.95)';
+  ctx.strokeStyle='#0891b2'; ctx.lineWidth=2.5;
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // 面積ラベル（面の下）
+  ctx.save();
+  ctx.fillStyle='#0891b2'; ctx.font='700 14px Hiragino Sans,system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(`面積 S = ${S.toFixed(2)} m²`, cx, cy+baseH/2+12);
+  ctx.restore();
+
+  // 力の矢印（Fに比例した長さ）
+  const fLen = 20 + F/100 * 80;
+  const arrowBot = cy;
+  const arrowTop = arrowBot - fLen;
+  ctx.save();
+  ctx.strokeStyle='#e91e8c'; ctx.fillStyle='#e91e8c'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(cx,arrowTop); ctx.lineTo(cx,arrowBot); ctx.stroke();
+  const hs=12;
+  ctx.beginPath(); ctx.moveTo(cx,arrowBot);
+  ctx.lineTo(cx-hs*Math.cos(Math.PI/2-0.4), arrowBot-hs*Math.sin(Math.PI/2-0.4));
+  ctx.lineTo(cx+hs*Math.cos(Math.PI/2-0.4), arrowBot-hs*Math.sin(Math.PI/2-0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // 力ラベル
+  ctx.save();
+  ctx.fillStyle='#e91e8c'; ctx.font='700 14px Hiragino Sans,system-ui';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(`力 F = ${F} N`, cx+12, (arrowTop+arrowBot)/2);
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle='#15803d'; ctx.font='700 20px Hiragino Sans,system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.fillText(`p = F/S = ${F} / ${S.toFixed(2)} = ${p.toFixed(1)} Pa`, W/2, H-14);
+  ctx.restore();
+}
+
+// ===== 水圧 =====
+function drawWater(){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const h=parseFloat(document.getElementById('wh-slider').value);
+  const rho=rhoWater;
+  const p=p0+rho*g*h;
+
+  const tankL=W*0.18, tankR=W*0.82, tankTop=H*0.08, tankBot=H*0.86;
+  const tankH=tankBot-tankTop, tankW=tankR-tankL;
+
+  // 水（グラデーション）
+  const grad=ctx.createLinearGradient(0,tankTop,0,tankBot);
+  grad.addColorStop(0,'rgba(56,189,248,0.10)');
+  grad.addColorStop(1,'rgba(56,189,248,0.40)');
+  ctx.fillStyle=grad; ctx.fillRect(tankL,tankTop,tankW,tankH);
+  ctx.strokeStyle='#0891b2'; ctx.lineWidth=2;
+  ctx.strokeRect(tankL,tankTop,tankW,tankH);
+
+  // 波線（水面）
+  ctx.save(); ctx.strokeStyle='#38bdf8'; ctx.lineWidth=2;
+  ctx.beginPath();
+  const waveY=tankTop; const waveStep=12;
+  for(let x=tankL;x<tankR;x+=waveStep){
+    const mid=x+waveStep/2;
+    ctx.moveTo(x,waveY); ctx.quadraticCurveTo(mid-waveStep/4,waveY-6,mid,waveY);
+    ctx.quadraticCurveTo(mid+waveStep/4,waveY+6,x+waveStep,waveY);
+  }
+  ctx.stroke(); ctx.restore();
+  lbl(ctx,tankL-8,tankTop+4,'水面','#0891b2','right');
+  lbl(ctx,(tankL+tankR)/2,tankTop-12,'← p₀（大気圧）→','#64748b','center');
+
+  // 深さhの位置（物体中心）
+  const hRatio=Math.min(h/10,0.95);
+  const bw=80, bh=60;
+  const objCY=Math.min(tankTop+hRatio*tankH, tankBot-bh/2-6);
+  const objCX=(tankL+tankR)/2;
+
+  // h寸法線（左側）
+  if(h>0.1){
+    ctx.save(); ctx.strokeStyle='#334155'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(tankL-18,tankTop); ctx.lineTo(tankL-18,objCY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tankL-24,tankTop); ctx.lineTo(tankL-12,tankTop); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tankL-24,objCY); ctx.lineTo(tankL-12,objCY); ctx.stroke();
+    ctx.restore();
+    lbl(ctx,tankL-26,(tankTop+objCY)/2,`h=${h.toFixed(1)}m`,'#334155','right');
+  }
+
+  // 各面の深さ（m）を計算
+  const mPerPx = 10/tankH;
+  const h_top = Math.max(0, (objCY - bh/2 - tankTop) * mPerPx);
+  const h_mid = Math.max(0, (objCY        - tankTop) * mPerPx);
+  const h_bot = Math.max(0, (objCY + bh/2 - tankTop) * mPerPx);
+  const scale = 10;
+  const aTop = 4 + h_top * scale;
+  const aBot = 4 + h_bot * scale;
+  const gap=6;
+  const offsets=[-20,0,20]; // 3本ずつ
+
+  // 上から（下向き）
+  offsets.forEach(ox=>{
+    arrow(ctx,objCX+ox,objCY-bh/2-aTop-gap, objCX+ox,objCY-bh/2-gap,'#334155',2);
+  });
+  // 下から（上向き）
+  offsets.forEach(ox=>{
+    arrow(ctx,objCX+ox,objCY+bh/2+aBot+gap, objCX+ox,objCY+bh/2+gap,'#334155',2);
+  });
+  // 左・右：各行の深さで長さを変える
+  offsets.forEach(oy=>{
+    const hRow = Math.max(0, (objCY+oy - tankTop) * mPerPx);
+    const aRow = 4 + hRow * scale;
+    arrow(ctx,objCX-bw/2-aRow-gap,objCY+oy, objCX-bw/2-gap,objCY+oy,'#334155',2);
+    arrow(ctx,objCX+bw/2+aRow+gap,objCY+oy, objCX+bw/2+gap,objCY+oy,'#334155',2);
+  });
+
+  // 物体（長方形）
+  ctx.save();
+  ctx.fillStyle='#cbd5e1'; ctx.strokeStyle='#475569'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(objCX-bw/2,objCY-bh/2,bw,bh,6);
+  ctx.fill(); ctx.stroke(); ctx.restore();
+
+  // 計算式
+  ctx.save();
+  ctx.fillStyle='#15803d'; ctx.font='700 20px Hiragino Sans,system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.fillText(`p = p₀ + ρgh = ${(p/1000).toFixed(2)} × 10³ Pa`, W/2, H-8);
+  ctx.restore();
+}
+
+// ===== 浮力 =====
+function drawBuoy(objYoverride){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const rhoObj=parseFloat(document.getElementById('brho-slider').value);
+  const V=parseFloat(document.getElementById('bV-slider').value);
+  const m=rhoObj*V;
+  const F_buoy=rhoWater*V*g;
+  const W_obj=m*g;
+  const floating = rhoObj < rhoWater;
+
+  const waterTop=H*0.18, waterBot=H*0.88;
+  const tankL=W*0.15, tankR=W*0.85;
+  const wH=waterBot-waterTop;
+
+  ctx.save();
+  ctx.fillStyle='rgba(56,189,248,0.22)';
+  ctx.fillRect(tankL,waterTop,tankR-tankL,wH);
+  ctx.strokeStyle='#0891b2'; ctx.lineWidth=2;
+  ctx.strokeRect(tankL,waterTop,tankR-tankL,wH);
+  ctx.restore();
+  lbl(ctx,tankL-6,waterTop+4,'水面','#0891b2','right');
+
+  const sideMax=70, sideMin=20;
+  const side=sideMin+(sideMax-sideMin)*(V/0.005);
+
+  let objY;
+  if(objYoverride !== undefined){
+    objY = objYoverride;
+  } else if(floating){
+    const ratio=rhoObj/rhoWater;
+    objY = waterTop + side*ratio - side/2;
+  } else {
+    objY = waterBot - side/2 - 4;
+  }
+  objY = Math.max(waterTop+side/2, Math.min(objY, waterBot-side/2-2));
+  const objX=(tankL+tankR)/2;
+
+  ctx.save();
+  ctx.fillStyle = floating ? '#fef9c3' : '#dbeafe';
+  ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(objX-side/2,objY-side/2,side,side,4); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.fillStyle='#334155'; ctx.font='700 10px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(floating?'浮く':'沈む',objX,objY); ctx.restore();
+
+  const scaleN=60/(rhoWater*0.005*g);
+  const buoyLen=Math.min(F_buoy*scaleN,70), wLen=Math.min(W_obj*scaleN,70);
+
+  dot(ctx,objX,objY-side/2,'#0891b2');
+  arrow(ctx,objX,objY-side/2, objX,objY-side/2-buoyLen,'#0891b2',2.5);
+  lbl(ctx,objX+6,objY-side/2-buoyLen-6,`F浮=${F_buoy.toFixed(2)}N`,'#0891b2','left');
+
+  dot(ctx,objX,objY,'#dc2626');
+  arrow(ctx,objX,objY, objX,objY+wLen,'#dc2626',2.5);
+  lbl(ctx,objX+6,objY+wLen+12,`W=${W_obj.toFixed(2)}N`,'#dc2626','left');
+
+  const cmpStr = floating
+    ? `ρ_obj(${rhoObj}) < ρ水(1000) → 浮く`
+    : rhoObj===rhoWater ? `ρ_obj = ρ水 → 釣り合い`
+    : `ρ_obj(${rhoObj}) > ρ水(1000) → 沈む`;
+  lbl(ctx,W/2,H-14,`F浮 = ρVg = ${F_buoy.toFixed(3)} N　　${cmpStr}`,'#15803d','center');
+}
+
+function startBuoyAnim(){
+  if(buoyAnimId){ cancelAnimationFrame(buoyAnimId); buoyAnimId=null; }
+  const rhoObj=parseFloat(document.getElementById('brho-slider').value);
+  const V=parseFloat(document.getElementById('bV-slider').value);
+  const floating = rhoObj < rhoWater;
+
+  const H=CVS.getBoundingClientRect().height;
+  const waterTop=H*0.18, waterBot=H*0.88;
+  const sideMax=70, sideMin=20;
+  const side=sideMin+(sideMax-sideMin)*(V/0.005);
+
+  if(floating){
+    // 浮く：初期位置を底付近から上に浮上
+    buoyY = waterBot - side/2 - 4;
+    buoyV = 0;
+    const targetY = waterTop + side*(rhoObj/rhoWater) - side/2;
+    buoyLastTs = null;
+    function floatLoop(ts){
+      if(!buoyLastTs) buoyLastTs=ts;
+      const dt=Math.min((ts-buoyLastTs)/1000,0.05); buoyLastTs=ts;
+      const m=rhoObj*V, F_buoy=rhoWater*V*g, W_obj=m*g;
+      const a=(F_buoy-W_obj)/m;
+      buoyV -= a*dt*8; // 上向き
+      buoyY += buoyV*dt*20;
+      buoyY = Math.max(targetY, buoyY);
+      drawBuoy(buoyY);
+      if(buoyY > targetY+1){ buoyAnimId=requestAnimationFrame(floatLoop); }
+      else { buoyY=targetY; drawBuoy(buoyY); buoyAnimId=null; }
+    }
+    buoyAnimId=requestAnimationFrame(floatLoop);
+  } else {
+    // 沈む：初期位置を水面付近から底へ
+    buoyY = waterTop + side/2 + 4;
+    buoyV = 0;
+    const targetY = waterBot - side/2 - 4;
+    buoyLastTs = null;
+    function sinkLoop(ts){
+      if(!buoyLastTs) buoyLastTs=ts;
+      const dt=Math.min((ts-buoyLastTs)/1000,0.05); buoyLastTs=ts;
+      const m=rhoObj*V, F_buoy=rhoWater*V*g, W_obj=m*g;
+      const a=(W_obj-F_buoy)/m;
+      buoyV += a*dt*8;
+      buoyY += buoyV*dt*20;
+      buoyY = Math.min(targetY, buoyY);
+      drawBuoy(buoyY);
+      if(buoyY < targetY-1){ buoyAnimId=requestAnimationFrame(sinkLoop); }
+      else { buoyY=targetY; drawBuoy(buoyY); buoyAnimId=null; }
+    }
+    buoyAnimId=requestAnimationFrame(sinkLoop);
+  }
+}
+
+function stopBuoyAnim(){
+  if(buoyAnimId){ cancelAnimationFrame(buoyAnimId); buoyAnimId=null; }
+}
+
+// ===== 終端速度 =====
+let termLoop = null;
+function drawTerminal(vy, py){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m=parseFloat(document.getElementById('tm-slider').value);
+  const k=parseFloat(document.getElementById('tk-slider').value);
+  const vt=m*g/k; // 終端速度
+
+  // 背景（空気感）
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#e0f2fe'); grad.addColorStop(1,'#fff');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+
+  // 物体
+  const cx=W/2, r=18;
+  const objY=Math.min(py, H-r-30);
+  ctx.save(); ctx.fillStyle='#dbeafe'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(cx,objY,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // 重力（下向き）
+  const wLen=50;
+  dot(ctx,cx,objY,'#dc2626');
+  arrow(ctx,cx,objY, cx,objY+wLen,'#dc2626',2.5);
+  lbl(ctx,cx+6,objY+wLen+10,'mg','#dc2626','left');
+
+  // 抵抗力（上向き）
+  const dragLen=Math.min(vy/vt*50,50);
+  if(dragLen>2){
+    dot(ctx,cx,objY,'#7c3aed');
+    arrow(ctx,cx,objY, cx,objY-dragLen,'#7c3aed',2.5);
+    lbl(ctx,cx+6,objY-dragLen-6,'kv','#7c3aed','left');
+  }
+
+  // 速度矢印（右側）
+  if(vy>0.1){
+    const vLen=Math.min(vy/vt*60,60);
+    arrow(ctx,cx+r+10,objY, cx+r+10,objY+vLen,'#1d4ed8',2.5);
+    lbl(ctx,cx+r+26,objY+vLen/2,`v=${vy.toFixed(2)}m/s`,'#1d4ed8','left');
+  }
+
+  // 終端速度ライン
+  ctx.save(); ctx.strokeStyle='#dc2626'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(W*0.1,H-45); ctx.lineTo(W*0.9,H-45); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  lbl(ctx,W*0.92,H-41,`vt=${vt.toFixed(2)}m/s`,'#dc2626','left');
+
+  lbl(ctx,W/2,H-14,`終端速度：vt = mg/k = ${(m*g).toFixed(2)}/${k} = ${vt.toFixed(2)} m/s`,'#15803d','center');
+}
+
+function startTermAnim(){
+  if(termLoop) cancelAnimationFrame(termLoop);
+  termV=0; termY=30; termLastTs=null;
+  const m=parseFloat(document.getElementById('tm-slider').value);
+  const k=parseFloat(document.getElementById('tk-slider').value);
+  function loop(ts){
+    if(!termLastTs) termLastTs=ts;
+    const dt=Math.min((ts-termLastTs)/1000,0.05); termLastTs=ts;
+    const a=g-k*termV/m;
+    termV+=a*dt; termY+=termV*dt*60;
+    const H=CVS.getBoundingClientRect().height;
+    drawTerminal(termV,termY);
+    if(termY<H-50){ termLoop=requestAnimationFrame(loop); }
+    else { termLoop=null; }
+  }
+  termLoop=requestAnimationFrame(loop);
+}
+
+function stopTermAnim(){
+  if(termLoop){ cancelAnimationFrame(termLoop); termLoop=null; }
+}
+
+// ===== UI =====
+function updateUI(){
+  const titles={pressure:'圧力',water:'水圧',buoy:'浮力',terminal:'終端速度'};
+  const subs={pressure:'p = F/S',water:'p = p₀ + ρgh',buoy:'F = ρVg',terminal:'mg = kv'};
+  const formulas={
+    pressure:'<strong>圧力</strong>p = F/S<br><span style="color:var(--muted);font-size:11px">単位：N/m² = Pa</span>',
+    water:'<strong>水圧（流体の圧力）</strong>p = p₀ + ρgh<br><span style="color:var(--muted);font-size:11px">p₀：大気圧，ρ：密度，h：深さ</span>',
+    buoy:'<strong>浮力（アルキメデスの原理）</strong>F = ρVg<br><span style="color:var(--muted);font-size:11px">ρ：液体密度，V：物体の体積</span>',
+    terminal:'<strong>終端速度</strong>mg = kv<br>vt = mg/k<br><span style="color:var(--muted);font-size:11px">重力 = 抵抗力で等速</span>',
+  };
+  const infos={
+    pressure:'<span class="hl hl-blue">p = F/S</span>。面積が小さいほど圧力は大きくなる。Sを変えて確認しよう。',
+    water:'<span class="hl hl-cyan">p = p₀ + ρgh</span>。深くなるほど大きくなる。同じ深さでは容器の形によらず一定。',
+    buoy:'<span class="hl hl-blue">F = ρVg</span>（ρ：液体の密度）。物体が排除した液体の重さに等しい（アルキメデスの原理）。',
+    terminal:'<span class="hl hl-orange">mg = kv</span> のとき等速。重力と抵抗力が釣り合う速度が終端速度。',
+  };
+
+  document.getElementById('mainTitle').textContent=titles[tab];
+  document.getElementById('mainSub').textContent=subs[tab];
+  document.getElementById('formulaBox').innerHTML=formulas[tab];
+  document.getElementById('infoTitle').textContent=titles[tab];
+  document.getElementById('infoBody').innerHTML=infos[tab];
+
+  if(tab==='pressure'){
+    const F=parseFloat(document.getElementById('pF-slider').value);
+    const S=parseFloat(document.getElementById('pS-slider').value);
+    document.getElementById('resultCard').textContent=`p = ${(F/S).toFixed(1)} Pa`;
+  } else if(tab==='water'){
+    const h=parseFloat(document.getElementById('wh-slider').value);
+    const rho=rhoWater;
+    const p=p0+rho*g*h;
+    document.getElementById('resultCard').textContent=`p = ${(p/1000).toFixed(2)} × 10³ Pa`;
+  } else if(tab==='buoy'){
+    const rhoObj=parseFloat(document.getElementById('brho-slider').value);
+    const V=parseFloat(document.getElementById('bV-slider').value);
+    const F=rhoWater*V*g;
+    document.getElementById('resultCard').innerHTML=
+      rhoObj<rhoWater?`浮力 ${F.toFixed(3)} N &gt; 重力 ${(rhoObj*V*g).toFixed(3)} N → 浮く`
+      :rhoObj===rhoWater?`浮力 = 重力 = ${F.toFixed(3)} N → 釣合`
+      :`浮力 ${F.toFixed(3)} N &lt; 重力 ${(rhoObj*V*g).toFixed(3)} N → 沈む`;
+  } else {
+    const m=parseFloat(document.getElementById('tm-slider').value);
+    const k=parseFloat(document.getElementById('tk-slider').value);
+    document.getElementById('resultCard').textContent=`vt = ${(m*g/k).toFixed(2)} m/s`;
+  }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='pressure') drawPressure();
+  else if(tab==='water') drawWater();
+  else if(tab==='buoy') startBuoyAnim();
+  else drawTerminal(termV,termY);
+}
+
+function setTab(t){
+  tab=t;
+  stopTermAnim(); stopBuoyAnim();
+  ['pressure','water','buoy','terminal'].forEach((x,i)=>{
+    document.getElementById('tab'+(i+1)).classList.toggle('active',t===x);
+    document.getElementById(x+'Ctrls').style.display=t===x?'contents':'none';
+  });
+  setTimeout(()=>{ resizeC(); redraw();
+    if(t==='terminal') startTermAnim();
+  },30);
+}
+
+[['pF','pF-label',v=>v+' N'],
+ ['pS','pS-label',v=>parseFloat(v).toFixed(2)+' m²'],
+ ['wh','wh-label',v=>parseFloat(v).toFixed(1)+' m'],
+ ['brho','brho-label',v=>v],
+ ['bV','bV-label',v=>parseFloat(v).toFixed(4)+' m³'],
+ ['tm','tm-label',v=>parseFloat(v).toFixed(2)+' kg'],
+ ['tk','tk-label',v=>parseFloat(v).toFixed(2)],
+].forEach(([name,labelId,fmt])=>{
+  const el=document.getElementById(name+'-slider');
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmt(el.value);
+    if(tab==='terminal') startTermAnim();
+    else redraw();
+  });
+});
+
+setTimeout(()=>{ resizeC(); redraw(); },50);
+</script>
+</body>
+</html>
