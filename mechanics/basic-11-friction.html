@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>摩擦力 | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --green-soft:#dcfce7;
+    --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --purple-soft:#fdf4ff;
+    --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:11px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.9; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+  .hl-red    { background:#fee2e2; color:#991b1b; }
+</style>
+</head>
+<body>
+
+<h1>摩擦力</h1>
+<p class="subtitle">物理基礎 11 ｜ 静止摩擦力・動摩擦力・摩擦角</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">f</div>
+        <span class="card-title" id="mainTitle">静止摩擦力と動摩擦力</span>
+        <span class="card-sub" id="mainSub">F を増やして限界を超えると動き出す</span>
+      </div>
+      <canvas id="mainCanvas" height="160"></canvas>
+      <!-- 摩擦角：図＋導出式レイアウト -->
+      <div id="anglePanel" style="display:none; padding:20px 24px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start;">
+          <canvas id="angleCanvas" height="200" style="width:100%"></canvas>
+          <div id="angleDeriv" style="font-size:13px; font-weight:700; line-height:2.2; color:#334155;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- グラフカード（水平モードのみ） -->
+    <div class="card" id="graphCard">
+      <div class="card-header">
+        <div class="badge" style="background:#64748b;font-size:10px">グラフ</div>
+        <span class="card-title" style="font-size:13px">摩擦力 f と引く力 F の関係</span>
+      </div>
+      <canvas id="graphCanvas" height="140"></canvas>
+    </div>
+
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+      <strong style="color:var(--blue-dark)" id="infoTitle">静止摩擦力</strong>
+      <span id="infoBody"><span class="hl hl-blue">f = F</span>（静止中）。Fが最大静止摩擦力 <span class="hl hl-orange">F₀ = μN</span> を超えると動き出す。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>場面</h3>
+          <div class="toggle three" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('horiz')">水平面</button>
+            <button id="tab2" onclick="setTab('slope')">斜面</button>
+            <button id="tab3" onclick="setTab('angle')">摩擦角</button>
+          </div>
+        </div>
+
+        <!-- 水平コントロール -->
+        <div id="horizCtrls">
+          <div class="control">
+            <label>質量 m <span class="val" id="m-label">3.0 kg</span></label>
+            <input type="range" id="m-slider" min="1" max="10" value="3" step="0.5">
+            <div class="range-hint"><span>1 kg</span><span>10 kg</span></div>
+          </div>
+          <div class="control">
+            <label>静止摩擦係数 μ <span class="val" id="mu-label">0.40</span></label>
+            <input type="range" id="mu-slider" min="0.1" max="0.8" value="0.4" step="0.05">
+          </div>
+          <div class="control">
+            <label>動摩擦係数 μ' <span class="val" id="mup-label">0.30</span></label>
+            <input type="range" id="mup-slider" min="0.05" max="0.7" value="0.3" step="0.05">
+          </div>
+          <div class="control">
+            <label>引く力 F <span class="val" id="F-label">0 N</span></label>
+            <input type="range" id="F-slider" min="0" max="80" value="0" step="1">
+            <div class="range-hint"><span>0 N</span><span>80 N</span></div>
+          </div>
+        </div>
+
+        <!-- 斜面コントロール -->
+        <div id="slopeCtrls" style="display:none">
+          <div class="control">
+            <label>質量 m <span class="val" id="ms-label">3.0 kg</span></label>
+            <input type="range" id="ms-slider" min="1" max="10" value="3" step="0.5">
+            <div class="range-hint"><span>1 kg</span><span>10 kg</span></div>
+          </div>
+          <div class="control">
+            <label>静止摩擦係数 μ <span class="val" id="mus-label">0.40</span></label>
+            <input type="range" id="mus-slider" min="0.1" max="0.8" value="0.4" step="0.05">
+          </div>
+          <div class="control">
+            <label>動摩擦係数 μ' <span class="val" id="mups-label">0.30</span></label>
+            <input type="range" id="mups-slider" min="0.05" max="0.7" value="0.3" step="0.05">
+          </div>
+          <div class="control">
+            <label>斜面角度 θ <span class="val" id="th-label">20°</span></label>
+            <input type="range" id="th-slider" min="1" max="60" value="20" step="1">
+            <div class="range-hint"><span>1°</span><span>60°</span></div>
+          </div>
+        </div>
+
+        <!-- 摩擦角コントロール -->
+        <div id="angleCtrls" style="display:none">
+          <div class="control">
+            <label>静止摩擦係数 μ <span class="val" id="mua-label">0.40</span></label>
+            <input type="range" id="mua-slider" min="0.1" max="1.0" value="0.4" step="0.05">
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>静止摩擦力</strong>
+          f = F（静止中）<br>
+          最大静止摩擦力：F₀ = μN
+        </div>
+
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          静止中　f = 0.0 N
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const g = 9.8;
+let tab = 'horiz';
+
+// アニメ状態
+let blockX = 0;
+let blockV = 0;
+let animId = null;
+let lastTs = null;
+// 斜面アニメ状態
+let slopeD = 0;   // 斜面上の距離（上端からの距離）
+let slopeV = 0;
+let slopeAnimId = null;
+let slopeLastTs = null;
+
+function initC(id) {
+  const c = document.getElementById(id);
+  function rs() {
+    const r = c.getBoundingClientRect();
+    if(!r.width) return;
+    c.width = r.width*DPR; c.height = r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  }
+  rs(); return c;
+}
+const MC = initC('mainCanvas');
+const GC = initC('graphCanvas');
+window.addEventListener('resize', () => {
+  [MC,GC].forEach(c => {
+    const r=c.getBoundingClientRect();
+    if(!r.width) return;
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  });
+  redraw();
+});
+
+// ===== ユーティリティ =====
+function arrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx),hs=11;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dashedArrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||2;
+  ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  const ang=Math.atan2(dy,dx),hs=9;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dot(ctx,x,y,color){
+  ctx.save(); ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+}
+function lbl(ctx,x,y,text,color,align,base){
+  ctx.save(); ctx.fillStyle=color||'#334155';
+  ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign=align||'center'; ctx.textBaseline=base||'alphabetic';
+  ctx.fillText(text,x,y); ctx.restore();
+}
+
+// ===== 水平面描画 =====
+function drawHoriz() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m  = parseFloat(document.getElementById('m-slider').value);
+  const mu = parseFloat(document.getElementById('mu-slider').value);
+  const mup= parseFloat(document.getElementById('mup-slider').value);
+  const F  = parseFloat(document.getElementById('F-slider').value);
+  const N  = m*g;
+  const F0 = mu*N, Fk = mup*N;
+  const moving = F > F0;
+  const f = moving ? Fk : F;
+
+  const gy = H*0.68, bw=64, bh=44;
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,gy,W,H-gy);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+
+  // ブロック位置（静止中は中央固定、動いてるときはblockX）
+  if(!moving) blockX = W*0.35;
+  const cx = Math.max(bw/2+4, Math.min(blockX, W-bw/2-8));
+  const top=gy-bh, cy=gy-bh/2, botY=gy;
+
+  ctx.save();
+  ctx.fillStyle = moving ? '#fef9c3' : '#dbeafe';
+  ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-bw/2,top,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = moving ? '#854d0e' : '#1e40af';
+  ctx.font='700 11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(moving?'運動中':'静止', cx, cy);
+  ctx.restore();
+
+  const wLen=N*(80/(10*g)), nLen=N*(80/(10*g));
+  dot(ctx,cx,cy,'#dc2626');
+  arrow(ctx,cx,cy, cx,cy+wLen,'#dc2626',2.5);
+  lbl(ctx,cx-6,cy+wLen+12,`W=${N.toFixed(0)}N`,'#dc2626','right');
+  dot(ctx,cx+10,botY,'#15803d');
+  arrow(ctx,cx+10,botY, cx+10,botY-nLen,'#15803d',2.5);
+  lbl(ctx,cx+16,botY-nLen-6,`N=${N.toFixed(0)}N`,'#15803d','left');
+
+  if(F>0){
+    const fLen=Math.min(F,80);
+    dot(ctx,cx+bw/2,cy,'#ea580c');
+    arrow(ctx,cx+bw/2,cy, cx+bw/2+fLen,cy,'#ea580c',2.5);
+    lbl(ctx,cx+bw/2+fLen/2,cy-12,`F=${F.toFixed(0)}N`,'#ea580c','center');
+  }
+  if(f>0.1){
+    const fLen=Math.min(f,80);
+    dot(ctx,cx-10,botY,'#7c3aed');
+    arrow(ctx,cx-10,botY, cx-10-fLen,botY,'#7c3aed',2.5);
+    lbl(ctx,cx-10-fLen/2,botY+14, moving?`f'=${f.toFixed(1)}N`:`f=${f.toFixed(1)}N`,'#7c3aed','center');
+  }
+  const a = moving ? (F - Fk) / m : 0;
+
+  // 速度・加速度（上面）
+  if(moving && blockV>0.3){
+    const vLen=Math.min(blockV*10,80);
+    arrow(ctx,cx-bw/2,top-22, cx-bw/2+vLen,top-22,'#1d4ed8',2.5);
+    lbl(ctx,cx-bw/2+vLen+6,top-18,`v=${blockV.toFixed(1)}m/s`,'#1d4ed8','left');
+  }
+
+  const stateStr = moving
+    ? `運動中：f' = μ'N = ${Fk.toFixed(1)} N　a = ${a.toFixed(2)} m/s²`
+    : F>=F0-0.5
+    ? `限界！F₀ = μN = ${F0.toFixed(1)} N`
+    : `静止中：f = F = ${f.toFixed(1)} N`;
+  lbl(ctx,W/2,H-12,stateStr, moving?'#854d0e':F>=F0-0.5?'#dc2626':'#15803d','center');
+}
+
+// ===== グラフ描画 =====
+function drawGraph() {
+  const ctx = GC.getContext('2d');
+  const W = GC.getBoundingClientRect().width, H = GC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m  = parseFloat(document.getElementById('m-slider').value);
+  const mu = parseFloat(document.getElementById('mu-slider').value);
+  const mup= parseFloat(document.getElementById('mup-slider').value);
+  const F  = parseFloat(document.getElementById('F-slider').value);
+  const N  = m*g;
+  const F0 = mu*N, Fk = mup*N;
+
+  const pad = {l:52,r:24,t:20,b:36};
+  const gw = W-pad.l-pad.r, gh = H-pad.t-pad.b;
+  const Fmax = 80;
+  const fMax = Math.max(F0*1.2, Fk*1.3, 20);
+
+  function fx(v){ return pad.l + v/Fmax*gw; }
+  function fy(v){ return pad.t + gh - v/fMax*gh; }
+
+  // 軸
+  ctx.save();
+  ctx.strokeStyle='#334155'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+gh); ctx.lineTo(pad.l+gw,pad.t+gh); ctx.stroke();
+  lbl(ctx,W-10,pad.t+gh+4,'F(N)','#334155','right');
+  lbl(ctx,pad.l-6,pad.t+2,'f(N)','#334155','right');
+  lbl(ctx,pad.l,pad.t+gh+16,'O','#334155','center');
+  ctx.restore();
+
+  // F0の縦線
+  ctx.save(); ctx.strokeStyle='#dc2626'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(fx(F0),fy(F0)); ctx.lineTo(fx(F0),fy(0)); ctx.stroke();
+  ctx.setLineDash([]);
+  lbl(ctx,fx(F0),fy(0)+14,'F₀=μN','#dc2626','center');
+  ctx.restore();
+
+  // Fkの横線
+  ctx.save(); ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(fx(F0),fy(Fk)); ctx.lineTo(fx(Fmax),fy(Fk)); ctx.stroke();
+  ctx.setLineDash([]);
+  lbl(ctx,pad.l-6,fy(Fk)+4,`f'`,'#7c3aed','right');
+  ctx.restore();
+
+  // グラフ線：静止領域（f=F）
+  ctx.save(); ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(fx(0),fy(0)); ctx.lineTo(fx(F0),fy(F0)); ctx.stroke();
+  ctx.restore();
+
+  // グラフ線：動摩擦（f'=μ'N、一定）
+  ctx.save(); ctx.strokeStyle='#7c3aed'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(fx(F0),fy(Fk)); ctx.lineTo(fx(Fmax),fy(Fk)); ctx.stroke();
+  ctx.restore();
+
+  // ピーク点
+  ctx.save(); ctx.fillStyle='#dc2626';
+  ctx.beginPath(); ctx.arc(fx(F0),fy(F0),5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  lbl(ctx,fx(F0)+6,fy(F0)-8,'最大静止摩擦','#dc2626','left');
+
+  // 現在のFの縦線
+  if(F>0){
+    const curF = Math.min(F,Fmax);
+    const curFric = curF<=F0 ? curF : Fk;
+    ctx.save(); ctx.strokeStyle='#ea580c'; ctx.lineWidth=2; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(fx(curF),fy(0)); ctx.lineTo(fx(curF),fy(curFric+5)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    ctx.save(); ctx.fillStyle='#ea580c';
+    ctx.beginPath(); ctx.arc(fx(curF),fy(curFric),5,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // 領域ラベル
+  lbl(ctx,fx(F0/2),fy(F0/2)+16,'静止摩擦 f=F','#1d4ed8','center');
+  if(F0<Fmax-10) lbl(ctx,fx((F0+Fmax)/2),fy(Fk)-12,'動摩擦 f\'=μ\'N','#7c3aed','center');
+}
+
+// ===== 斜面描画 =====
+function drawSlope() {
+  const ctx = MC.getContext('2d');
+  const W = MC.getBoundingClientRect().width, H = MC.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m   = parseFloat(document.getElementById('ms-slider').value);
+  const mu  = parseFloat(document.getElementById('mus-slider').value);
+  const mup = parseFloat(document.getElementById('mups-slider').value);
+  const thD = parseFloat(document.getElementById('th-slider').value);
+  const th  = thD*Math.PI/180;
+  const N   = m*g*Math.cos(th);
+  const F0  = mu*N;   // 最大静止摩擦
+  const Fk  = mup*N;  // 動摩擦
+  const Fs  = m*g*Math.sin(th);
+  const sliding = Fs > F0;
+
+  const baseX=W*0.06, baseY=H*0.84, slLen=W*0.88;
+  const slH=slLen*Math.tan(th);
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen,baseY); ctx.lineTo(baseX+slLen,baseY-slH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen,baseY-slH); ctx.stroke();
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(baseX,baseY,34,-th,0); ctx.stroke();
+  lbl(ctx,baseX+Math.cos(-th/2)*50,baseY+Math.sin(-th/2)*50,'θ','#64748b','center');
+
+  // 物体位置：静止中は固定、すべり中はslopeDで移動
+  const maxAlong = slLen*0.82;
+  const startAlong = slLen*0.75;
+  if(!sliding) slopeD = 0;
+  const along = Math.max(4, startAlong - Math.min(slopeD, startAlong - 4));
+  const sx=baseX+along*Math.cos(th), sy=baseY-along*Math.sin(th);
+  const nx=-Math.sin(th), ny=-Math.cos(th);
+  const tdown=-Math.cos(th), tydown=Math.sin(th);
+
+  const bh=44,bw=58;
+  const cx=sx+nx*bh/2, cy=sy+ny*bh/2;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(-th);
+  ctx.fillStyle = sliding ? '#fef9c3' : '#dbeafe';
+  ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-bw/2,-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.fillStyle=sliding?'#854d0e':'#1e40af';
+  ctx.font='700 10px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.translate(cx,cy); ctx.rotate(-th);
+  ctx.fillText(sliding?'すべる':'静止',0,0);
+  ctx.restore();
+
+  const scale=130/(10*g);
+  const wLen=(m*g)*scale, nLen=N*scale, sinLen=Fs*scale;
+
+  dot(ctx,cx,cy,'#dc2626');
+  arrow(ctx,cx,cy, cx,cy+wLen,'#dc2626',2.5);
+  lbl(ctx,cx+8,cy+wLen+10,`W=${(m*g).toFixed(0)}N`,'#dc2626','left');
+  dashedArrow(ctx,cx,cy, cx+tdown*sinLen,cy+tydown*sinLen,'#dc2626',1.5);
+  lbl(ctx,cx+tdown*sinLen+nx*18,cy+tydown*sinLen+ny*18,'mg sinθ','#dc2626','right');
+  dashedArrow(ctx,cx,cy, cx+(-nx)*nLen,cy+(-ny)*nLen,'#dc2626',1.5);
+  lbl(ctx,cx+(-nx)*nLen+tdown*14,cy+(-ny)*nLen+tydown*14,'mg cosθ','#dc2626','left');
+
+  const nsx=sx+(-tdown)*10, nsy=sy+(-tydown)*10;
+  dot(ctx,nsx,nsy,'#15803d');
+  arrow(ctx,nsx,nsy, nsx+nx*nLen,nsy+ny*nLen,'#15803d',2.5);
+  lbl(ctx,nsx+nx*nLen+8,nsy+ny*nLen-4,`N=${N.toFixed(1)}N`,'#15803d','left');
+
+  if(!sliding){
+    const fFric=Fs*scale;
+    const fsx=sx+(-tdown)*18, fsy=sy+(-tydown)*18;
+    dot(ctx,fsx,fsy,'#7c3aed');
+    arrow(ctx,fsx,fsy, fsx+(-tdown)*fFric,fsy+(-tydown)*fFric,'#7c3aed',2.5);
+    lbl(ctx,fsx+(-tdown)*fFric+nx*16,fsy+(-tydown)*fFric+ny*16,`f=${Fs.toFixed(1)}N`,'#7c3aed','right');
+  } else {
+    const fKin=Fk*scale;
+    const fsx=sx+(-tdown)*18, fsy=sy+(-tydown)*18;
+    dot(ctx,fsx,fsy,'#7c3aed');
+    arrow(ctx,fsx,fsy, fsx+(-tdown)*fKin,fsy+(-tydown)*fKin,'#7c3aed',2.5);
+    lbl(ctx,fsx+(-tdown)*fKin+nx*16,fsy+(-tydown)*fKin+ny*16,`f'=${Fk.toFixed(1)}N`,'#7c3aed','right');
+  }
+
+  // 速度矢印（すべり中）
+  if(sliding && slopeV>0.3){
+    const vLen=Math.min(slopeV*10,70);
+    arrow(ctx,cx+nx*36,cy+ny*36, cx+nx*36+tdown*vLen,cy+ny*36+tydown*vLen,'#1d4ed8',2.5);
+    lbl(ctx,cx+nx*36+tdown*vLen+nx*14,cy+ny*36+tydown*vLen+ny*14,`v=${slopeV.toFixed(1)}m/s`,'#1d4ed8','center');
+  }
+
+  const stateStr = sliding
+    ? `mg sinθ = ${Fs.toFixed(1)} N > μN = ${F0.toFixed(1)} N → すべる！`
+    : `mg sinθ = ${Fs.toFixed(1)} N ≤ μN = ${F0.toFixed(1)} N → 静止`;
+  lbl(ctx,W/2,H-12,stateStr,sliding?'#dc2626':'#15803d','center');
+}
+
+function slopeAnimLoop(ts) {
+  if(!slopeLastTs) slopeLastTs = ts;
+  const dt = Math.min((ts - slopeLastTs) / 1000, 0.05);
+  slopeLastTs = ts;
+
+  const m   = parseFloat(document.getElementById('ms-slider').value);
+  const mu  = parseFloat(document.getElementById('mus-slider').value);
+  const mup = parseFloat(document.getElementById('mups-slider').value);
+  const thD = parseFloat(document.getElementById('th-slider').value);
+  const th  = thD*Math.PI/180;
+  const N   = m*g*Math.cos(th);
+  const F0  = mu*N, Fk = mup*N, Fs = m*g*Math.sin(th);
+  const sliding = Fs > F0;
+  const W = MC.getBoundingClientRect().width;
+
+  if(sliding) {
+    const a = (Fs - Fk) / m;  // 動摩擦で計算
+    slopeV += a * dt;
+    slopeD += slopeV * dt * 60;
+    if(slopeD > W * 0.88 * 0.72) { slopeD = 0; slopeV = 0; }
+  } else {
+    slopeD = 0; slopeV = 0;
+  }
+
+  updateUI();
+  drawSlope();
+  slopeAnimId = requestAnimationFrame(slopeAnimLoop);
+}
+
+function startSlopeAnimLoop() {
+  if(slopeAnimId) cancelAnimationFrame(slopeAnimId);
+  slopeLastTs = null; slopeD = 0; slopeV = 0;
+  slopeAnimId = requestAnimationFrame(slopeAnimLoop);
+}
+
+function stopSlopeAnimLoop() {
+  if(slopeAnimId) { cancelAnimationFrame(slopeAnimId); slopeAnimId = null; }
+}
+
+// ===== 摩擦角描画 =====
+function drawFricAngle() {
+  const AC = document.getElementById('angleCanvas');
+  if(!AC) return;
+  const r = AC.getBoundingClientRect();
+  if(!r.width) return;
+  AC.width = r.width*DPR; AC.height = r.height*DPR;
+  const ctx = AC.getContext('2d');
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const W = r.width, H = r.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const mu = parseFloat(document.getElementById('mua-slider').value);
+  const th0 = Math.atan(mu);
+  const th0D = (th0*180/Math.PI).toFixed(1);
+
+  const baseX=W*0.08, baseY=H*0.88, slLen=W*0.88;
+  const slH=slLen*Math.tan(th0);
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen,baseY); ctx.lineTo(baseX+slLen,baseY-slH);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(baseX,baseY); ctx.lineTo(baseX+slLen,baseY-slH); ctx.stroke();
+
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(baseX,baseY,36,-th0,0); ctx.stroke();
+  lbl(ctx,baseX+Math.cos(-th0/2)*52,baseY+Math.sin(-th0/2)*52,'θ₀','#64748b','center');
+
+  const along=slLen*0.50;
+  const sx=baseX+along*Math.cos(th0), sy=baseY-along*Math.sin(th0);
+  const nx=-Math.sin(th0), ny=-Math.cos(th0);
+  const tdown=-Math.cos(th0), tydown=Math.sin(th0);
+  const bh=36,bw=50;
+  const cx=sx+nx*bh/2, cy=sy+ny*bh/2;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(-th0);
+  ctx.fillStyle='#fef9c3'; ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-bw/2,-bh/2,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.save(); ctx.fillStyle='#854d0e'; ctx.font='700 10px system-ui';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.translate(cx,cy); ctx.rotate(-th0); ctx.fillText('限界',0,0); ctx.restore();
+
+  const sc=60;
+  // mg（鉛直下向き・重心）
+  dot(ctx,cx,cy,'#7c3aed');
+  arrow(ctx,cx,cy, cx,cy+sc,'#7c3aed',2.5);
+  lbl(ctx,cx-6,cy+sc+10,'mg','#7c3aed','right');
+  // mg sinθ（斜面下向き破線）
+  dashedArrow(ctx,cx,cy, cx+tdown*sc*Math.sin(th0),cy+tydown*sc*Math.sin(th0),'#dc2626',1.5);
+  lbl(ctx,cx+tdown*sc*Math.sin(th0)+nx*14,cy+tydown*sc*Math.sin(th0)+ny*14,'mg sinθ₀','#dc2626','right');
+  // mg cosθ（法線方向破線）
+  dashedArrow(ctx,cx,cy, cx+(-nx)*sc*Math.cos(th0),cy+(-ny)*sc*Math.cos(th0),'#dc2626',1.5);
+  lbl(ctx,cx+(-nx)*sc*Math.cos(th0)+tdown*12,cy+(-ny)*sc*Math.cos(th0)+tydown*12,'mg cosθ₀','#dc2626','left');
+  // N（法線上向き）
+  dot(ctx,sx,sy,'#15803d');
+  arrow(ctx,sx,sy, sx+nx*sc*Math.cos(th0),sy+ny*sc*Math.cos(th0),'#15803d',2.5);
+  lbl(ctx,sx+nx*sc*Math.cos(th0)+8,sy+ny*sc*Math.cos(th0)-4,'N','#15803d','left');
+  // F₀（斜面上向き）
+  const f0sx=sx+(-tdown)*14, f0sy=sy+(-tydown)*14;
+  dot(ctx,f0sx,f0sy,'#1d4ed8');
+  arrow(ctx,f0sx,f0sy, f0sx+(-tdown)*sc*Math.sin(th0),f0sy+(-tydown)*sc*Math.sin(th0),'#1d4ed8',2.5);
+  lbl(ctx,f0sx+(-tdown)*sc*Math.sin(th0)+nx*14,f0sy+(-tydown)*sc*Math.sin(th0)+ny*14,'F₀','#1d4ed8','right');
+
+  // 導出テキスト更新
+  document.getElementById('angleDeriv').innerHTML = `
+    <div style="margin-bottom:8px;color:#475569">いま、最大静止摩擦力 F₀ の大きさと、<br>滑り落とそうとする力の大きさが等しいので、</div>
+    <div style="color:#1d4ed8;font-size:15px;margin:4px 0 10px 16px">F₀ = mg sinθ₀</div>
+    <div style="margin-bottom:8px;color:#475569">また、垂直抗力 N の大きさと、<br>斜面に押し付ける力の大きさは等しいので、</div>
+    <div style="color:#15803d;font-size:15px;margin:4px 0 10px 16px">N = mg cosθ₀</div>
+    <div style="margin-bottom:6px;color:#475569">これらを最大静止摩擦力の式 F₀ = μN に代入すると、</div>
+    <div style="color:#334155;margin:2px 0 2px 16px">mg sinθ₀ = μ · mg cosθ₀</div>
+    <div style="color:#334155;margin:2px 0 10px 16px">∴　<span style="color:#dc2626;font-size:15px">μ = tanθ₀</span>　（mg が消える）</div>
+    <div style="background:#fef9c3;border:1px solid #ca8a04;border-radius:8px;padding:8px 12px;color:#854d0e">
+      μ = ${mu.toFixed(2)} → θ₀ = <strong>${th0D}°</strong>
+    </div>`;
+}
+
+// ===== UI更新 =====
+function updateUI() {
+  const formulas = {
+    horiz: '<strong>静止摩擦力・動摩擦力</strong>静止中：f = F<br>最大：F₀ = μN<br>動摩擦：f\' = μ\'N',
+    slope: '<strong>斜面の摩擦</strong>静止条件：mg sinθ ≤ μmg cosθ<br>→ tanθ ≤ μ',
+    angle: '<strong>摩擦角</strong>tan θ₀ = μ<br>θ &gt; θ₀ で滑り出す',
+  };
+  const infos = {
+    horiz: '<span class="hl hl-blue">f = F</span>（静止中）。Fが<span class="hl hl-orange">F₀ = μN</span>を超えると動き出し、<span class="hl hl-purple">f\' = μ\'N</span>（動摩擦）に切り替わる。',
+    slope: '静止条件は<span class="hl hl-blue">tanθ ≤ μ</span>。θを増やして<span class="hl hl-orange">mg sinθ &gt; μN</span>になると滑り始める。',
+    angle: '静止摩擦係数μと摩擦角θ₀の関係：<span class="hl hl-orange">tan θ₀ = μ</span>。θ₀以上の斜面では必ず滑る。',
+  };
+  const titles = { horiz:'静止摩擦力と動摩擦力', slope:'斜面上の摩擦力', angle:'摩擦角' };
+  const subs   = { horiz:'F を増やして限界を超えると動き出す', slope:'θ を増やして μ の限界を超えると滑り出す', angle:'tan θ₀ = μ' };
+
+  document.getElementById('formulaBox').innerHTML = formulas[tab];
+  document.getElementById('infoBody').innerHTML   = infos[tab];
+  document.getElementById('infoTitle').textContent= titles[tab];
+  document.getElementById('mainTitle').textContent= titles[tab];
+  document.getElementById('mainSub').textContent  = subs[tab];
+
+  if(tab==='horiz'){
+    const m=parseFloat(document.getElementById('m-slider').value);
+    const mu=parseFloat(document.getElementById('mu-slider').value);
+    const mup=parseFloat(document.getElementById('mup-slider').value);
+    const F=parseFloat(document.getElementById('F-slider').value);
+    const N=m*g, F0=mu*N, Fk=mup*N;
+    const moving=F>F0, f=moving?Fk:F;
+    document.getElementById('resultCard').innerHTML = moving
+      ? `<span style="color:#854d0e">運動中：f' = μ'N = ${Fk.toFixed(1)} N</span>`
+      : F>=F0-0.5
+      ? `<span style="color:#dc2626">限界！F₀ = ${F0.toFixed(1)} N</span>`
+      : `静止中：f = ${f.toFixed(1)} N`;
+  } else if(tab==='slope'){
+    const m=parseFloat(document.getElementById('ms-slider').value);
+    const mu=parseFloat(document.getElementById('mus-slider').value);
+    const thD=parseFloat(document.getElementById('th-slider').value);
+    const th=thD*Math.PI/180;
+    const N=m*g*Math.cos(th), F0=mu*N, Fs=m*g*Math.sin(th);
+    document.getElementById('resultCard').innerHTML = Fs>F0
+      ? `<span style="color:#dc2626">すべる！mg sinθ = ${Fs.toFixed(1)} N</span>`
+      : `静止：f = ${Fs.toFixed(1)} N（≤ μN = ${F0.toFixed(1)} N）`;
+  } else {
+    const mu=parseFloat(document.getElementById('mua-slider').value);
+    const th0D=(Math.atan(mu)*180/Math.PI).toFixed(1);
+    document.getElementById('resultCard').textContent=`θ₀ = ${th0D}°（μ = ${mu.toFixed(2)}）`;
+  }
+}
+
+function animLoop(ts) {
+  if(!lastTs) lastTs = ts;
+  const dt = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs = ts;
+
+  const m  = parseFloat(document.getElementById('m-slider').value);
+  const mu = parseFloat(document.getElementById('mu-slider').value);
+  const mup= parseFloat(document.getElementById('mup-slider').value);
+  const F  = parseFloat(document.getElementById('F-slider').value);
+  const N  = m*g, F0=mu*N, Fk=mup*N;
+  const W  = MC.getBoundingClientRect().width;
+
+  if(F > F0) {
+    const a = (F - Fk) / m;
+    blockV += a * dt;
+    blockX += blockV * dt * 60;
+    if(blockX > W - 36) { blockX = W * 0.15; blockV = 0; }
+  } else {
+    blockV = 0;
+    blockX = W * 0.35;
+  }
+
+  updateUI();
+  drawHoriz();
+  drawGraph();
+  animId = requestAnimationFrame(animLoop);
+}
+
+function startAnimLoop() {
+  if(animId) cancelAnimationFrame(animId);
+  lastTs = null; blockV = 0;
+  animId = requestAnimationFrame(animLoop);
+}
+
+function stopAnimLoop() {
+  if(animId) { cancelAnimationFrame(animId); animId = null; }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='horiz'){ drawHoriz(); drawGraph(); }
+  else if(tab==='slope') drawSlope();
+  else drawFricAngle();
+}
+
+function setTab(t){
+  tab=t;
+  ['horiz','slope','angle'].forEach((x,i)=>{
+    document.getElementById('tab'+(i+1)).classList.toggle('active',t===x);
+  });
+  document.getElementById('horizCtrls').style.display=t==='horiz'?'contents':'none';
+  document.getElementById('slopeCtrls').style.display=t==='slope'?'contents':'none';
+  document.getElementById('angleCtrls').style.display=t==='angle'?'contents':'none';
+  document.getElementById('graphCard').style.display=t==='horiz'?'block':'none';
+  document.getElementById('mainCanvas').style.display=t==='angle'?'none':'block';
+  document.getElementById('anglePanel').style.display=t==='angle'?'block':'none';
+  if(t==='horiz') {
+    stopSlopeAnimLoop();
+    setTimeout(()=>{
+      [MC,GC].forEach(c=>{
+        const r=c.getBoundingClientRect();
+        if(!r.width) return;
+        c.width=r.width*DPR; c.height=r.height*DPR;
+        c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+      });
+      startAnimLoop();
+    },30);
+  } else if(t==='slope') {
+    stopAnimLoop();
+    setTimeout(()=>{
+      const r=MC.getBoundingClientRect();
+      if(!r.width) return;
+      MC.width=r.width*DPR; MC.height=r.height*DPR;
+      MC.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+      startSlopeAnimLoop();
+    },30);
+  } else {
+    stopAnimLoop(); stopSlopeAnimLoop();
+    setTimeout(()=>{
+      [MC,GC].forEach(c=>{
+        const r=c.getBoundingClientRect();
+        if(!r.width) return;
+        c.width=r.width*DPR; c.height=r.height*DPR;
+        c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+      });
+      redraw();
+    },30);
+  }
+}
+
+// スライダー
+[['m','m-label',v=>parseFloat(v).toFixed(1)+' kg'],
+ ['mu','mu-label',v=>parseFloat(v).toFixed(2)],
+ ['mup','mup-label',v=>parseFloat(v).toFixed(2)],
+ ['F','F-label',v=>parseFloat(v).toFixed(0)+' N'],
+ ['ms','ms-label',v=>parseFloat(v).toFixed(1)+' kg'],
+ ['mus','mus-label',v=>parseFloat(v).toFixed(2)],
+ ['mups','mups-label',v=>parseFloat(v).toFixed(2)],
+ ['th','th-label',v=>v+'°'],
+ ['mua','mua-label',v=>parseFloat(v).toFixed(2)],
+].forEach(([name,labelId,fmt])=>{
+  const el=document.getElementById(name+'-slider');
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmt(el.value);
+    if(tab!=='horiz') redraw();
+    // horizはanimLoopが常時動いているのでredraw不要
+  });
+});
+
+setTimeout(()=>{
+  [MC,GC].forEach(c=>{
+    const r=c.getBoundingClientRect();
+    if(!r.width) return;
+    c.width=r.width*DPR; c.height=r.height*DPR;
+    c.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+  });
+  blockX = MC.getBoundingClientRect().width * 0.35;
+  startAnimLoop();
+},50);
+</script>
+</body>
+</html>
