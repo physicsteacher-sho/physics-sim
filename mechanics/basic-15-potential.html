@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>位置エネルギー | 物理基礎</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --red:#dc2626;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.two { grid-template-columns:1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:11px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; }
+  .toggle button.active { background:var(--blue); color:white; }
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.9; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+</style>
+</head>
+<body>
+<h1>位置エネルギー</h1>
+<p class="subtitle">物理基礎 15 ｜ U = mgh　　U = ½kx²</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#1e40af,#3b82f6)">U</div>
+        <span class="card-title" id="mainTitle">重力による位置エネルギー</span>
+        <span class="card-sub" id="mainSub">U = mgh</span>
+      </div>
+      <canvas id="mainCanvas" height="220"></canvas>
+    </div>
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+      <strong style="color:var(--blue-dark)" id="infoTitle">重力による位置エネルギー</strong>
+      <span id="infoBody"><span class="hl hl-blue">U = mgh</span>。基準面からの高さhに比例。基準面は自由に設定できる（値は変わるが物理は同じ）。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>場面</h3>
+          <div class="toggle two" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('gravity')">重力</button>
+            <button id="tab2" onclick="setTab('spring')">弾性力</button>
+          </div>
+        </div>
+
+        <!-- 重力コントロール -->
+        <div id="gravityCtrls">
+          <div class="control">
+            <label>質量 m <span class="val" id="m-label">2.0 kg</span></label>
+            <input type="range" id="m-slider" min="0.5" max="10" value="2" step="0.5">
+            <div class="range-hint"><span>0.5 kg</span><span>10 kg</span></div>
+          </div>
+          <div class="control">
+            <label>高さ h <span class="val" id="h-label">3.0 m</span></label>
+            <input type="range" id="h-slider" min="0" max="8" value="3" step="0.5">
+            <div class="range-hint"><span>0 m</span><span>8 m</span></div>
+          </div>
+          <div class="control">
+            <label>基準面の高さ h₀ <span class="val" id="href-label">0.0 m</span></label>
+            <input type="range" id="href-slider" min="-3" max="3" value="0" step="0.5">
+            <div class="range-hint"><span>-3 m</span><span>+3 m</span></div>
+          </div>
+        </div>
+
+        <!-- 弾性コントロール -->
+        <div id="springCtrls" style="display:none">
+          <div class="control">
+            <label>ばね定数 k <span class="val" id="k-label">20 N/m</span></label>
+            <input type="range" id="k-slider" min="5" max="100" value="20" step="5">
+            <div class="range-hint"><span>5 N/m</span><span>100 N/m</span></div>
+          </div>
+          <div class="control">
+            <label>伸び x <span class="val" id="x-label">0.3 m</span></label>
+            <input type="range" id="x-slider" min="-0.5" max="0.5" value="0.3" step="0.05">
+            <div class="range-hint"><span>-0.5 m（縮み）</span><span>0.5 m（伸び）</span></div>
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>重力による位置エネルギー</strong>
+          U = mgh<br>
+          <span style="color:var(--muted);font-size:11px">h：基準面からの高さ</span>
+        </div>
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          U = 58.8 J
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+const g = 9.8;
+let tab = 'gravity';
+
+const CVS = document.getElementById('mainCanvas');
+function resizeC(){
+  const r=CVS.getBoundingClientRect(); if(!r.width) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeC();
+window.addEventListener('resize',()=>{ resizeC(); redraw(); });
+
+function arrow(ctx,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw||3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(dy,dx),hs=11;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function dot(ctx,x,y,color){
+  ctx.save(); ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill(); ctx.restore();
+}
+function lbl(ctx,x,y,text,color,align,base){
+  ctx.save(); ctx.fillStyle=color||'#334155';
+  ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign=align||'center'; ctx.textBaseline=base||'alphabetic';
+  ctx.fillText(text,x,y); ctx.restore();
+}
+
+// ===== 重力の位置エネルギー =====
+function drawGravity(){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const m=parseFloat(document.getElementById('m-slider').value);
+  const h=parseFloat(document.getElementById('h-slider').value);
+  const href=parseFloat(document.getElementById('href-slider').value);
+  const U=m*g*(h-href);
+
+  const maxH=8, baseY=H*0.82, topAreaH=H*0.72;
+  const hPx=Math.min(h/maxH*topAreaH, topAreaH);
+  const hrefPx=Math.max(-H*0.15, Math.min(href/maxH*topAreaH, topAreaH));
+  const objY=baseY-hPx;
+  const refY=baseY-hrefPx;
+  const cx=W*0.38, bw=52, bh=40;
+
+  // 地面（薄いグレー）
+  ctx.fillStyle='#f1f5f9'; ctx.fillRect(0,baseY,W,H-baseY);
+  ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,baseY); ctx.lineTo(W,baseY); ctx.stroke();
+
+  // 基準面（動く）
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,refY,W,4);
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,refY); ctx.lineTo(W,refY); ctx.stroke();
+  ctx.save(); ctx.fillStyle='#334155'; ctx.font='700 12px Hiragino Sans,system-ui';
+  ctx.textAlign='left';
+  ctx.fillText(`基準面（U = 0）　h₀ = ${href} m`, 12, refY-6);
+  ctx.restore();
+
+  // h寸法線（物体～基準面）
+  if(Math.abs(h-href)>0.1){
+    const lineX=cx-60;
+    ctx.save(); ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(lineX,refY); ctx.lineTo(lineX,objY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lineX-6,refY); ctx.lineTo(lineX+6,refY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lineX-6,objY); ctx.lineTo(lineX+6,objY); ctx.stroke();
+    ctx.restore();
+    const label=`h−h₀=${(h-href).toFixed(1)}m`;
+    lbl(ctx,lineX-10,(refY+objY)/2,label,'#1d4ed8','right');
+  }
+
+  // 物体
+  ctx.save();
+  ctx.fillStyle= U>=0?'#dbeafe':'#fee2e2';
+  ctx.strokeStyle='#1d4ed8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(cx-bw/2,objY-bh,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  lbl(ctx,cx,objY-bh-8,`m = ${m} kg`,'#1e40af','center');
+
+  // 重力矢印
+  const wLen=Math.min(m*g*0.6,90);
+  dot(ctx,cx,objY-bh/2,'#dc2626');
+  arrow(ctx,cx,objY-bh/2, cx,objY-bh/2+wLen,'#dc2626',2.5);
+  lbl(ctx,cx+6,objY-bh/2+wLen+12,`mg=${(m*g).toFixed(0)}N`,'#dc2626','left');
+
+  // エネルギーボックス
+  const boxX=W*0.72;
+  const boxY=Math.min(objY-bh-10, H*0.2);
+  ctx.save();
+  ctx.fillStyle=U>=0?'#fff7ed':'#fee2e2';
+  ctx.strokeStyle=U>=0?'#fed7aa':'#fca5a5';
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(boxX-52,boxY,104,54,8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#9a3412'; ctx.font='700 11px Hiragino Sans,system-ui'; ctx.textAlign='center';
+  ctx.fillText('位置エネルギー',boxX,boxY+14);
+  ctx.fillStyle=U>=0?'#ea580c':'#dc2626'; ctx.font='900 15px Hiragino Sans,system-ui';
+  ctx.fillText(`U = ${U.toFixed(1)} J`,boxX,boxY+34);
+  ctx.restore();
+
+  // 計算式
+  ctx.save(); ctx.fillStyle='#15803d'; ctx.font='700 16px Hiragino Sans,system-ui';
+  ctx.textAlign='center';
+  ctx.fillText(`U = mg(h−h₀) = ${m}×${g}×(${h}−${href}) = ${U.toFixed(1)} J`, W/2, H-10);
+  ctx.restore();
+}
+
+// ===== ばねの位置エネルギー =====
+function drawSpring(){
+  const ctx=CVS.getContext('2d');
+  const W=CVS.getBoundingClientRect().width, H=CVS.getBoundingClientRect().height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+  const k=parseFloat(document.getElementById('k-slider').value);
+  const x=parseFloat(document.getElementById('x-slider').value);
+  const U=0.5*k*x*x;
+  const F=k*Math.abs(x); // 弾性力の大きさ
+
+  const gy=H*0.60;
+  const wallX=W*0.06, naturalEndX=W*0.52;
+  const xScale=Math.min((W*0.36)/0.5, W*0.72);
+  const bw=44, bh=44;
+  const blockX=naturalEndX+bw/2+x*xScale;
+
+  // 床
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,gy,W,H-gy);
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke();
+
+  // 壁
+  ctx.fillStyle='#94a3b8';
+  ctx.fillRect(wallX-14,gy-H*0.5,14,H*0.5);
+  ctx.strokeStyle='#64748b'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(wallX,gy-H*0.5+2); ctx.lineTo(wallX,gy); ctx.stroke();
+
+  // 自然長の点線
+  ctx.save(); ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(naturalEndX,gy-H*0.45); ctx.lineTo(naturalEndX,gy); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  lbl(ctx,naturalEndX,gy-H*0.42,'自然長','#64748b','center');
+
+  // ばね描画
+  const springY=gy-bh/2;
+  const coils=10;
+  const springLen=blockX-wallX-bw/2;
+  ctx.save(); ctx.strokeStyle=x===0?'#94a3b8':x>0?'#dc2626':'#1d4ed8';
+  ctx.lineWidth=2.5;
+  ctx.beginPath();
+  ctx.moveTo(wallX,springY);
+  for(let i=0;i<=coils*2;i++){
+    const px=wallX+(i/(coils*2))*springLen;
+    const py=springY+(i%2===0?-1:1)*10;
+    ctx.lineTo(px,py);
+  }
+  ctx.lineTo(blockX-bw/2,springY);
+  ctx.stroke(); ctx.restore();
+
+  // 物体
+  ctx.save();
+  const blockColor = x===0?'#dbeafe':x>0?'#fee2e2':'#dbeafe';
+  const strokeColor = x===0?'#1d4ed8':x>0?'#dc2626':'#1d4ed8';
+  ctx.fillStyle=blockColor; ctx.strokeStyle=strokeColor; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(blockX-bw/2,gy-bh,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // x寸法線
+  if(Math.abs(x)>0.02){
+    const y1=gy+16, from=naturalEndX, to=blockX;
+    ctx.save(); ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(from,y1); ctx.lineTo(to,y1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(from,y1-5); ctx.lineTo(from,y1+5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(to,y1-5); ctx.lineTo(to,y1+5); ctx.stroke();
+    ctx.restore();
+    lbl(ctx,(from+to)/2,y1+14,`x = ${x>0?'+':''}${x.toFixed(2)} m`,'#7c3aed','center');
+  } else {
+    lbl(ctx,naturalEndX,gy+24,'x = 0（自然長）','#64748b','center');
+  }
+
+  // 弾性力矢印（作用点は常に左面）
+  if(Math.abs(x)>0.02){
+    const fLen=Math.min(F*1.5,80);
+    const dir=x>0?-1:1; // 復元力の向き
+    const apX=blockX-bw/2;
+    dot(ctx,apX,gy-bh/2,'#15803d');
+    arrow(ctx,apX,gy-bh/2, apX+dir*fLen,gy-bh/2,'#15803d',2.5);
+    lbl(ctx,apX+dir*(fLen/2),gy-bh-8,`F=${F.toFixed(1)}N`,'#15803d','center');
+  }
+
+  // エネルギーボックス（右上）
+  const boxX=W*0.82, boxY=gy-H*0.38;
+  ctx.save();
+  ctx.fillStyle='#fff7ed'; ctx.strokeStyle='#fed7aa'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(boxX-52,boxY,104,50,8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#9a3412'; ctx.font='700 11px Hiragino Sans,system-ui'; ctx.textAlign='center';
+  ctx.fillText('弾性エネルギー',boxX,boxY+14);
+  ctx.fillStyle='#ea580c'; ctx.font='900 15px Hiragino Sans,system-ui';
+  ctx.fillText(`U = ${U.toFixed(2)} J`,boxX,boxY+32);
+  ctx.restore();
+
+  // 計算式
+  ctx.save(); ctx.fillStyle='#15803d'; ctx.font='700 18px Hiragino Sans,system-ui';
+  ctx.textAlign='center';
+  ctx.fillText(`U = ½kx² = ½ × ${k} × ${x.toFixed(2)}² = ${U.toFixed(2)} J`, W/2, H-10);
+  ctx.restore();
+}
+
+// ===== UI =====
+function updateUI(){
+  if(tab==='gravity'){
+    const m=parseFloat(document.getElementById('m-slider').value);
+    const h=parseFloat(document.getElementById('h-slider').value);
+    const href=parseFloat(document.getElementById('href-slider').value);
+    const U=m*g*(h-href);
+    document.getElementById('mainTitle').textContent='重力による位置エネルギー';
+    document.getElementById('mainSub').textContent='U = mgh';
+    document.getElementById('mainBadge').textContent='U';
+    document.getElementById('formulaBox').innerHTML='<strong>重力による位置エネルギー</strong>U = mg(h−h₀)<br><span style="color:var(--muted);font-size:11px">h：物体の高さ、h₀：基準面の高さ</span>';
+    document.getElementById('resultCard').textContent=`U = ${U.toFixed(1)} J`;
+    document.getElementById('infoTitle').textContent='重力による位置エネルギー';
+    document.getElementById('infoBody').innerHTML='<span class="hl hl-blue">U = mg(h−h₀)</span>。基準面h₀を動かすとUの値は変わる。<br>ただし<span class="hl hl-orange">2点間のエネルギーの差ΔUは基準面によらず一定</span>。落下で得る運動エネルギーも変わらない。';
+  } else {
+    const k=parseFloat(document.getElementById('k-slider').value);
+    const x=parseFloat(document.getElementById('x-slider').value);
+    const U=0.5*k*x*x;
+    document.getElementById('mainTitle').textContent='弾性力による位置エネルギー（弾性エネルギー）';
+    document.getElementById('mainSub').textContent='U = ½kx²';
+    document.getElementById('mainBadge').textContent='U';
+    document.getElementById('formulaBox').innerHTML='<strong>弾性力による位置エネルギー</strong>U = ½kx²<br><span style="color:var(--muted);font-size:11px">x：自然長からの伸び縮み、x²なので符号によらず U ≥ 0</span>';
+    document.getElementById('resultCard').textContent=`U = ${U.toFixed(2)} J`;
+    document.getElementById('infoTitle').textContent='弾性エネルギー';
+    document.getElementById('infoBody').innerHTML='<span class="hl hl-orange">U = ½kx²</span>。伸びても縮んでも<span class="hl hl-blue">U ≥ 0</span>（x²なので）。x = 0のとき U = 0（自然長）。';
+  }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='gravity') drawGravity();
+  else drawSpring();
+}
+
+function setTab(t){
+  tab=t;
+  document.getElementById('tab1').classList.toggle('active',t==='gravity');
+  document.getElementById('tab2').classList.toggle('active',t==='spring');
+  document.getElementById('gravityCtrls').style.display=t==='gravity'?'contents':'none';
+  document.getElementById('springCtrls').style.display=t==='spring'?'contents':'none';
+  setTimeout(()=>{ resizeC(); redraw(); },30);
+}
+
+[['m','m-label',v=>parseFloat(v).toFixed(1)+' kg'],
+ ['h','h-label',v=>parseFloat(v).toFixed(1)+' m'],
+ ['href','href-label',v=>parseFloat(v).toFixed(1)+' m'],
+ ['k','k-label',v=>v+' N/m'],
+ ['x','x-label',v=>parseFloat(v).toFixed(2)+' m'],
+].forEach(([name,labelId,fmt])=>{
+  const el=document.getElementById(name+'-slider');
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmt(el.value);
+    redraw();
+  });
+});
+
+setTimeout(()=>{ resizeC(); redraw(); },50);
+</script>
+</body>
+</html>
