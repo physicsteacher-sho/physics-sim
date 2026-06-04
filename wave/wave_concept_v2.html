@@ -324,8 +324,8 @@ function drawMain() {
   const fx=xToPx(S.focusX);
 
   if(S.display!=='sum') {
-    plotWave(ctx,y1,x0,gw,midY,ampPx,'#1d4ed8',2,[6,5],0.75);
-    plotWave(ctx,y2,x0,gw,midY,ampPx,'#dc2626',2,[6,5],0.75);
+    plotWave(ctx,y1,x0,gw,midY,ampPx,'#1d4ed8',2,null,0.55);
+    plotWave(ctx,y2,x0,gw,midY,ampPx,'#dc2626',2,null,0.55);
   }
   if(S.display!=='parts') {
     plotWave(ctx,ys,x0,gw,midY,ampPx,'#15803d',3.5,null,1);
@@ -486,11 +486,10 @@ document.querySelectorAll('input[type=range]').forEach(el=>el.addEventListener('
 // ===== アニメーションループ =====
 function tick(ts){
   if(S.playing){
-    if(S.last!=null){ const dt=(ts-S.last)/1000; S.t+=dt; }
+    if(S.last!=null){ const dt=Math.min((ts-S.last)/1000, 0.05); S.t+=dt; }
     S.last=ts;
     if(S.mode==='pulse'&&S.t>9) S.t=0;
   } else { S.last=null; }
-  syncSliders();
   updateStatus();
   drawMain(); drawSum();
   requestAnimationFrame(tick);
