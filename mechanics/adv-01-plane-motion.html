@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平面内の運動 | 物理</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --blue:#1d4ed8; --blue-dark:#0f2f7a; --blue-soft:#eff6ff;
+    --green:#15803d; --orange:#ea580c; --orange-soft:#fff7ed;
+    --purple:#7c3aed; --red:#dc2626; --cyan:#0891b2;
+  }
+  body { background:var(--bg); color:var(--text); font-family:"Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif; padding:20px; min-height:100vh; }
+  h1 { text-align:center; font-size:24px; font-weight:900; color:var(--blue-dark); margin-bottom:4px; }
+  .subtitle { text-align:center; font-size:13px; color:var(--muted); font-weight:700; margin-bottom:22px; }
+  .layout { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 300px; gap:18px; }
+  .main-col { display:flex; flex-direction:column; gap:14px; }
+  .side-col  { display:flex; flex-direction:column; gap:14px; position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .badge { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:900; color:white; flex-shrink:0; }
+  .card-title { font-size:15px; font-weight:900; color:var(--blue-dark); flex:1; }
+  .card-sub   { font-size:12px; color:var(--muted); }
+  canvas { display:block; width:100%; }
+  .side-col .card { padding:16px; }
+  .ctrl-section { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-section h3 { font-size:14px; font-weight:900; color:var(--blue-dark); padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .control { display:flex; flex-direction:column; gap:5px; }
+  .control label { display:flex; justify-content:space-between; font-size:13px; font-weight:700; }
+  .val { background:#f1f5f9; border:1px solid var(--line); border-radius:8px; padding:1px 8px; font-size:12px; font-weight:700; min-width:60px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--blue); }
+  .range-hint { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); font-weight:600; }
+  .toggle { display:grid; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .toggle.three { grid-template-columns:1fr 1fr 1fr; }
+  .toggle button { border:0; padding:8px 4px; font-size:11px; font-weight:700; cursor:pointer; background:#f1f5f9; color:#475569; font-family:inherit; line-height:1.3; }
+  .toggle button.active { background:var(--blue); color:white; }
+  .formula-box { background:var(--blue-soft); border:1px solid #bfdbfe; border-radius:12px; padding:12px 14px; font-size:13px; font-weight:700; line-height:1.9; }
+  .formula-box strong { color:var(--blue-dark); display:block; margin-bottom:4px; }
+  .result-card { border-radius:12px; padding:12px 14px; font-size:13px; font-weight:900; line-height:1.9; }
+  .info-half { border-radius:10px; padding:12px 14px; font-size:12px; font-weight:700; line-height:1.8; }
+  .hl { border-radius:4px; padding:1px 6px; font-weight:900; }
+  .hl-blue   { background:#dbeafe; color:#1e40af; }
+  .hl-orange { background:#ffedd5; color:#9a3412; }
+  .hl-green  { background:#dcfce7; color:#166534; }
+  .hl-purple { background:#ede9fe; color:#6b21a8; }
+  .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .btn-play { border:0; border-radius:10px; padding:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; background:#dcfce7; color:#166534; }
+  .btn-reset { border:0; border-radius:10px; padding:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; background:#f1f5f9; color:#475569; }
+</style>
+</head>
+<body>
+<h1>平面内の運動</h1>
+<p class="subtitle">物理 力学2 01 ｜ 位置ベクトル・変位・速度・加速度</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#0f2f7a,#1d4ed8)">r</div>
+        <span class="card-title" id="mainTitle">位置ベクトルと変位</span>
+        <span class="card-sub" id="mainSub">Δr = r₂ − r₁</span>
+      </div>
+      <canvas id="mainCanvas" height="300"></canvas>
+    </div>
+    <div class="info-half" style="background:var(--blue-soft);border:1px solid #bfdbfe;">
+      <strong style="color:var(--blue-dark)" id="infoTitle">位置ベクトルと変位</strong>
+      <span id="infoBody"><span class="hl hl-blue">位置ベクトル r</span>：原点Oから物体の位置を示すベクトル。<span class="hl hl-orange">変位 Δr = r₂ − r₁</span>：位置の変化量（大きさ・向きをもつ）。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>概念</h3>
+          <div class="toggle three" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('disp')">変位</button>
+            <button id="tab2" onclick="setTab('vel')">速度</button>
+            <button id="tab3" onclick="setTab('acc')">加速度</button>
+          </div>
+        </div>
+
+        <!-- 変位コントロール -->
+        <div id="dispCtrls">
+          <div class="control">
+            <label>P₁ x座標 <span class="val" id="p1x-label">1.0</span></label>
+            <input type="range" id="p1x-slider" min="-3" max="3" value="1" step="0.5">
+          </div>
+          <div class="control">
+            <label>P₁ y座標 <span class="val" id="p1y-label">1.0</span></label>
+            <input type="range" id="p1y-slider" min="-3" max="3" value="1" step="0.5">
+          </div>
+          <div class="control">
+            <label>P₂ x座標 <span class="val" id="p2x-label">3.0</span></label>
+            <input type="range" id="p2x-slider" min="-3" max="3" value="3" step="0.5">
+          </div>
+          <div class="control">
+            <label>P₂ y座標 <span class="val" id="p2y-label">2.5</span></label>
+            <input type="range" id="p2y-slider" min="-3" max="3" value="2.5" step="0.5">
+          </div>
+        </div>
+
+        <!-- 速度コントロール -->
+        <div id="velCtrls" style="display:none">
+          <div class="control">
+            <label>時刻 t <span class="val" id="vt-label">1.0 s</span></label>
+            <input type="range" id="vt-slider" min="0.3" max="2.2" value="1" step="0.1">
+          </div>
+          <div class="control">
+            <label>Δt（時間間隔）<span class="val" id="vdt-label">1.00 s</span></label>
+            <input type="range" id="vdt-slider" min="0.05" max="1.2" value="1.0" step="0.05">
+          </div>
+          <div class="btn-row" style="margin-top:4px">
+            <button class="btn-play" onclick="startVelAnim()">▶ Δt→0</button>
+            <button class="btn-reset" onclick="resetVelAnim()">↺ リセット</button>
+          </div>
+          <p style="font-size:11px;color:var(--muted);font-weight:700;line-height:1.6;margin-top:4px">
+            Δtを小さくすると、平均速度（割線）が瞬間速度（接線）に近づく。
+          </p>
+        </div>
+
+        <!-- 加速度コントロール -->
+        <div id="accCtrls" style="display:none">
+          <div class="control">
+            <label>時刻 t <span class="val" id="at-label">1.0 s</span></label>
+            <input type="range" id="at-slider" min="0.2" max="3" value="1" step="0.1">
+          </div>
+          <div class="btn-row" style="margin-top:4px">
+            <button class="btn-play" onclick="startAccAnim()">▶ アニメ</button>
+            <button class="btn-reset" onclick="resetAccAnim()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div class="formula-box" id="formulaBox">
+          <strong>変位（displacement）</strong>
+          Δr = r₂ − r₁<br>
+          <span style="color:var(--muted);font-size:11px">ベクトル量：大きさと向きをもつ</span>
+        </div>
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)">
+          Δr = (2.0, 1.5)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR = window.devicePixelRatio || 1;
+let tab = 'disp';
+let velDt = 1.0, velPlaying = false;     // 速度: Δtをアニメで0に近づける
+let accTf = 1.0, accPlaying = false;     // 加速度: 平行移動の進行度
+let lastTs = null;
+
+const CVS = document.getElementById('mainCanvas');
+function resizeC(){
+  const r=CVS.getBoundingClientRect(); if(!r.width) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeC();
+window.addEventListener('resize',()=>{ resizeC(); redraw(); });
+
+const ctx = () => CVS.getContext('2d');
+const W = () => CVS.getBoundingClientRect().width;
+const H = () => CVS.getBoundingClientRect().height;
+
+// ===== ユーティリティ =====
+function arrow(c,x1,y1,x2,y2,color,lw,hs){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  c.save(); c.strokeStyle=color; c.fillStyle=color; c.lineWidth=lw||2.5;
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  const ang=Math.atan2(dy,dx), s=hs||11;
+  c.beginPath(); c.moveTo(x2,y2);
+  c.lineTo(x2-s*Math.cos(ang-0.4),y2-s*Math.sin(ang-0.4));
+  c.lineTo(x2-s*Math.cos(ang+0.4),y2-s*Math.sin(ang+0.4));
+  c.closePath(); c.fill(); c.restore();
+}
+function dashedArrow(c,x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<4) return;
+  c.save(); c.strokeStyle=color; c.fillStyle=color; c.lineWidth=lw||2; c.setLineDash([6,4]);
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  c.setLineDash([]);
+  const ang=Math.atan2(dy,dx), s=9;
+  c.beginPath(); c.moveTo(x2,y2);
+  c.lineTo(x2-s*Math.cos(ang-0.4),y2-s*Math.sin(ang-0.4));
+  c.lineTo(x2-s*Math.cos(ang+0.4),y2-s*Math.sin(ang+0.4));
+  c.closePath(); c.fill(); c.restore();
+}
+function dot(c,x,y,color,r){ c.save(); c.fillStyle=color; c.beginPath(); c.arc(x,y,r||5,0,Math.PI*2); c.fill(); c.restore(); }
+function lbl(c,x,y,text,color,align,base,size){
+  c.save(); c.fillStyle=color||'#334155';
+  c.font=`700 ${size||12}px Hiragino Sans,system-ui`;
+  c.textAlign=align||'center'; c.textBaseline=base||'alphabetic';
+  c.fillText(text,x,y); c.restore();
+}
+// ベクトル表記：baseText（矢印を載せる本体）の上に矢印、subText（添字など）は矢印なし
+function vlbl(c,x,y,baseText,subText,color,align,size){
+  size=size||13; subText=subText||'';
+  c.save(); c.fillStyle=color||'#334155';
+  c.font=`700 ${size}px Hiragino Sans,system-ui`;
+  c.textBaseline='middle';
+  const bw=c.measureText(baseText).width;
+  const sw=subText?c.measureText(subText).width:0;
+  const total=bw+sw;
+  let sx=x;
+  if(align==='center') sx=x-total/2;
+  else if(align==='right') sx=x-total;
+  // 本体テキスト
+  c.textAlign='left';
+  c.fillText(baseText, sx, y);
+  // 添字
+  if(subText) c.fillText(subText, sx+bw, y);
+  // 矢印（本体の上）
+  const ay=y-size*0.62;
+  c.strokeStyle=color||'#334155'; c.lineWidth=1.3;
+  c.beginPath(); c.moveTo(sx, ay); c.lineTo(sx+bw, ay); c.stroke();
+  // 矢じり
+  c.beginPath(); c.moveTo(sx+bw, ay);
+  c.lineTo(sx+bw-4, ay-2.5); c.lineTo(sx+bw-4, ay+2.5);
+  c.closePath(); c.fill();
+  c.restore();
+}
+
+function setupAxes(c, cx, cy, scale, range){
+  const w=W(), h=H();
+  // グリッド
+  c.save(); c.strokeStyle='rgba(0,0,0,0.06)'; c.lineWidth=1;
+  for(let i=-range;i<=range;i++){
+    const px=cx+i*scale, py=cy-i*scale;
+    c.beginPath(); c.moveTo(px,0); c.lineTo(px,h); c.stroke();
+    c.beginPath(); c.moveTo(0,py); c.lineTo(w,py); c.stroke();
+  }
+  c.restore();
+  // 軸
+  arrow(c, cx-w*0.42, cy, cx+w*0.44, cy, '#94a3b8', 1.5, 8);
+  arrow(c, cx, cy+h*0.42, cx, cy-h*0.44, '#94a3b8', 1.5, 8);
+  lbl(c, cx+w*0.44+14, cy+4, 'x', '#94a3b8', 'center', 'middle', 13);
+  lbl(c, cx+4, cy-h*0.44-12, 'y', '#94a3b8', 'center', 'middle', 13);
+  lbl(c, cx-10, cy+14, 'O', '#64748b', 'center', 'middle', 12);
+  // 目盛り
+  for(let i=-range;i<=range;i++){
+    if(i===0) continue;
+    const px=cx+i*scale, py=cy-i*scale;
+    c.save(); c.strokeStyle='#94a3b8'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(px,cy-3); c.lineTo(px,cy+3); c.stroke();
+    c.beginPath(); c.moveTo(cx-3,py); c.lineTo(cx+3,py); c.stroke();
+    c.restore();
+    if(i>0&&i<=range-1) lbl(c, px, cy+14, i, '#94a3b8', 'center', 'middle', 10);
+    if(i>0&&i<=range-1) lbl(c, cx-12, py+4, i, '#94a3b8', 'center', 'middle', 10);
+  }
+}
+
+// ===== 変位 =====
+function drawDisp(){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const p1x=parseFloat(document.getElementById('p1x-slider').value);
+  const p1y=parseFloat(document.getElementById('p1y-slider').value);
+  const p2x=parseFloat(document.getElementById('p2x-slider').value);
+  const p2y=parseFloat(document.getElementById('p2y-slider').value);
+
+  const cx=w*0.15, cy=h*0.82, scale=Math.min(w,h)*0.13;
+  setupAxes(c, cx, cy, scale, 3);
+
+  const P1x=cx+p1x*scale, P1y=cy-p1y*scale;
+  const P2x=cx+p2x*scale, P2y=cy-p2y*scale;
+
+  // r₁（原点→P₁）
+  arrow(c, cx, cy, P1x, P1y, '#1d4ed8', 2.5);
+  vlbl(c, (cx+P1x)/2-12, (cy+P1y)/2-8, 'r', '₁', '#1d4ed8', 'center', 13);
+
+  // r₂（原点→P₂）
+  arrow(c, cx, cy, P2x, P2y, '#15803d', 2.5);
+  vlbl(c, (cx+P2x)/2+14, (cy+P2y)/2-8, 'r', '₂', '#15803d', 'center', 13);
+
+  // Δr（P₁→P₂）
+  arrow(c, P1x, P1y, P2x, P2y, '#ea580c', 3);
+  const mx=(P1x+P2x)/2, my=(P1y+P2y)/2;
+  vlbl(c, mx+12, my-12, 'Δr', '', '#ea580c', 'center', 14);
+
+  // r₂の破線（−r₁成分）
+  dashedArrow(c, cx, cy, P1x, P1y, '#94a3b8', 1.5);
+
+  // 点
+  dot(c, cx, cy, '#334155', 4);
+  dot(c, P1x, P1y, '#1d4ed8', 6);
+  dot(c, P2x, P2y, '#15803d', 6);
+
+  // ラベル
+  lbl(c, P1x-14, P1y-12, 'P₁', '#1d4ed8', 'center', 'middle', 13);
+  lbl(c, P2x+14, P2y-12, 'P₂', '#15803d', 'center', 'middle', 13);
+
+  // 計算式
+  const dx=p2x-p1x, dy=p2y-p1y;
+  const dlen=Math.sqrt(dx*dx+dy*dy);
+  c.save(); c.fillStyle='#15803d'; c.font='700 15px Hiragino Sans,system-ui'; c.textAlign='center';
+  c.fillText(`Δr = r₂ − r₁ = (${p2x}−${p1x}, ${p2y}−${p1y}) = (${dx.toFixed(1)}, ${dy.toFixed(1)})   |Δr| = ${dlen.toFixed(2)}`, w/2, h-12);
+  c.restore();
+}
+
+// ===== 速度 =====
+// 軌道: x(t) = A*t, y(t) = A*t - 0.3*A*t²
+function px_t(A,t){ return A*t; }
+function py_t(A,t){ return A*t - 0.3*A*t*t; }
+function vx_t(A,t){ return A; }
+function vy_t(A,t){ return A - 0.6*A*t; }
+
+function drawVel(dtShow){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const A=1.0;
+  const t=parseFloat(document.getElementById('vt-slider').value);
+  const dt=dtShow !== undefined ? dtShow : parseFloat(document.getElementById('vdt-slider').value);
+
+  const cx=w*0.09, cy=h*0.80, scale=Math.min(w,h)*0.42;
+  setupAxes(c, cx, cy, scale, 4);
+
+  // 軌道曲線
+  c.save(); c.strokeStyle='#cbd5e1'; c.lineWidth=2.5;
+  c.beginPath();
+  for(let ti=0;ti<=3.2;ti+=0.04){
+    const px=cx+px_t(A,ti)*scale, py=cy-py_t(A,ti)*scale;
+    ti===0?c.moveTo(px,py):c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // P₁(t), P₂(t+Δt)
+  const x1=px_t(A,t), y1=py_t(A,t);
+  const x2=px_t(A,t+dt), y2=py_t(A,t+dt);
+  const P1x=cx+x1*scale, P1y=cy-y1*scale;
+  const P2x=cx+x2*scale, P2y=cy-y2*scale;
+
+  // 瞬間速度（接線）— 灰色の基準線で常に表示
+  const vxi=vx_t(A,t), vyi=vy_t(A,t);
+  const vilen=Math.sqrt(vxi*vxi+vyi*vyi);
+  const tanLen=scale*1.3;
+  const ux=vxi/vilen, uy=vyi/vilen;
+  c.save(); c.strokeStyle='#bfdbfe'; c.lineWidth=2; c.setLineDash([5,4]);
+  c.beginPath(); c.moveTo(P1x-ux*tanLen*0.3, P1y+uy*tanLen*0.3);
+  c.lineTo(P1x+ux*tanLen, P1y-uy*tanLen); c.stroke();
+  c.setLineDash([]); c.restore();
+
+  // 変位Δr（割線 P₁→P₂）
+  arrow(c, P1x, P1y, P2x, P2y, '#ea580c', 2);
+  vlbl(c, (P1x+P2x)/2+8, (P1y+P2y)/2-14, 'Δr', '', '#ea580c', 'center', 12);
+
+  // 平均速度 v̄ = Δr/Δt（割線方向、大きさはΔr/Δt）
+  const vxavg=(x2-x1)/dt, vyavg=(y2-y1)/dt;
+  const vlen=Math.sqrt(vxavg*vxavg+vyavg*vyavg);
+  const vscale=scale*0.55;
+  arrow(c, P1x, P1y, P1x+vxavg*vscale, P1y-vyavg*vscale, '#7c3aed', 3);
+  vlbl(c, P1x+vxavg*vscale+10, P1y-vyavg*vscale-6, 'v', '（平均）', '#7c3aed', 'left', 12);
+
+  // 瞬間速度ベクトル（接線方向・青）
+  arrow(c, P1x, P1y, P1x+vxi*vscale, P1y-vyi*vscale, '#1d4ed8', 3);
+  vlbl(c, P1x+vxi*vscale+10, P1y-vyi*vscale+10, 'v', '（瞬間）', '#1d4ed8', 'left', 12);
+
+  // 点
+  dot(c, P1x, P1y, '#334155', 6);
+  dot(c, P2x, P2y, '#ea580c', 5);
+  lbl(c, P1x-12, P1y+14, 'P₁', '#334155', 'right', 'middle', 12);
+  lbl(c, P2x+10, P2y-8, 'P₂', '#ea580c', 'left', 'middle', 11);
+
+  // Δtが小さいと割線と接線が一致してくる注記
+  const angDiff=Math.abs(Math.atan2(vyavg,vxavg)-Math.atan2(vyi,vxi))*180/Math.PI;
+  c.save(); c.font='700 13px Hiragino Sans,system-ui'; c.textAlign='center';
+  c.fillStyle='#7c3aed';
+  c.fillText(`平均速度 v = Δr/Δt（割線方向）　Δt = ${dt.toFixed(2)} s`, w/2, h-30);
+  c.fillStyle = angDiff<3 ? '#15803d' : '#64748b';
+  c.fillText(angDiff<3 ? '→ 割線が接線とほぼ一致！これが瞬間速度' : `割線と接線のずれ：${angDiff.toFixed(0)}°（Δtを小さく）`, w/2, h-10);
+  c.restore();
+}
+
+// ===== 加速度 =====
+// transFrac: v₂を平行移動してv₁と始点をそろえる進行度（0=軌道上, 1=完全に重ねた）
+function drawAcc(transFrac){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const A=1.0;
+  const t=parseFloat(document.getElementById('at-slider').value);
+  const dt=0.6;
+  const tf = transFrac !== undefined ? transFrac : 1; // デフォルトは構成完了状態
+
+  const cx=w*0.09, cy=h*0.80, scale=Math.min(w,h)*0.42;
+  setupAxes(c, cx, cy, scale, 4);
+
+  // 軌道
+  c.save(); c.strokeStyle='#cbd5e1'; c.lineWidth=2.5;
+  c.beginPath();
+  for(let ti=0;ti<=3.2;ti+=0.04){
+    const px=cx+px_t(A,ti)*scale, py=cy-py_t(A,ti)*scale;
+    ti===0?c.moveTo(px,py):c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // P₁,P₂と速度
+  const t2=t+dt;
+  const P1x=cx+px_t(A,t)*scale, P1y=cy-py_t(A,t)*scale;
+  const P2x=cx+px_t(A,t2)*scale, P2y=cy-py_t(A,t2)*scale;
+  const v1x=vx_t(A,t), v1y=vy_t(A,t);
+  const v2x=vx_t(A,t2), v2y=vy_t(A,t2);
+  const vscale=scale*0.55;
+
+  // P₁,P₂の点（v₂が移動したらP₂は薄く）
+  dot(c, P1x, P1y, '#1d4ed8', 6);
+  dot(c, P2x, P2y, tf>0.5?'#cbd5e1':'#15803d', 6);
+  lbl(c, P1x-10, P1y+16, 'P₁', '#1d4ed8', 'right', 'middle', 11);
+  lbl(c, P2x+10, P2y+14, 'P₂', tf>0.5?'#94a3b8':'#15803d', 'left', 'middle', 11);
+
+  // v₁（P₁に固定）
+  arrow(c, P1x, P1y, P1x+v1x*vscale, P1y-v1y*vscale, '#1d4ed8', 2.5);
+  vlbl(c, P1x+v1x*vscale+8, P1y-v1y*vscale, 'v', '₁', '#1d4ed8', 'left', 13);
+
+  // v₂：軌道上のP₂から、tf進むとP₁始点へ平行移動
+  const v2startX = P2x + (P1x-P2x)*tf;
+  const v2startY = P2y + (P1y-P2y)*tf;
+  arrow(c, v2startX, v2startY, v2startX+v2x*vscale, v2startY-v2y*vscale,
+        tf>0.5?'#15803d':'#86efac', 2.5);
+  vlbl(c, v2startX+v2x*vscale+8, v2startY-v2y*vscale, 'v', '₂', '#15803d', 'left', 13);
+
+  // 平行移動の軌跡（点線）
+  if(tf>0.02 && tf<0.98){
+    c.save(); c.strokeStyle='#cbd5e1'; c.lineWidth=1; c.setLineDash([3,3]);
+    c.beginPath(); c.moveTo(P2x,P2y); c.lineTo(v2startX,v2startY); c.stroke();
+    c.setLineDash([]); c.restore();
+  }
+
+  // Δv = v₂ − v₁（始点そろったら：v₁先端→v₂先端）
+  if(tf>0.9){
+    const v1tipX=P1x+v1x*vscale, v1tipY=P1y-v1y*vscale;
+    const v2tipX=v2startX+v2x*vscale, v2tipY=v2startY-v2y*vscale;
+    arrow(c, v1tipX, v1tipY, v2tipX, v2tipY, '#ea580c', 3);
+    vlbl(c, (v1tipX+v2tipX)/2+12, (v1tipY+v2tipY)/2, 'Δv', '', '#ea580c', 'left', 13);
+
+    // 加速度 a = Δv/Δt（Δvと同じ向き、P₁から）
+    const dvx=v2x-v1x, dvy=v2y-v1y;
+    const ascale=vscale*1.4;
+    arrow(c, P1x, P1y, P1x+dvx*ascale, P1y-dvy*ascale, '#dc2626', 3);
+    vlbl(c, P1x+dvx*ascale+10, P1y-dvy*ascale+10, 'a', '', '#dc2626', 'left', 14);
+  }
+
+  // 式
+  const dvx=v2x-v1x, dvy=v2y-v1y;
+  const amag=Math.sqrt(dvx*dvx+dvy*dvy)/dt;
+  c.save(); c.font='700 13px Hiragino Sans,system-ui'; c.textAlign='center';
+  c.fillStyle='#ea580c';
+  c.fillText(tf>0.9 ? 'v₁とv₂の始点をそろえ、先端を結ぶとΔv = v₂ − v₁' : 'v₂を平行移動してv₁と始点をそろえる…', w/2, h-30);
+  c.fillStyle='#dc2626';
+  c.fillText(`加速度 a = Δv/Δt = (${(dvx/dt).toFixed(2)}, ${(dvy/dt).toFixed(2)})  |a| = ${amag.toFixed(2)} m/s²`, w/2, h-10);
+  c.restore();
+}
+
+// ===== アニメ（単一ループ）=====
+let animId=null;
+
+function startVelAnim(){ velPlaying=true; if(!animId) animId=requestAnimationFrame(mainLoop); }
+function resetVelAnim(){
+  velDt=1.0; velPlaying=false;
+  document.getElementById('vdt-slider').value=velDt;
+  document.getElementById('vdt-label').textContent=velDt.toFixed(2)+' s';
+  drawVel(velDt);
+}
+function startAccAnim(){ accTf=0; accPlaying=true; if(!animId) animId=requestAnimationFrame(mainLoop); }
+function resetAccAnim(){ accTf=1.0; accPlaying=false; drawAcc(accTf); }
+
+function mainLoop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+  if(tab==='vel'){
+    if(velPlaying){
+      velDt-=dt*0.4;
+      if(velDt<=0.05){ velDt=0.05; velPlaying=false; }
+      document.getElementById('vdt-slider').value=velDt;
+      document.getElementById('vdt-label').textContent=velDt.toFixed(2)+' s';
+    }
+    drawVel(velDt);
+  } else if(tab==='acc'){
+    if(accPlaying){
+      accTf+=dt*0.5;
+      if(accTf>=1){ accTf=1; accPlaying=false; }
+    }
+    drawAcc(accTf);
+  }
+  animId=requestAnimationFrame(mainLoop);
+}
+
+// ===== UI =====
+function updateUI(){
+  const infos={
+    disp:'<span class="hl hl-blue">位置ベクトル r</span>：原点Oから物体の位置を示すベクトル。<span class="hl hl-orange">変位 Δr = r₂ − r₁</span>：位置の変化量（ベクトル量）。経路によらず始点と終点で決まる。',
+    vel:'<span class="hl hl-purple">平均速度 v̄ = Δr/Δt</span>：変位をかかった時間で割ったベクトル。<span class="hl hl-blue">瞬間速度</span>：Δtを0に近づけた極限→軌道の<span class="hl hl-green">接線方向</span>。',
+    acc:'<span class="hl hl-orange">平均加速度 ā = Δv/Δt</span>：速度の変化をかかった時間で割ったベクトル。速度の大きさが変わらなくても<span class="hl hl-blue">向きが変われば加速度がある</span>。',
+  };
+  const formulas={
+    disp:'<strong>変位（displacement）</strong>Δr = r₂ − r₁<br><span style="color:var(--muted);font-size:11px">ベクトル量：大きさと向きをもつ</span>',
+    vel:'<strong>速度（velocity）</strong>v̄ = Δr/Δt（平均）<br>v → Δt→0の極限（瞬間）<br><span style="color:var(--muted);font-size:11px">方向：軌道の接線方向</span>',
+    acc:'<strong>加速度（acceleration）</strong>ā = Δv/Δt（平均）<br><span style="color:var(--muted);font-size:11px">速さ変化でも向き変化でも発生</span>',
+  };
+  const titles={disp:'位置ベクトルと変位', vel:'速度（平均・瞬間）', acc:'加速度'};
+  const subs={disp:'Δr = r₂ − r₁', vel:'v̄ = Δr/Δt', acc:'ā = Δv/Δt'};
+
+  document.getElementById('mainTitle').textContent=titles[tab];
+  document.getElementById('mainSub').textContent=subs[tab];
+  document.getElementById('infoTitle').textContent=titles[tab];
+  document.getElementById('infoBody').innerHTML=infos[tab];
+  document.getElementById('formulaBox').innerHTML=formulas[tab];
+
+  if(tab==='disp'){
+    const p1x=parseFloat(document.getElementById('p1x-slider').value);
+    const p1y=parseFloat(document.getElementById('p1y-slider').value);
+    const p2x=parseFloat(document.getElementById('p2x-slider').value);
+    const p2y=parseFloat(document.getElementById('p2y-slider').value);
+    const dx=p2x-p1x, dy=p2y-p1y;
+    document.getElementById('resultCard').textContent=`Δr = (${dx.toFixed(1)}, ${dy.toFixed(1)})　|Δr| = ${Math.sqrt(dx*dx+dy*dy).toFixed(2)}`;
+    document.getElementById('resultCard').style.color='var(--orange)';
+  } else if(tab==='vel'){
+    const A=1.0;
+    const t=parseFloat(document.getElementById('vt-slider').value);
+    const vi=Math.sqrt(vx_t(A,t)**2+vy_t(A,t)**2);
+    document.getElementById('resultCard').textContent=`|v（瞬間）| = ${vi.toFixed(2)} m/s　(t = ${t.toFixed(1)} s)`;
+    document.getElementById('resultCard').style.color='var(--blue)';
+  } else {
+    const A=1.0;
+    const t=parseFloat(document.getElementById('at-slider').value);
+    const dt=0.6;
+    const dvx=vx_t(A,t+dt)-vx_t(A,t), dvy=vy_t(A,t+dt)-vy_t(A,t);
+    const amag=Math.sqrt(dvx*dvx+dvy*dvy)/dt;
+    document.getElementById('resultCard').textContent=`|a| = ${amag.toFixed(2)} m/s²`;
+    document.getElementById('resultCard').style.color='var(--red)';
+  }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='disp') drawDisp();
+  else if(tab==='vel') drawVel(velDt);
+  else drawAcc(accTf);
+}
+
+function setTab(t){
+  tab=t;
+  ['disp','vel','acc'].forEach((x,i)=>{
+    document.getElementById('tab'+(i+1)).classList.toggle('active',t===x);
+    document.getElementById(x+'Ctrls').style.display=t===x?'contents':'none';
+  });
+  setTimeout(()=>{ resizeC(); redraw(); },30);
+}
+
+// スライダー
+const sliders={
+  'p1x':'p1x-label','p1y':'p1y-label','p2x':'p2x-label','p2y':'p2y-label',
+  'vt':'vt-label','vdt':'vdt-label','at':'at-label',
+};
+const fmts={
+  'p1x':v=>parseFloat(v).toFixed(1),'p1y':v=>parseFloat(v).toFixed(1),
+  'p2x':v=>parseFloat(v).toFixed(1),'p2y':v=>parseFloat(v).toFixed(1),
+  'vt':v=>parseFloat(v).toFixed(1)+' s','vdt':v=>parseFloat(v).toFixed(2)+' s',
+  'at':v=>parseFloat(v).toFixed(1)+' s',
+};
+Object.entries(sliders).forEach(([name,labelId])=>{
+  const el=document.getElementById(name+'-slider');
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmts[name](el.value);
+    if(name==='vdt'){ velDt=parseFloat(el.value); velPlaying=false; }
+    updateUI();
+    if(tab==='disp') drawDisp();
+    else if(tab==='vel') drawVel();
+    else drawAcc();
+  });
+});
+
+// アニメループは startVelAnim/startAccAnim で起動
+
+setTimeout(()=>{ resizeC(); redraw(); },50);
+</script>
+</body>
+</html>
