@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>必修基礎問30 単振り子</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --string:#a78bfa;
+  --gravity:#f87171;
+  --tension:#38bdf8;
+  --tangent:#34d399;
+  --accent:#f59e0b;
+  --ball:#f97316;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;letter-spacing:-.02em;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:var(--tangent);font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .1s,opacity .1s}
+button:active{transform:translateY(1px);opacity:.85}
+.btn-play{background:var(--tangent);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card-head .dot{width:8px;height:8px;border-radius:50%}
+canvas{display:block;width:100%;background:transparent}
+
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+
+@media(max-width:960px){
+  .top-bar{grid-template-columns:1fr 1fr}
+  .btn-group{flex-direction:row;grid-column:1/-1}
+  .main{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>必修基礎問 <span>問30</span>　単振り子</h1>
+      <p>長さlの軽い糸の上端を天井の点Pに固定し、下端に質量mの小球を取り付ける。<br>
+         x=A（A≪l）まで移動させ静かに放した。水平右向きにx軸をとる。</p>
+    </div>
+    <div class="badge">静岡大 改 / 必修基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>
+    長さl、質量m、振幅A（≪l）。x=Aから静かに放す。<br>
+    <strong>(1)</strong> 位置xのとき接線方向の力F &nbsp;
+    <strong>(2)</strong> 振動の中心・周期T・振幅 &nbsp;
+    <strong>(3)</strong> 原点Oをはじめて通過する時刻t₁ &nbsp;
+    <strong>(4)</strong> 位置xの時間変化のグラフ
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>糸の長さ l (m)</span><span class="val" id="vl">1.0 m</span></div>
+      <input type="range" id="sldl" min="0.5" max="2.0" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>質量 m (kg)</span><span class="val" id="vm">1.0 kg</span></div>
+      <input type="range" id="sldm" min="0.5" max="2.0" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>振幅 A (m)</span><span class="val" id="vA">0.2 m</span></div>
+      <input type="range" id="sldA" min="0.05" max="0.4" step="0.05" value="0.2">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span class="dot" style="background:var(--string)"></span>
+          振動アニメーション
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">解析解による正確なシミュレーション</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div style="border-right:1px solid var(--border)">
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>実際の力</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:3px;background:#f87171;border-radius:2px"></span><span style="font-size:10px;font-weight:400">重力 mg</span></span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">張力 S</span></span>
+            </div>
+            <canvas id="cvAnim1" width="370" height="360" style="width:370px;height:360px"></canvas>
+          </div>
+          <div>
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>接線方向の力（合力）＋等速円運動との対応</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:3px;background:#34d399;border-radius:2px"></span><span style="font-size:10px;font-weight:400">F = −(mg/l)x</span></span>
+            </div>
+            <canvas id="cvAnim2" width="370" height="660" style="width:370px;height:660px"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="dot" style="background:var(--ball)"></span>
+          x-t グラフ　　<span style="font-size:10px;font-weight:400;color:var(--muted)">x = A cos(ωt)</span>
+        </div>
+        <canvas id="cvGraph" width="740" height="200" style="height:200px"></canvas>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">位置 x</span>
+          <span class="num" id="rX" style="color:var(--text)">0.000 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速さ v</span>
+          <span class="num" id="rV" style="color:var(--ball)">0.000 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">接線方向の力 F</span>
+          <span class="num" id="rF" style="color:var(--tangent)">0.000 N</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">張力 S</span>
+          <span class="num" id="rS" style="color:var(--tension)">0.000 N</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">経過時間 t</span>
+          <span class="num" id="rT" style="color:var(--muted)">0.00 s</span>
+        </div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item">
+            <span class="q">(1) 接線力 F</span>
+            <span class="a" id="ans1">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 中心</span>
+            <span class="a" id="ans2a">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 周期 T</span>
+            <span class="a" id="ans2b">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 振幅</span>
+            <span class="a" id="ans2c">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(3) t₁</span>
+            <span class="a" id="ans3">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>A≪l のとき sinθ ≈ x/l として</p>
+        <div class="formula">F = −mg sinθ ≈ −(mg/l)x</div>
+        <p style="margin-top:8px">単振動の角振動数・周期</p>
+        <div class="formula">ω = √(g/l),　T = 2π√(l/g)</div>
+        <p style="margin-top:8px">x=Aから放す → +cosグラフ</p>
+        <div class="formula">x = A cos(ωt)</div>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--gravity)"></span>重力 mg（鉛直下向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--tension)"></span>張力 S（糸の方向・上向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--tangent)"></span>接線方向の合力 F</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+
+function getP() {
+  const l = +document.getElementById('sldl').value;
+  const m = +document.getElementById('sldm').value;
+  const A = +document.getElementById('sldA').value;
+  const omega = Math.sqrt(G / l);
+  const T = 2 * Math.PI / omega;
+  const t1 = Math.PI / (2 * omega); // 原点初通過
+  return { l, m, A, omega, T, t1 };
+}
+
+// 解析解: x(t) = A cos(ωt), v(t) = -Aω sin(ωt)
+function stateAt(t, P) {
+  const x = P.A * Math.cos(P.omega * t);
+  const v = -P.A * P.omega * Math.sin(P.omega * t);
+  // 接線方向の力: F = -(mg/l)x
+  const F = -(P.m * G / P.l) * x;
+  // 糸の角度 θ ≈ x/l
+  const theta = x / P.l;
+  // 張力: S = mg cosθ + mv²/l ≈ mg + m(-Aω²cosωt) → S=mg cosθ + mv²/l
+  const S = P.m * G * Math.cos(theta) + P.m * v * v / P.l;
+  return { x, v, F, S, theta };
+}
+
+// ─── Arrow helper ─────────────────────────────────────────────────
+function arrow(ctx, x1, y1, x2, y2, color, w=2.5) {
+  const ang = Math.atan2(y2-y1, x2-x1), hd = 8;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hd*Math.cos(ang-Math.PI/6), y2-hd*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(x2-hd*Math.cos(ang+Math.PI/6), y2-hd*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ─── Draw Panel ───────────────────────────────────────────────────
+function drawPanel(ctx, W, H, st, P, mode) {
+  const PX = (H * 0.55) / 2.0; // 固定スケール: 2mが画面H*0.55に対応
+  const PX_X = W * 0.6 / Math.max(P.A * 2, 0.1); // x方向スケール（振幅基準）
+
+  // 支点P（上部中央）
+  const pivot_x = W * 0.5;
+  const pivot_y = H * 0.12;
+
+  // 小球の位置（x≈Aのとき θ=A/l）
+  const theta = st.theta;
+  const ball_x = pivot_x + P.l * PX * Math.sin(theta);
+  const ball_y = pivot_y + P.l * PX * Math.cos(theta);
+  const ball_r = 12 + P.m * 3;
+
+  // 天井
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(pivot_x - 40, pivot_y - 8, 80, 8);
+  for (let i = -4; i <= 4; i++) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pivot_x + i*10 - 8, pivot_y - 8);
+    ctx.lineTo(pivot_x + i*10 + 8, pivot_y - 18);
+    ctx.stroke();
+  }
+  // 支点の丸
+  ctx.beginPath(); ctx.arc(pivot_x, pivot_y, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#e8eaf6'; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px "Noto Sans JP"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('P', pivot_x, pivot_y - 6);
+
+  // 糸
+  ctx.beginPath(); ctx.moveTo(pivot_x, pivot_y); ctx.lineTo(ball_x, ball_y);
+  ctx.strokeStyle = '#a78bfacc'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke();
+
+  // 原点O（糸が鉛直のときの小球位置）
+  const origin_x = pivot_x;
+  const origin_y = pivot_y + P.l * PX;
+  // x軸の点線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pivot_x - P.A * PX * 1.5, origin_y);
+  ctx.lineTo(pivot_x + P.A * PX * 1.5, origin_y); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText('O', origin_x - 6, origin_y);
+
+  // 角度弧
+  if (Math.abs(theta) > 0.01) {
+    ctx.beginPath(); ctx.arc(pivot_x, pivot_y, 30, Math.PI/2, Math.PI/2 + theta, theta < 0);
+    ctx.strokeStyle = 'rgba(245,158,11,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.stroke();
+    ctx.fillStyle = 'rgba(245,158,11,0.7)'; ctx.font = '10px "JetBrains Mono"';
+    ctx.textAlign = theta > 0 ? 'left' : 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('θ', pivot_x + (theta > 0 ? 34 : -34), pivot_y + 20);
+  }
+
+  // 小球（先に描く）
+  ctx.beginPath(); ctx.arc(ball_x, ball_y, ball_r, 0, Math.PI*2);
+  ctx.fillStyle = '#f97316'; ctx.fill();
+  ctx.strokeStyle = '#fed7aa'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10,ball_r-4)}px "Noto Sans JP"`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('m', ball_x, ball_y);
+
+  // 矢印
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  const fScale = PX / G; // 力1Nあたりpx（重力mg→PX*mになる）
+
+  if (mode === 'forces') {
+    // 重力（赤・鉛直下向き）
+    arrow(ctx, ball_x - 12, ball_y, ball_x - 12, ball_y + P.m * G * fScale, '#f87171', 2.5);
+    // 張力（青・糸の方向・上向き）
+    const sx = -Math.sin(theta), sy = -Math.cos(theta); // 糸の方向（上向き）
+    arrow(ctx, ball_x + 12*Math.cos(theta), ball_y,
+          ball_x + 12*Math.cos(theta) + sx * st.S * fScale,
+          ball_y                       + sy * st.S * fScale, '#38bdf8', 2.5);
+  } else {
+    // 接線方向の合力F（緑）
+    // 接線方向: (-cosθ, sinθ) → xが正のとき左向き（restoring force）
+    const tx = -Math.cos(theta), ty = Math.sin(theta);
+    const Fmag = Math.abs(st.F);
+    const Fsign = st.F >= 0 ? 1 : -1; // F=-mg/l*x → xが正なら負
+    if (Fmag > 0.01) {
+      arrow(ctx, ball_x, ball_y,
+            ball_x + tx * Fsign * Fmag * fScale,
+            ball_y + ty * Fsign * Fmag * fScale,
+            '#34d399', 3);
+    }
+  }
+  ctx.restore();
+}
+
+function drawAnim(sim_t) {
+  const P = curP; if (!P) return;
+  const st = stateAt(sim_t, P);
+
+  // 左パネル（実際の力）
+  const cv1 = document.getElementById('cvAnim1');
+  const ctx1 = cv1.getContext('2d');
+  ctx1.clearRect(0, 0, cv1.width, cv1.height);
+  drawPanel(ctx1, cv1.width, cv1.height, st, P, 'forces');
+
+  // 右パネル（合力 + 円運動図）
+  const cv2 = document.getElementById('cvAnim2');
+  const ctx2 = cv2.getContext('2d');
+  ctx2.clearRect(0, 0, cv2.width, cv2.height);
+  // 上半分：合力の振り子
+  ctx2.save();
+  ctx2.beginPath(); ctx2.rect(0, 0, cv2.width, 360); ctx2.clip();
+  drawPanel(ctx2, cv2.width, 360, st, P, 'net');
+  ctx2.restore();
+
+  // 区切り線
+  ctx2.strokeStyle = 'rgba(255,255,255,0.1)'; ctx2.lineWidth = 1;
+  ctx2.beginPath(); ctx2.moveTo(0, 360); ctx2.lineTo(cv2.width, 360); ctx2.stroke();
+
+  // 下半分：等速円運動図
+  drawCircularMotion(ctx2, cv2.width, 360, 660, st, P, sim_t);
+}
+
+function drawCircularMotion(ctx, W, offsetY, totalH, st, P, sim_t) {
+  const H = totalH - offsetY; // 下半分の高さ = 300px
+  const CX = W * 0.45;
+  const CY = offsetY + H * 0.5;
+  const CR = Math.min(W * 0.28, H * 0.38); // 円の半径px
+
+  // タイトル
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('等速円運動の正射影 → 単振動', CX, offsetY + 8);
+
+  // x軸（水平）
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(CX - CR * 1.6, CY); ctx.lineTo(CX + CR * 1.8, CY); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('x', CX + CR * 1.85, CY);
+
+  // y軸（鉛直）
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(CX, offsetY + H * 0.08); ctx.lineTo(CX, offsetY + H * 0.92); ctx.stroke();
+
+  // 円
+  ctx.beginPath(); ctx.arc(CX, CY, CR, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(167,139,250,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // 現在の角度: x=Acosωt → 円運動の角度φ=ωt（右から時計回り）
+  // 図1に合わせて: t=0でx=A（右端）→ φ=0が右、時計回り
+  const phi = P.omega * sim_t; // 時計回りの角度
+  const px = CX + CR * Math.cos(phi); // t=0でx=A（右端）
+  const py = CY - CR * Math.sin(phi); // 反時計回り（上が正）
+
+  // 半径ベクトル
+  ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(px, py);
+  ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2; ctx.stroke();
+
+  // 円周上の点
+  ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#a78bfa'; ctx.fill();
+
+  // x軸への射影（点線）
+  ctx.save(); ctx.setLineDash([3,3]);
+  ctx.strokeStyle = 'rgba(249,115,22,0.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, CY); ctx.stroke();
+  ctx.restore();
+
+  // x軸上の射影点（振り子のx）
+  ctx.beginPath(); ctx.arc(px, CY, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#f97316'; ctx.fill();
+  ctx.strokeStyle = '#fed7aa'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // π/2の角度表示
+  ctx.save(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(245,158,11,0.4)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(CX, CY, CR * 0.28, -phi, 0, phi > 0);
+  ctx.stroke(); ctx.restore();
+
+  // ωt ラベル
+  if (phi % (Math.PI * 2) > 0.1) {
+    ctx.fillStyle = 'rgba(245,158,11,0.8)'; ctx.font = '10px "JetBrains Mono"';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('ωt', CX + CR * 0.32, CY - CR * 0.15);
+  }
+
+  // A のラベル（右端）
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('A', CX + CR + 4, CY);
+  ctx.textAlign = 'right';
+  ctx.fillText('−A', CX - CR - 4, CY);
+
+  // t=0 ラベル（右端）
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '9px "JetBrains Mono"';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText('t=0', CX + CR + 4, CY - 2);
+
+  // x = Acosωt の式
+  ctx.fillStyle = 'rgba(249,115,22,0.7)'; ctx.font = 'bold 10px "JetBrains Mono"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(`x = Acos(ωt) = ${st.x.toFixed(3)} m`, CX, offsetY + H - 8);
+}
+
+// ─── Draw x-t Graph ───────────────────────────────────────────────
+function drawGraph(sim_t) {
+  const cv = document.getElementById('cvGraph');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const P = curP; if (!P) return;
+  const L = 50, R = W - 20, B = H - 36, T2 = 16;
+  const gH = B - T2;
+  const tMax = P.T * 2.5;
+
+  function xm(t) { return L + (R-L)*(t/tMax); }
+  function ym(x) { return T2 + gH*(1 - (x+P.A)/(2*P.A)); }
+
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  [0,0.5,1].forEach(frac => {
+    const y = T2 + gH*frac;
+    ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(R,y); ctx.stroke();
+  });
+
+  // axes
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(L,T2); ctx.lineTo(L,B); ctx.lineTo(R,B); ctx.stroke();
+
+  // x=0の点線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(L,ym(0)); ctx.lineTo(R,ym(0)); ctx.stroke();
+  ctx.restore();
+
+  // t1の点線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle='rgba(245,158,11,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(xm(P.t1),T2); ctx.lineTo(xm(P.t1),B); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(245,158,11,0.7)'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('t₁', xm(P.t1), B-2);
+
+  // x(t)曲線
+  const steps = 300;
+  ctx.strokeStyle='#f97316'; ctx.lineWidth=2; ctx.beginPath();
+  for (let i=0; i<=steps; i++) {
+    const t = tMax*i/steps;
+    const {x} = stateAt(t,P);
+    if (i===0) ctx.moveTo(xm(t),ym(x)); else ctx.lineTo(xm(t),ym(x));
+  }
+  ctx.stroke();
+
+  // 現在位置
+  const {x:xNow} = stateAt(sim_t, P);
+  ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(xm(sim_t),T2); ctx.lineTo(xm(sim_t),B); ctx.stroke(); ctx.restore();
+  ctx.beginPath(); ctx.arc(xm(sim_t),ym(xNow),4,0,Math.PI*2);
+  ctx.fillStyle='#f97316'; ctx.fill();
+
+  // ラベル
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='center';
+  ctx.fillText('0', L, B+14); ctx.fillText(`${tMax.toFixed(1)}s`, R, B+14);
+  ctx.textAlign='right';
+  ctx.fillText(`+A`, L-2, T2+4); ctx.fillText('0', L-2, ym(0)+4); ctx.fillText(`−A`, L-2, B+4);
+  ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.textAlign='left';
+  ctx.fillText(`T=${P.T.toFixed(2)}s`, L+4, T2+12);
+}
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateReadout(sim_t) {
+  const P = curP; if (!P) return;
+  const st = stateAt(sim_t, P);
+  document.getElementById('rX').textContent = `${st.x.toFixed(3)} m`;
+  document.getElementById('rV').textContent = `${st.v.toFixed(3)} m/s`;
+  document.getElementById('rF').textContent = `${st.F.toFixed(3)} N`;
+  document.getElementById('rS').textContent = `${st.S.toFixed(3)} N`;
+  document.getElementById('rT').textContent = `${sim_t.toFixed(2)} s`;
+}
+
+function updateAnswers() {
+  const P = curP; if (!P) return;
+  document.getElementById('ans1').textContent  = `−(mg/l)x = −${(P.m*G/P.l).toFixed(2)}x N`;
+  document.getElementById('ans2a').textContent = `x = 0`;
+  document.getElementById('ans2b').textContent = `2π√(l/g) = ${P.T.toFixed(3)} s`;
+  document.getElementById('ans2c').textContent = `A = ${P.A.toFixed(2)} m`;
+  document.getElementById('ans3').textContent  = `(π/2)√(l/g) = ${P.t1.toFixed(3)} s`;
+}
+
+// ─── Loop ─────────────────────────────────────────────────────────
+let sim_t = 0, running = false, lastNow = 0;
+let curP = null;
+
+function render() {
+  drawAnim(sim_t);
+  drawGraph(sim_t);
+  updateReadout(sim_t);
+  updateAnswers();
+}
+
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastNow) / 1000);
+  lastNow = now;
+  if (running) {
+    sim_t += dt;
+    if (sim_t > curP.T * 4) sim_t = 0;
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click', () => {
+  running = !running;
+  document.getElementById('btnPlay').textContent = running ? '⏸ 停止' : '▶ 再生';
+  lastNow = performance.now();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  sim_t = 0; running = false;
+  document.getElementById('btnPlay').textContent = '▶ 再生';
+  render();
+});
+
+[
+  { id:'sldl', out:'vl', fmt: v=>`${(+v).toFixed(1)} m` },
+  { id:'sldm', out:'vm', fmt: v=>`${(+v).toFixed(1)} kg` },
+  { id:'sldA', out:'vA', fmt: v=>`${(+v).toFixed(2)} m` },
+].forEach(({id,out,fmt}) => {
+  document.getElementById(id).addEventListener('input', function(){
+    document.getElementById(out).textContent = fmt(this.value);
+    sim_t = 0; running = false;
+    document.getElementById('btnPlay').textContent = '▶ 再生';
+    curP = getP();
+    render();
+  });
+});
+
+curP = getP();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
