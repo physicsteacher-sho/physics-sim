@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>必修基礎問25 円すい振り子</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --string:#a78bfa;--gravity:#f87171;--tension:#38bdf8;
+  --centrifugal:#f59e0b;--accent:#f59e0b;--ball:#f97316;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;letter-spacing:-.02em;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:#34d399;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .1s,opacity .1s}
+button:active{transform:translateY(1px);opacity:.85}
+.btn-play{background:var(--tension);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card-head .dot{width:8px;height:8px;border-radius:50%}
+canvas{display:block;background:transparent}
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+@media(max-width:960px){
+  .top-bar{grid-template-columns:1fr 1fr}
+  .btn-group{flex-direction:row;grid-column:1/-1}
+  .main{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>必修基礎問 <span>問25</span>　円すい振り子</h1>
+      <p>長さlの軽い糸の一端を点Pに固定し、他端に質量mの小球を取り付け水平面内で等速円運動させる。<br>
+         糸は鉛直下方とθの角をなす。</p>
+    </div>
+    <div class="badge">熊本大 / 必修基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>糸の長さl、質量m、鉛直とのなす角θで等速円運動。<br>
+    <strong>(1-i)</strong> 慣性系（床上静止の観測者）から見た力を図示 &nbsp;
+    <strong>(1-ii)</strong> 回転系（小球とともに回転する観測者）から見た力を図示 &nbsp;
+    <strong>(2)</strong> 張力Sと速さv
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>糸の長さ l (m)</span><span class="val" id="vl">1.0 m</span></div>
+      <input type="range" id="sldl" min="0.5" max="2.0" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>質量 m (kg)</span><span class="val" id="vm">1.0 kg</span></div>
+      <input type="range" id="sldm" min="0.5" max="2.0" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>角度 θ (°)</span><span class="val" id="vtheta">30°</span></div>
+      <input type="range" id="sldtheta" min="10" max="60" step="5" value="30">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span class="dot" style="background:var(--string)"></span>
+          円すい振り子アニメーション
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">等速円運動（解析解）</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div style="border-right:1px solid var(--border)">
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>(i) 慣性系　横から</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#f87171;border-radius:2px"></span><span style="font-size:10px;font-weight:400">重力 mg</span></span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">張力 S</span></span>
+            </div>
+            <canvas id="cvAnim1" width="370" height="380" style="width:370px;height:380px"></canvas>
+          </div>
+          <div>
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>(ii) 回転系　横から</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#f87171;border-radius:2px"></span><span style="font-size:10px;font-weight:400">重力 mg</span></span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">張力 S</span></span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#f59e0b;border-radius:2px"></span><span style="font-size:10px;font-weight:400">遠心力</span></span>
+            </div>
+            <canvas id="cvAnim2" width="370" height="380" style="width:370px;height:380px"></canvas>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)">
+          <div style="border-right:1px solid var(--border)">
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>(i) 慣性系　上から</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">張力水平成分（向心力）</span></span>
+            </div>
+            <canvas id="cvTop1" width="370" height="280" style="width:370px;height:280px"></canvas>
+          </div>
+          <div>
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>(ii) 回転系　上から</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">張力水平成分</span></span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#f59e0b;border-radius:2px"></span><span style="font-size:10px;font-weight:400">遠心力</span></span>
+            </div>
+            <canvas id="cvTop2" width="370" height="280" style="width:370px;height:280px"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">角度 θ</span>
+          <span class="num" id="rTheta" style="color:var(--text)">30.0°</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">半径 r = l sinθ</span>
+          <span class="num" id="rRadius" style="color:var(--string)">0.500 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">角速度 ω</span>
+          <span class="num" id="rOmega" style="color:var(--muted)">0.000 rad/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速さ v</span>
+          <span class="num" id="rV" style="color:var(--ball)">0.000 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">張力 S</span>
+          <span class="num" id="rS" style="color:var(--tension)">0.000 N</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">遠心力 mω²r</span>
+          <span class="num" id="rFc" style="color:var(--centrifugal)">0.000 N</span>
+        </div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item">
+            <span class="q">(1-i) 慣性系の力</span>
+            <span class="a">重力 + 張力（2本）</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(1-ii) 回転系の力</span>
+            <span class="a">重力 + 張力 + 遠心力（3本）</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 張力 S</span>
+            <span class="a" id="ans2a">—</span>
+          </div>
+          <div class="ans-item">
+            <span class="q">(2) 速さ v</span>
+            <span class="a" id="ans2b">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>慣性系での鉛直・水平のつりあい</p>
+        <div class="formula">鉛直: Scosθ = mg → S = mg/cosθ</div>
+        <div class="formula">水平: Ssinθ = mv²/r = mv²/(lsinθ)</div>
+        <p style="margin-top:8px">→ v = sinθ√(gl/cosθ)</p>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--gravity)"></span>重力 mg（鉛直下向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--tension)"></span>張力 S（糸の方向・斜め上）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--centrifugal)"></span>遠心力（水平外向き）[回転系のみ]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+
+function getP() {
+  const l     = +document.getElementById('sldl').value;
+  const m     = +document.getElementById('sldm').value;
+  const thetaDeg = +document.getElementById('sldtheta').value;
+  const theta = thetaDeg * Math.PI / 180;
+  const r     = l * Math.sin(theta);
+  const S     = m * G / Math.cos(theta);
+  const v     = Math.sin(theta) * Math.sqrt(G * l / Math.cos(theta));
+  const omega = v / r;
+  const Fc    = m * omega * omega * r; // = mg tanθ
+  const T     = 2 * Math.PI / omega;
+  return { l, m, theta, thetaDeg, r, S, v, omega, Fc, T };
+}
+
+// ─── Arrow ────────────────────────────────────────────────────────
+function arrow(ctx, x1, y1, x2, y2, color, w=2.5) {
+  const ang = Math.atan2(y2-y1, x2-x1), hd = 8;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hd*Math.cos(ang-Math.PI/6), y2-hd*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(x2-hd*Math.cos(ang+Math.PI/6), y2-hd*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ─── Draw Panel（斜め視点）────────────────────────────────────
+function drawPanel(ctx, W, H, phi, P, mode) {
+  const PX     = Math.min(W * 0.55, H * 0.55) / P.l;
+  const pivX   = W * 0.5;
+  const pivY   = H * 0.15;
+  const rPX    = P.r * PX;           // 楕円の長半径
+  const rPY    = rPX * 0.28;         // 楕円の短半径（奥行き感）
+  const orbitCX = pivX;
+  const orbitCY = pivY + P.l * PX * Math.cos(P.theta); // 軌道中心y
+
+  // 小球の楕円上の位置
+  const bx = orbitCX + rPX * Math.cos(phi);
+  const by = orbitCY + rPY * Math.sin(phi);
+
+  // 天井
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(pivX - 40, pivY - 8, 80, 8);
+  for (let i = -4; i <= 4; i++) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pivX+i*10-8, pivY-8); ctx.lineTo(pivX+i*10+8, pivY-18); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(pivX, pivY, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#e8eaf6'; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px "Noto Sans JP"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('P', pivX, pivY - 6);
+
+  // 鉛直破線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pivX, pivY); ctx.lineTo(pivX, orbitCY + rPY + 20); ctx.stroke();
+  ctx.restore();
+
+  // 楕円軌道（上半分薄く・下半分濃く）
+  ctx.save(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.ellipse(orbitCX, orbitCY, rPX, rPY, 0, Math.PI, Math.PI*2);
+  ctx.strokeStyle = 'rgba(167,139,250,0.15)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(orbitCX, orbitCY, rPX, rPY, 0, 0, Math.PI);
+  ctx.strokeStyle = 'rgba(167,139,250,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+
+  // θの弧（鉛直線と糸のなす角・糸に連動）
+  const stringAng = Math.atan2(bx - pivX, by - pivY); // 糸の水平成分から角度
+  const vertAng2D = Math.PI / 2; // canvas上の鉛直下向き
+  const strAng2D  = Math.atan2(by - pivY, bx - pivX); // 糸の2D角度
+  ctx.save(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(245,158,11,0.5)'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(pivX, pivY, 28, Math.min(strAng2D, vertAng2D), Math.max(strAng2D, vertAng2D));
+  ctx.stroke(); ctx.restore();
+  ctx.fillStyle = 'rgba(245,158,11,0.8)'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const midAng = (strAng2D + vertAng2D) / 2;
+  ctx.fillText('θ', pivX + Math.cos(midAng) * 40, pivY + Math.sin(midAng) * 40);
+
+  // 糸
+  ctx.beginPath(); ctx.moveTo(pivX, pivY); ctx.lineTo(bx, by);
+  ctx.strokeStyle = '#a78bfacc'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.stroke();
+
+  // 小球（先に描く）- 手前で大きく、奥で小さく
+  const depthFactor = 1 + 0.12 * Math.sin(phi);
+  const br = (12 + P.m * 3) * depthFactor;
+  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2);
+  ctx.fillStyle = '#f97316'; ctx.fill();
+  ctx.strokeStyle = '#fed7aa'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10,br-4)}px "Noto Sans JP"`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('m', bx, by);
+
+  // 力の矢印
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  const fScale = (P.l * PX * 0.5) / (P.m * G);
+
+  // 重力（赤・鉛直下向き・左オフセット）
+  arrow(ctx, bx - 12, by, bx - 12, by + P.m * G * fScale, '#f87171', 2.5);
+  ctx.fillStyle = '#f87171aa'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText('mg', bx - 16, by + P.m * G * fScale * 0.5);
+
+  // 張力（青・支点方向・糸の見かけ長さに比例）
+  const sdx = pivX - bx, sdy = pivY - by;
+  const slen = Math.sqrt(sdx*sdx + sdy*sdy);
+  const sux = sdx/slen, suy = sdy/slen;
+  const stringFullLen = Math.sqrt((orbitCX + rPX - pivX)**2 + (orbitCY - pivY)**2);
+  const sScale = P.S * fScale * (slen / stringFullLen);
+  arrow(ctx, bx + 12*(-suy), by + 12*sux,
+        bx + 12*(-suy) + sux * sScale,
+        by + 12*sux    + suy * sScale, '#38bdf8', 2.5);
+  ctx.fillStyle = '#38bdf8aa'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('S', bx + 12*(-suy) + sux * sScale * 0.5 + 6,
+                    by + 12*sux    + suy * sScale * 0.5);
+
+  if (mode === 'rotating') {
+    // 楕円中心→小球方向（外向き）を正規化
+    const rdx = bx - orbitCX, rdy = by - orbitCY;
+    const rlen = Math.sqrt(rdx*rdx + rdy*rdy);
+    const rux = rdx/rlen, ruy = rdy/rlen;
+    // 遠心力の長さ: 楕円中心→小球の距離に比例
+    const fcVisible = P.Fc * (rlen / rPX);
+    arrow(ctx, bx, by,
+          bx + rux * fcVisible * fScale,
+          by + ruy * fcVisible * fScale,
+          '#f59e0b', 2.5);
+    ctx.fillStyle = '#f59e0baa'; ctx.font = '10px "JetBrains Mono"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const labelX = bx + rux * fcVisible * fScale;
+    const labelY = by + ruy * fcVisible * fScale - 6;
+    ctx.fillText('遠心力', labelX, labelY);
+  }
+
+  ctx.restore();
+}
+
+// ─── Draw Top View（上から見た図）────────────────────────────────
+function drawTopPanel(ctx, W, H, phi, P, mode) {
+  const CX = W * 0.5, CY = H * 0.5;
+  const rPX = Math.min(W, H) * 0.32; // 半径のpx
+
+  // 円軌道
+  ctx.beginPath(); ctx.arc(CX, CY, rPX, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(167,139,250,0.25)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+
+  // 中心（支点の真下）
+  ctx.beginPath(); ctx.arc(CX, CY, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#e8eaf6'; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '10px "Noto Sans JP"';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText('O', CX - 8, CY);
+
+  // 小球の位置（上から見た2D投影）
+  const bx = CX + rPX * Math.cos(phi);
+  const by = CY + rPX * Math.sin(phi);  // 上から見るとy軸は手前が下
+
+  // 半径線（破線）
+  ctx.save(); ctx.setLineDash([3,3]);
+  ctx.strokeStyle = 'rgba(167,139,250,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.restore();
+
+  // 小球
+  const br = 12 + P.m * 3;
+  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2);
+  ctx.fillStyle = '#f97316'; ctx.fill();
+  ctx.strokeStyle = '#fed7aa'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10,br-4)}px "Noto Sans JP"`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('m', bx, by);
+
+  // 力の矢印（上から見た水平成分のみ）
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  const fScale = rPX / (P.m * G * Math.tan(P.theta)) * 0.75;
+
+  // 向心力方向（中心向き = 張力の水平成分）
+  const inDx = (CX - bx) / rPX, inDy = (CY - by) / rPX;
+  const Fh = P.S * Math.sin(P.theta); // 張力の水平成分 = 向心力
+  arrow(ctx, bx, by, bx + inDx * Fh * fScale, by + inDy * Fh * fScale, '#38bdf8', 2.5);
+  ctx.fillStyle = '#38bdf8aa'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(mode === 'inertial' ? '向心力\n(Ssinθ)' : 'Ssinθ',
+    bx + inDx * Fh * fScale * 0.5, by + inDy * Fh * fScale * 0.5 - 4);
+
+  if (mode === 'rotating') {
+    // 遠心力（外向き）
+    const outDx = -inDx, outDy = -inDy;
+    arrow(ctx, bx, by, bx + outDx * P.Fc * fScale, by + outDy * P.Fc * fScale, '#f59e0b', 2.5);
+    ctx.fillStyle = '#f59e0baa'; ctx.font = '10px "JetBrains Mono"';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('遠心力', bx + outDx * P.Fc * fScale * 0.5, by + outDy * P.Fc * fScale * 0.5 + 4);
+  }
+
+  ctx.restore();
+
+  // ラベル
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '10px "JetBrains Mono"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(`r = lsinθ = ${P.r.toFixed(2)}m`, CX, H - 6);
+}
+
+// ─── Draw Animation ───────────────────────────────────────────────
+function drawAnim(sim_t) {
+  const P = curP; if (!P) return;
+  const phi = -P.omega * sim_t;
+
+  [
+    { id: 'cvAnim1', mode: 'inertial' },
+    { id: 'cvAnim2', mode: 'rotating' },
+  ].forEach(({ id, mode }) => {
+    const cv  = document.getElementById(id);
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    drawPanel(ctx, cv.width, cv.height, phi, P, mode);
+  });
+
+  [
+    { id: 'cvTop1', mode: 'inertial' },
+    { id: 'cvTop2', mode: 'rotating' },
+  ].forEach(({ id, mode }) => {
+    const cv  = document.getElementById(id);
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    drawTopPanel(ctx, cv.width, cv.height, phi, P, mode);
+  });
+}
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateReadout() {
+  const P = curP; if (!P) return;
+  document.getElementById('rTheta').textContent  = `${P.thetaDeg.toFixed(1)}°`;
+  document.getElementById('rRadius').textContent = `${P.r.toFixed(3)} m`;
+  document.getElementById('rOmega').textContent  = `${P.omega.toFixed(3)} rad/s`;
+  document.getElementById('rV').textContent      = `${P.v.toFixed(3)} m/s`;
+  document.getElementById('rS').textContent      = `${P.S.toFixed(3)} N`;
+  document.getElementById('rFc').textContent     = `${P.Fc.toFixed(3)} N`;
+}
+
+function updateAnswers() {
+  const P = curP; if (!P) return;
+  document.getElementById('ans2a').textContent = `mg/cosθ = ${P.S.toFixed(3)} N`;
+  document.getElementById('ans2b').textContent = `sinθ√(gl/cosθ) = ${P.v.toFixed(3)} m/s`;
+}
+
+// ─── Loop ─────────────────────────────────────────────────────────
+let sim_t = 0, running = false, lastNow = 0;
+let curP = null;
+
+function render() {
+  drawAnim(sim_t);
+  updateReadout();
+  updateAnswers();
+}
+
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastNow) / 1000);
+  lastNow = now;
+  if (running) sim_t += dt;
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click', () => {
+  running = !running;
+  document.getElementById('btnPlay').textContent = running ? '⏸ 停止' : '▶ 再生';
+  lastNow = performance.now();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  sim_t = 0; running = false;
+  document.getElementById('btnPlay').textContent = '▶ 再生';
+  render();
+});
+
+[
+  { id:'sldl',     out:'vl',     fmt: v=>`${(+v).toFixed(1)} m`  },
+  { id:'sldm',     out:'vm',     fmt: v=>`${(+v).toFixed(1)} kg` },
+  { id:'sldtheta', out:'vtheta', fmt: v=>`${(+v).toFixed(0)}°`   },
+].forEach(({id,out,fmt}) => {
+  document.getElementById(id).addEventListener('input', function(){
+    document.getElementById(out).textContent = fmt(this.value);
+    sim_t = 0; running = false;
+    document.getElementById('btnPlay').textContent = '▶ 再生';
+    curP = getP(); render();
+  });
+});
+
+curP = getP();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
