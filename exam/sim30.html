@@ -309,14 +309,22 @@ function drawPanel(ctx, W, H, st, P, mode) {
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   ctx.fillText('O', origin_x - 6, origin_y);
 
-  // 角度弧
+  // 鉛直破線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pivot_x, pivot_y); ctx.lineTo(pivot_x, pivot_y + P.l * PX + 30);
+  ctx.stroke(); ctx.restore();
+
+  // 角度弧（鉛直線と糸のなす角θ）
   if (Math.abs(theta) > 0.01) {
-    ctx.beginPath(); ctx.arc(pivot_x, pivot_y, 30, Math.PI/2, Math.PI/2 + theta, theta < 0);
-    ctx.strokeStyle = 'rgba(245,158,11,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.stroke();
+    const vertAngle = Math.PI / 2; // 鉛直下向き
+    const strAngle  = Math.PI / 2 - theta; // 糸の方向
+    ctx.beginPath();
+    ctx.arc(pivot_x, pivot_y, 30, strAngle, vertAngle, theta < 0);
+    ctx.strokeStyle = 'rgba(245,158,11,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = 'rgba(245,158,11,0.7)'; ctx.font = '10px "JetBrains Mono"';
-    ctx.textAlign = theta > 0 ? 'left' : 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText('θ', pivot_x + (theta > 0 ? 34 : -34), pivot_y + 20);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('θ', pivot_x + (theta > 0 ? 22 : -22), pivot_y + 32);
   }
 
   // 小球（先に描く）
