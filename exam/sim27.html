@@ -112,21 +112,21 @@ canvas{display:block;background:transparent}
           運動アニメーション
           <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">エネルギー保存による解析解</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-          <div style="border-right:1px solid var(--border)">
+        <div style="display:grid;grid-template-columns:1fr;gap:0">
+          <div style="border-bottom:1px solid var(--border)">
             <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
               <span>実際の力</span>
               <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#f87171;border-radius:2px"></span><span style="font-size:10px;font-weight:400">重力 mg</span></span>
               <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">垂直抗力 N</span></span>
             </div>
-            <canvas id="cvAnim1" width="370" height="500" style="width:370px;height:500px"></canvas>
+            <canvas id="cvAnim1" width="740" height="250" style="width:740px;height:250px"></canvas>
           </div>
           <div>
             <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
               <span>向心方向の合力</span>
               <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#34d399;border-radius:2px"></span><span style="font-size:10px;font-weight:400">mv²/R</span></span>
             </div>
-            <canvas id="cvAnim2" width="370" height="500" style="width:370px;height:500px"></canvas>
+            <canvas id="cvAnim2" width="740" height="250" style="width:740px;height:250px"></canvas>
           </div>
         </div>
       </div>
@@ -236,9 +236,9 @@ function arrow(ctx, x1, y1, x2, y2, color, w=2.5) {
 
 // ─── Draw Panel ───────────────────────────────────────────────────
 function drawPanel(ctx, W, H, simState, P, mode) {
-  const SC = Math.min(W * 0.16, H * 0.16) / 1.5;
+  const SC = Math.min(W * 0.13, H * 0.34) / 1.5;
   // O（円の中心）= 地面上
-  const OX = W * 0.78, OY = H * 0.7;
+  const OX = W * 0.7, OY = H * 0.72;
 
   // θ点の座標: x = OX + R·SC·sinθ（右が正）, y = OY - R·SC·cosθ（上が正）
   // θ=0: C（真上）, θ=α: B（左上）, θ=π/2: E（右、地面）
@@ -355,17 +355,34 @@ function drawPanel(ctx, W, H, simState, P, mode) {
     }
   }
 
-  // 物体
-  const br = 10 + P.m * 3;
-  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2);
+  // 物体（四角いブロック・面に沿って傾き、底面が面に接する）
+  const half = 9 + P.m * 2;
+  // 面の外向き法線方向に half だけオフセット（底面を面に接させる）
+  let nbx, nby, tilt;
+  if (simState.phase === 'slope') {
+    tilt = -P.alpha;
+    nbx = -Math.sin(P.alpha); nby = -Math.cos(P.alpha); // 斜面外向き法線
+  } else {
+    tilt = theta;
+    nbx = (bx - OX) / (P.R * SC); // 円筒面外向き法線
+    nby = (by - OY) / (P.R * SC);
+  }
+  const cx = bx + nbx * half;
+  const cy = by + nby * half;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(tilt);
+  ctx.beginPath();
+  ctx.rect(-half, -half, half*2, half*2);
   ctx.fillStyle = simState.phase === 'off' ? '#64748b' : '#f97316';
   ctx.fill();
   ctx.strokeStyle = simState.phase === 'off' ? '#94a3b8' : '#fed7aa';
   ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.max(9,br-3)}px "Noto Sans JP"`;
+  ctx.font = `bold ${Math.max(9,half)}px "Noto Sans JP"`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('m', bx, by);
+  ctx.fillText('m', 0, 0);
+  ctx.restore();
 
   // 力の矢印
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,H); ctx.clip();
@@ -374,12 +391,12 @@ function drawPanel(ctx, W, H, simState, P, mode) {
 
   if (mode === 'forces') {
     // 重力（赤・鉛直下向き）
-    arrow(ctx, bx-12, by, bx-12, by + P.m*G*fScale, '#f87171', 2.5);
+    arrow(ctx, cx, cy, cx, cy + P.m*G*fScale, '#f87171', 2.5);
     ctx.fillStyle='#f87171aa'; ctx.font='10px "JetBrains Mono"';
-    ctx.textAlign='right'; ctx.textBaseline='middle';
-    ctx.fillText('mg', bx-16, by + P.m*G*fScale*0.5);
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('mg', cx + 6, cy + P.m*G*fScale*0.7);
 
-    // 垂直抗力
+    // 垂直抗力（接点 bx,by から出す）
     if (simState.phase === 'slope') {
       const nx = -Math.sin(P.alpha), ny = -Math.cos(P.alpha);
       arrow(ctx, bx, by, bx + nx*P.N0*fScale, by + ny*P.N0*fScale, '#38bdf8', 2.5);
@@ -403,10 +420,10 @@ function drawPanel(ctx, W, H, simState, P, mode) {
       if (st.Fc > 0.01) {
         const nx = (OX - bx) / (P.R * SC);
         const ny = (OY - by) / (P.R * SC);
-        arrow(ctx, bx, by, bx + nx*st.Fc*fScale, by + ny*st.Fc*fScale, '#34d399', 3);
+        arrow(ctx, cx, cy, cx + nx*st.Fc*fScale, cy + ny*st.Fc*fScale, '#34d399', 3);
         ctx.fillStyle='#34d399aa'; ctx.font='10px "JetBrains Mono"';
         ctx.textAlign='left'; ctx.textBaseline='middle';
-        ctx.fillText('mv²/R', bx + nx*st.Fc*fScale*0.5+6, by + ny*st.Fc*fScale*0.5);
+        ctx.fillText('mv²/R', cx + nx*st.Fc*fScale*0.5+6, cy + ny*st.Fc*fScale*0.5);
       }
     }
   }
