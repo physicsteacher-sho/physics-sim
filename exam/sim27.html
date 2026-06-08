@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>実戦基礎問27 円筒面上の物体の運動</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --accent:#f59e0b;--ball:#f97316;
+  --gravity:#f87171;--normal:#38bdf8;--net:#34d399;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:#34d399;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-play{background:var(--normal);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+canvas{display:block;background:transparent}
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+.phase-badge{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;margin-top:4px}
+.phase-slope{background:#1a1a0e;border:1px solid var(--accent);color:var(--accent)}
+.phase-circle{background:#0e2235;border:1px solid var(--normal);color:var(--normal)}
+.phase-off{background:#2a1a0a;border:1px solid var(--gravity);color:var(--gravity)}
+@media(max-width:960px){
+  .top-bar{grid-template-columns:1fr 1fr}
+  .btn-group{flex-direction:row;grid-column:1/-1}
+  .main{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>実戦基礎問 <span>問27</span>　円筒面上の物体の運動</h1>
+      <p>水平面AOEと角度αをなす斜面AB上の点Aから初速v₀を与える。<br>
+         点Bでなめらかにつながる半径Rの円筒面BCDE（外側）を運動する。直線OCは鉛直。</p>
+    </div>
+    <div class="badge">九州工大 / 実戦基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>斜面角α（0°&lt;α&lt;30°）、半径R、質量m、初速v₀。<br>
+    <strong>(1)</strong> 点Bを通過する直前・直後の垂直抗力 &nbsp;
+    <strong>(2)</strong> 点Bで離れないためのv₀の条件 &nbsp;
+    <strong>(3)</strong> 点Cを越えるためのv₀の条件 &nbsp;
+    <strong>(4)</strong> 面から離れる点DのcosθD（θD = ∠COD）
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>斜面角 α (°)</span><span class="val" id="valpha">20°</span></div>
+      <input type="range" id="sldalpha" min="5" max="29" step="1" value="20">
+    </label>
+    <label>
+      <div class="label-row"><span>質量 m (kg)</span><span class="val" id="vm">1.0 kg</span></div>
+      <input type="range" id="sldm" min="0.5" max="2.0" step="0.5" value="1.0">
+    </label>
+    <label>
+      <div class="label-row"><span>初速 v₀ (m/s)</span><span class="val" id="vv0">4.5 m/s</span></div>
+      <input type="range" id="sldv0" min="1" max="12" step="0.5" value="4.5">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span style="width:8px;height:8px;border-radius:50%;background:#a78bfa;display:inline-block"></span>
+          運動アニメーション
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">エネルギー保存による解析解</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div style="border-right:1px solid var(--border)">
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>実際の力</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#f87171;border-radius:2px"></span><span style="font-size:10px;font-weight:400">重力 mg</span></span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">垂直抗力 N</span></span>
+            </div>
+            <canvas id="cvAnim1" width="370" height="500" style="width:370px;height:500px"></canvas>
+          </div>
+          <div>
+            <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span>向心方向の合力</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#34d399;border-radius:2px"></span><span style="font-size:10px;font-weight:400">mv²/R</span></span>
+            </div>
+            <canvas id="cvAnim2" width="370" height="500" style="width:370px;height:500px"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">速さ v</span>
+          <span class="num" id="rV" style="color:var(--ball)">0.000 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">角度 θ (∠COD)</span>
+          <span class="num" id="rTheta" style="color:var(--text)">—</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">垂直抗力 N</span>
+          <span class="num" id="rN" style="color:var(--normal)">0.000 N</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">向心力 mv²/R</span>
+          <span class="num" id="rFc" style="color:var(--net)">0.000 N</span>
+        </div>
+        <div id="phaseBadge" class="phase-badge phase-slope">斜面運動中</div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item"><span class="q">(1) B直前のN₀</span><span class="a" id="ans1a">—</span></div>
+          <div class="ans-item"><span class="q">(1) B直後のN₁</span><span class="a" id="ans1b">—</span></div>
+          <div class="ans-item"><span class="q">(2) Bで離れない</span><span class="a" id="ans2">—</span></div>
+          <div class="ans-item"><span class="q">(3) Cを越える</span><span class="a" id="ans3">—</span></div>
+          <div class="ans-item"><span class="q">(4) cosθD</span><span class="a" id="ans4">—</span></div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>B→θ点のエネルギー保存（外側を動く）</p>
+        <div class="formula">½mv² = ½mv₀² − mg(Rcosθ+Rcosα)</div>
+        <p style="margin-top:8px">外側なのでNはO逆向き（外向き）</p>
+        <div class="formula">mv²/R = mgcosθ − N</div>
+        <p style="margin-top:8px">離脱条件: N=0 → cosθ = v²/(gR)</p>
+        <div class="formula">cosθD = (v₀²−2gRcosα)/(3gR)</div>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--gravity)"></span>重力 mg（鉛直下向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--normal)"></span>垂直抗力 N（O逆向き・外向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--net)"></span>向心力 mv²/R（O向き）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+
+function getP() {
+  const alpha = +document.getElementById('sldalpha').value * Math.PI / 180;
+  const R     = 1.5;
+  const m     = +document.getElementById('sldm').value;
+  const v0    = +document.getElementById('sldv0').value;
+
+  // θB = α（OCからBまでの角度）
+  const thetaB = alpha;
+
+  // 答え
+  const N0    = m * G * Math.cos(alpha);
+  const N1    = m * (3 * G * Math.cos(alpha) - v0*v0/R);
+  const v0_cond2 = Math.sqrt(3 * G * R * Math.cos(alpha));
+  const v0_cond3 = Math.sqrt(2 * G * R);
+  const cosD  = (v0*v0 - 2*G*R*Math.cos(alpha)) / (3*G*R);
+
+  return { alpha, R, m, v0, thetaB, N0, N1,
+           v0_cond2, v0_cond3, cosD };
+}
+
+// θ（OCからの角度。C=0, B=α, D=θD）での速さと垂直抗力
+// 高さ基準: 地面（A=O と同じ高さ）
+// θ点の高さ = Rcosθ（OC鉛直, θ=0でC=R, θ=π/2でE=0）
+// エネルギー保存(A基準): ½mv₀² = ½mv² + mgRcosθ
+// → v² = v₀² - 2gRcosθ
+// 向心方向（O向き）の運動方程式（外側なのでNはO逆向き）
+// mgcosθ - N = mv²/R → N = m(gcosθ - v²/R)
+function stateAt(theta, P) {
+  const v2 = P.v0*P.v0 - 2*G*P.R*Math.cos(theta);
+  const v  = v2 > 0 ? Math.sqrt(v2) : 0;
+  const N  = P.m * (G*Math.cos(theta) - (v2 > 0 ? v2/P.R : 0));
+  const Fc = P.m * (v2 > 0 ? v2/P.R : 0);
+  return { v, N: Math.max(0, N), Fc, off: N < 0 };
+}
+
+// ─── Arrow ────────────────────────────────────────────────────────
+function arrow(ctx, x1, y1, x2, y2, color, w=2.5) {
+  const ang = Math.atan2(y2-y1, x2-x1), hd = 8;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hd*Math.cos(ang-Math.PI/6), y2-hd*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(x2-hd*Math.cos(ang+Math.PI/6), y2-hd*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ─── Draw Panel ───────────────────────────────────────────────────
+function drawPanel(ctx, W, H, simState, P, mode) {
+  const SC = Math.min(W * 0.16, H * 0.16) / 1.5;
+  // O（円の中心）= 地面上
+  const OX = W * 0.78, OY = H * 0.7;
+
+  // θ点の座標: x = OX + R·SC·sinθ（右が正）, y = OY - R·SC·cosθ（上が正）
+  // θ=0: C（真上）, θ=α: B（左上）, θ=π/2: E（右、地面）
+  const pos = th => ({
+    x: OX + P.R * SC * Math.sin(th),
+    y: OY - P.R * SC * Math.cos(th)
+  });
+
+  const C = pos(0);
+  const B = pos(-P.alpha); // Bは左側なのでθ=-α（OC左側）
+  const E = { x: OX + P.R * SC, y: OY }; // 右端・地面
+
+  // 斜面: BからAへ。物理長さ L = Rcosα/sinα を同じSCスケールで描画
+  const slopeLenM = P.R * Math.cos(P.alpha) / Math.sin(P.alpha); // 物理長さ(m)
+  const slopeLen = slopeLenM * SC; // 描画px（円筒面と同じpx/mスケール）
+  const A = {
+    x: B.x - slopeLen * Math.cos(P.alpha),
+    y: B.y + slopeLen * Math.sin(P.alpha)
+  };
+
+  // 地面
+  const groundY = OY; // A・O・E全て同じy座標
+  ctx.beginPath(); ctx.moveTo(A.x - 20, groundY); ctx.lineTo(E.x + P.R*SC*0.3, groundY);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // 斜面AB（AのX座標はBから斜面方向に延ばした点、Y座標は地面）
+  const Aground = { x: A.x, y: groundY };
+  ctx.beginPath(); ctx.moveTo(Aground.x, Aground.y); ctx.lineTo(B.x, B.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+
+  // 円筒面（上半円: E右→C上→B左 の弧）
+  // canvas角度基準（右=0, 上=-π/2）でθ点 = -π/2 + θ(OC基準)
+  // B: canvas角度 = -π/2 + (-α) = -π/2-α
+  // E: canvas角度 = 0
+  // 左半円（B〜C〜右端）を描く
+  ctx.beginPath();
+  ctx.arc(OX, OY, P.R * SC, -Math.PI/2 - P.alpha, 0, false);
+  ctx.strokeStyle = 'rgba(167,139,250,0.5)'; ctx.lineWidth = 2.5; ctx.stroke();
+
+  // OC鉛直破線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(OX, OY); ctx.lineTo(C.x, C.y - 20); ctx.stroke();
+  ctx.restore();
+
+  // O の点
+  ctx.beginPath(); ctx.arc(OX, OY, 4, 0, Math.PI*2);
+  ctx.fillStyle = '#e8eaf6'; ctx.fill();
+
+  // ラベル
+  const lbl = (txt, x, y, align='center', base='middle') => {
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '11px "Noto Sans JP"';
+    ctx.textAlign = align; ctx.textBaseline = base;
+    ctx.fillText(txt, x, y);
+  };
+  lbl('O', OX - 10, OY);
+  lbl('C', C.x, C.y - 10, 'center', 'bottom');
+  lbl('B', B.x - 10, B.y, 'right', 'middle');
+  lbl('E', E.x + 8, E.y, 'left', 'middle');
+  lbl('A', Aground.x - 6, groundY + 6, 'right', 'top');
+
+  // α の弧（斜面と水平面のなす角）点Aに小さく描く
+  const slopeAng = Math.atan2(B.y - groundY, B.x - Aground.x); // 斜面方向（上向き=負）
+  ctx.save(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(245,158,11,0.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(Aground.x, groundY, 26, slopeAng, 0, false); // 斜面→水平
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = 'rgba(245,158,11,0.9)'; ctx.font = '11px "JetBrains Mono"';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  // ラベルは弧の中間角度方向、少し外側
+  const aMid = slopeAng / 2;
+  ctx.fillText('α', Aground.x + Math.cos(aMid)*38, groundY + Math.sin(aMid)*38);
+
+  // 物体の位置
+  // 物体の位置とtheta
+  let bx, by, theta;
+  if (simState.phase === 'slope') {
+    const t = simState.t;
+    bx = Aground.x + t * (B.x - Aground.x);
+    by = groundY   + t * (B.y - groundY);
+    // 斜面上では常にtheta=-alphaとする（B位置と同じ）
+    theta = -P.alpha;
+  } else {
+    theta = simState.theta;
+    const bp = pos(theta);
+    bx = bp.x; by = bp.y;
+  }
+
+  // θの弧（∠COD: OCと現在の半径OPのなす角）円筒面フェーズのみ
+  if (simState.phase === 'circle' || simState.phase === 'off') {
+    // OP（中心から物体）の半径線
+    ctx.save(); ctx.setLineDash([4,4]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(OX, OY); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.restore();
+
+    if (Math.abs(theta) > 0.03) {
+      // canvas角度: OC方向 = -π/2（真上）, OP方向 = -π/2 + theta
+      const ocAng = -Math.PI/2;
+      const opAng = -Math.PI/2 + theta;
+      ctx.save(); ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(245,158,11,0.6)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(OX, OY, 34, Math.min(ocAng, opAng), Math.max(ocAng, opAng), false);
+      ctx.stroke(); ctx.restore();
+      // θラベル（弧の中間角度方向）
+      const midAng = (ocAng + opAng) / 2;
+      ctx.fillStyle = 'rgba(245,158,11,0.9)'; ctx.font = '11px "JetBrains Mono"';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('θ', OX + Math.cos(midAng)*50, OY + Math.sin(midAng)*50);
+    }
+  }
+
+  // 物体
+  const br = 10 + P.m * 3;
+  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2);
+  ctx.fillStyle = simState.phase === 'off' ? '#64748b' : '#f97316';
+  ctx.fill();
+  ctx.strokeStyle = simState.phase === 'off' ? '#94a3b8' : '#fed7aa';
+  ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(9,br-3)}px "Noto Sans JP"`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('m', bx, by);
+
+  // 力の矢印
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,H); ctx.clip();
+  // 全矢印共通スケール: 斜面のN=mgcosαが基準長さになるように
+  const fScale = P.R * SC * 0.8 / (P.m * G * Math.cos(P.alpha));
+
+  if (mode === 'forces') {
+    // 重力（赤・鉛直下向き）
+    arrow(ctx, bx-12, by, bx-12, by + P.m*G*fScale, '#f87171', 2.5);
+    ctx.fillStyle='#f87171aa'; ctx.font='10px "JetBrains Mono"';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText('mg', bx-16, by + P.m*G*fScale*0.5);
+
+    // 垂直抗力
+    if (simState.phase === 'slope') {
+      const nx = -Math.sin(P.alpha), ny = -Math.cos(P.alpha);
+      arrow(ctx, bx, by, bx + nx*P.N0*fScale, by + ny*P.N0*fScale, '#38bdf8', 2.5);
+      ctx.fillStyle='#38bdf8aa'; ctx.font='10px "JetBrains Mono"';
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillText('N', bx + nx*P.N0*fScale + 6, by + ny*P.N0*fScale);
+    } else if (simState.phase === 'circle') {
+      const st = stateAt(theta, P);
+      if (st.N > 0.01) {
+        const nx = (bx - OX) / (P.R * SC);
+        const ny = (by - OY) / (P.R * SC);
+        arrow(ctx, bx, by, bx + nx*st.N*fScale, by + ny*st.N*fScale, '#38bdf8', 2.5);
+        ctx.fillStyle='#38bdf8aa'; ctx.font='10px "JetBrains Mono"';
+        ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText('N', bx + nx*st.N*fScale + 6, by + ny*st.N*fScale);
+      }
+    }
+  } else {
+    if (simState.phase === 'circle') {
+      const st = stateAt(theta, P);
+      if (st.Fc > 0.01) {
+        const nx = (OX - bx) / (P.R * SC);
+        const ny = (OY - by) / (P.R * SC);
+        arrow(ctx, bx, by, bx + nx*st.Fc*fScale, by + ny*st.Fc*fScale, '#34d399', 3);
+        ctx.fillStyle='#34d399aa'; ctx.font='10px "JetBrains Mono"';
+        ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText('mv²/R', bx + nx*st.Fc*fScale*0.5+6, by + ny*st.Fc*fScale*0.5);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// ─── Simulation ───────────────────────────────────────────────────
+let simState = { phase:'slope', t:0, theta:0, omega:0 };
+
+function resetSim() {
+  const P = curP; if (!P) return;
+  simState = {
+    phase: 'slope',
+    t: 0, s: 0, vs: P.v0,   // v₀ = 点Aでの初速
+    theta: -P.alpha,
+    omega: P.v0 / P.R
+  };
+}
+
+function stepSim(dt) {
+  const P = curP; if (!P) return;
+
+  if (simState.phase === 'slope') {
+    // 斜面上: 加速度 = -g sinα（減速しながら上る）
+    simState.vs -= G * Math.sin(P.alpha) * dt;
+    if (simState.vs <= 0) { simState.vs = 0; return; }
+    const L = P.R * Math.cos(P.alpha) / Math.sin(P.alpha); // 斜面長さ（Bの高さRcosαに対応）
+    simState.s += simState.vs * dt;
+    simState.t = Math.min(simState.s / L, 1);
+    if (simState.t >= 1) {
+      const stB = stateAt(-P.alpha, P);
+      if (stB.N <= 0) {
+        simState.phase = 'off'; // B直後に離脱
+      } else {
+        simState.phase = 'circle';
+        simState.theta = -P.alpha;
+        simState.omega = stB.v / P.R; // B での実際の速さ v_B から
+      }
+    }
+  } else if (simState.phase === 'circle') {
+    // RK4: dθ/dt = ω, dω/dt = -(g/R)sinθ（接線方向）
+    const f = (th, om) => ({
+      dth: om,
+      dom: (G / P.R) * Math.sin(th)
+    });
+    const k1 = f(simState.theta, simState.omega);
+    const k2 = f(simState.theta+dt/2*k1.dth, simState.omega+dt/2*k1.dom);
+    const k3 = f(simState.theta+dt/2*k2.dth, simState.omega+dt/2*k2.dom);
+    const k4 = f(simState.theta+dt*k3.dth,   simState.omega+dt*k3.dom);
+    simState.theta += dt/6*(k1.dth+2*k2.dth+2*k3.dth+k4.dth);
+    simState.omega += dt/6*(k1.dom+2*k2.dom+2*k3.dom+k4.dom);
+
+    const st = stateAt(simState.theta, P);
+    if (st.off) simState.phase = 'off';
+
+    // Bまで戻ったらリセット
+    if (simState.omega < 0 && simState.theta <= -P.alpha + 0.05) {
+      resetSim();
+    }
+  }
+}
+
+// ─── Draw & UI ────────────────────────────────────────────────────
+function drawAnim() {
+  const P = curP; if (!P) return;
+  ['cvAnim1','cvAnim2'].forEach((id,i) => {
+    const cv = document.getElementById(id);
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+    drawPanel(ctx,cv.width,cv.height,simState,P,i===0?'forces':'net');
+  });
+}
+
+function updateReadout() {
+  const P = curP; if (!P) return;
+  let v=0, N=0, Fc=0, thetaDeg='—';
+  if (simState.phase === 'slope') {
+    v = simState.vs; N = P.N0;
+  } else if (simState.phase === 'circle') {
+    const st = stateAt(simState.theta, P);
+    v=st.v; N=st.N; Fc=st.Fc;
+    thetaDeg = `${(Math.abs(simState.theta)*180/Math.PI).toFixed(1)}°`;
+  }
+  document.getElementById('rV').textContent     = `${v.toFixed(3)} m/s`;
+  document.getElementById('rTheta').textContent = thetaDeg;
+  document.getElementById('rN').textContent     = `${N.toFixed(3)} N`;
+  document.getElementById('rFc').textContent    = `${Fc.toFixed(3)} N`;
+
+  const badge = document.getElementById('phaseBadge');
+  if (simState.phase==='slope') {
+    badge.className='phase-badge phase-slope'; badge.textContent='斜面運動中';
+  } else if (simState.phase==='circle') {
+    badge.className='phase-badge phase-circle'; badge.textContent='円筒面外側を運動中';
+  } else {
+    badge.className='phase-badge phase-off'; badge.textContent='面から離脱！';
+  }
+}
+
+function updateAnswers() {
+  const P = curP; if (!P) return;
+  document.getElementById('ans1a').textContent = `mgcosα = ${P.N0.toFixed(2)} N`;
+  document.getElementById('ans1b').textContent = `m(3gcosα−v₀²/R) = ${P.N1.toFixed(2)} N`;
+  document.getElementById('ans2').textContent  = `v₀ ≤ √(3gRcosα) = ${P.v0_cond2.toFixed(2)} m/s`;
+  document.getElementById('ans3').textContent  = `v₀ > √(2gR) = ${P.v0_cond3.toFixed(2)} m/s`;
+  document.getElementById('ans4').textContent  = `(v₀²−2gRcosα)/(3gR) = ${Math.min(1,Math.max(-1,P.cosD)).toFixed(3)}`;
+}
+
+let running=false, lastNow=0, curP=null;
+
+function render() { drawAnim(); updateReadout(); updateAnswers(); }
+
+function loop(now) {
+  const dt = Math.min(0.05,(now-lastNow)/1000);
+  lastNow = now;
+  if (running) stepSim(dt*0.7);
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ 停止':'▶ 再生';
+  lastNow=performance.now();
+});
+document.getElementById('btnReset').addEventListener('click',()=>{
+  running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';
+  curP=getP(); resetSim(); render();
+});
+
+[
+  {id:'sldalpha',out:'valpha',fmt:v=>`${(+v).toFixed(0)}°`},
+  {id:'sldm',    out:'vm',    fmt:v=>`${(+v).toFixed(1)} kg`},
+  {id:'sldv0',   out:'vv0',   fmt:v=>`${(+v).toFixed(1)} m/s`},
+].forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    running=false;
+    document.getElementById('btnPlay').textContent='▶ 再生';
+    curP=getP(); resetSim(); render();
+  });
+});
+
+curP=getP(); resetSim();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
