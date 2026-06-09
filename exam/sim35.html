@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>必修基礎問35 熱量と温度</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --accent:#f59e0b;
+  --ice:#93c5fd;--water:#38bdf8;--steam:#a78bfa;--heat:#f87171;
+  --metal:#fbbf24;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:#34d399;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+/* タブ */
+.tabs{display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border)}
+.tab{padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;border:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;gap:14px;align-items:end}
+.top-bar-1{grid-template-columns:auto 1fr 1fr 1fr 1fr}
+.top-bar-2{grid-template-columns:auto 1fr 1fr 1fr}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-play{background:var(--heat);color:#fff}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:72px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+canvas{display:block;background:transparent}
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+.phase-badge{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;margin-top:4px}
+.phase-ice{background:#0e1a2e;border:1px solid var(--ice);color:var(--ice)}
+.phase-melt{background:#0e2235;border:1px solid var(--water);color:var(--water)}
+.phase-water{background:#0e2a1a;border:1px solid #34d399;color:#34d399}
+.phase-vap{background:#1a0e2e;border:1px solid var(--steam);color:var(--steam)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>必修基礎問 <span>問35</span>　熱量と温度</h1>
+      <p>比熱・熱量の保存（I）と、氷の加熱による状態変化・温度変化グラフ（II）。</p>
+    </div>
+    <div class="badge">玉川大・芝浦工大 / 必修基礎問</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('tab1',this)">I. 熱量の保存（金属球と水）</button>
+    <button class="tab" onclick="switchTab('tab2',this)">II. 氷の加熱（状態変化）</button>
+  </div>
+
+  <!-- ─── Tab I ─────────────────────────────────────────── -->
+  <div id="tab1" class="tab-panel active" style="padding-top:20px">
+    <div class="problem">
+      <strong>問題設定：</strong>断熱容器に水（100g、20℃、比熱4.2 J/(g·K)）と金属球（100g、100℃、比熱c）を入れ、平衡温度34℃になった。<br>
+      <strong>(1)</strong> 水が得た熱量 &nbsp; <strong>(2)</strong> 金属球の比熱 c
+    </div>
+    <div class="top-bar top-bar-1">
+      <div class="btn-group">
+        <button class="btn-play" id="btn1Play">▶ 再生</button>
+        <button class="btn-reset" id="btn1Reset">↺ リセット</button>
+      </div>
+      <label>
+        <div class="label-row"><span>水の質量 m_w (g)</span><span class="val" id="vmw">100 g</span></div>
+        <input type="range" id="sldmw" min="50" max="300" step="50" value="100">
+      </label>
+      <label>
+        <div class="label-row"><span>金属球の温度 T_m (°C)</span><span class="val" id="vTm">100 °C</span></div>
+        <input type="range" id="sldTm" min="60" max="200" step="10" value="100">
+      </label>
+      <label>
+        <div class="label-row"><span>金属球の比熱 c (J/(g·K))</span><span class="val" id="vc">0.89</span></div>
+        <input type="range" id="sldc" min="0.10" max="2.00" step="0.01" value="0.89">
+      </label>
+      <label>
+        <div class="label-row"><span>金属球の質量 m_m (g)</span><span class="val" id="vmm">100 g</span></div>
+        <input type="range" id="sldmm" min="50" max="300" step="50" value="100">
+      </label>
+    </div>
+    <div class="main">
+      <div class="left">
+        <div class="card">
+          <div class="card-head">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--water);display:inline-block"></span>
+            温度−時間グラフ（熱平衡）
+            <span style="display:flex;align-items:center;gap:5px;margin-left:8px"><span style="display:inline-block;width:16px;height:3px;background:var(--water);border-radius:2px"></span><span style="font-size:10px;font-weight:400">水</span></span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:var(--metal);border-radius:2px"></span><span style="font-size:10px;font-weight:400">金属球</span></span>
+          </div>
+          <canvas id="cv1Graph" width="740" height="300" style="width:740px;height:300px"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--metal);display:inline-block"></span>
+            アニメーション
+          </div>
+          <canvas id="cv1Anim" width="740" height="180" style="width:740px;height:180px"></canvas>
+        </div>
+      </div>
+      <div class="right">
+        <div class="readout">
+          <div class="readout-row"><span class="lbl">水の温度</span><span class="num" id="r1Tw" style="color:var(--water)">— °C</span></div>
+          <div class="readout-row"><span class="lbl">金属球の温度</span><span class="num" id="r1Tm" style="color:var(--metal)">— °C</span></div>
+          <div class="readout-row"><span class="lbl">平衡温度</span><span class="num" id="r1Teq" style="color:var(--accent)">— °C</span></div>
+          <div class="readout-row"><span class="lbl">水が得た熱量</span><span class="num" id="r1Q" style="color:var(--heat)">— J</span></div>
+        </div>
+        <div class="answers">
+          <div class="answers-head">解析解（I の答え）</div>
+          <div class="answer-list">
+            <div class="ans-item"><span class="q">(1) 水が得た熱量</span><span class="a" id="a1Q">—</span></div>
+            <div class="ans-item"><span class="q">(2) 金属球の比熱 c</span><span class="a" id="a1c">—</span></div>
+          </div>
+        </div>
+        <div class="info-block">
+          <h3>物理のポイント</h3>
+          <p>熱量の保存（断熱容器）</p>
+          <div class="formula">水が得た熱量 = 金属球が失った熱量</div>
+          <div class="formula">m_w·c_w·ΔT_w = m_m·c·ΔT_m</div>
+          <div class="legend">
+            <div class="leg-item"><span class="leg-swatch" style="background:var(--water)"></span>水の温度（上昇）</div>
+            <div class="leg-item"><span class="leg-swatch" style="background:var(--metal)"></span>金属球の温度（下降）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Tab II ────────────────────────────────────────── -->
+  <div id="tab2" class="tab-panel" style="padding-top:20px">
+    <div class="problem">
+      <strong>問題設定：</strong>−20℃の氷200gに毎秒300Jで加熱。融解熱3.3×10²J/g、蒸発熱2.3×10³J/g、水の比熱4.2、氷の比熱2.1。<br>
+      <strong>(1)</strong> 氷全体が0℃になる時刻 &nbsp; <strong>(2)</strong> 氷が全て水になる時刻 &nbsp; <strong>(3)</strong> 500秒後までに沸騰するか
+    </div>
+    <div class="top-bar top-bar-2">
+      <div class="btn-group">
+        <button class="btn-play" id="btn2Play">▶ 再生</button>
+        <button class="btn-reset" id="btn2Reset">↺ リセット</button>
+      </div>
+      <label>
+        <div class="label-row"><span>質量 m (g)</span><span class="val" id="vm">200 g</span></div>
+        <input type="range" id="sldm" min="50" max="500" step="50" value="200">
+      </label>
+      <label>
+        <div class="label-row"><span>加熱速度 P (J/s)</span><span class="val" id="vP">300 J/s</span></div>
+        <input type="range" id="sldP" min="100" max="1000" step="100" value="300">
+      </label>
+      <label>
+        <div class="label-row"><span>初期温度 T₀ (°C)</span><span class="val" id="vT0">−20 °C</span></div>
+        <input type="range" id="sldT0" min="-40" max="-5" step="5" value="-20">
+      </label>
+    </div>
+    <div class="main">
+      <div class="left">
+        <div class="card">
+          <div class="card-head">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--heat);display:inline-block"></span>
+            温度−時間グラフ（加熱曲線）
+            <span style="display:flex;align-items:center;gap:5px;margin-left:8px"><span style="display:inline-block;width:16px;height:3px;background:var(--ice);border-radius:2px"></span><span style="font-size:10px;font-weight:400">氷</span></span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:var(--water);border-radius:2px"></span><span style="font-size:10px;font-weight:400">水</span></span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:var(--steam);border-radius:2px"></span><span style="font-size:10px;font-weight:400">水蒸気</span></span>
+          </div>
+          <canvas id="cvGraph" width="740" height="360" style="width:740px;height:360px"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--water);display:inline-block"></span>
+            状態アニメーション
+          </div>
+          <canvas id="cvAnim" width="740" height="180" style="width:740px;height:180px"></canvas>
+        </div>
+      </div>
+      <div class="right">
+        <div class="readout">
+          <div class="readout-row"><span class="lbl">経過時間</span><span class="num" id="rT" style="color:var(--accent)">0.0 s</span></div>
+          <div class="readout-row"><span class="lbl">温度</span><span class="num" id="rTemp" style="color:var(--heat)">— °C</span></div>
+          <div class="readout-row"><span class="lbl">与えた総熱量</span><span class="num" id="rQ" style="color:var(--water)">0 J</span></div>
+          <div id="phaseBadge" class="phase-badge phase-ice">氷（固体）</div>
+        </div>
+        <div class="answers">
+          <div class="answers-head">解析解（II の答え）</div>
+          <div class="answer-list">
+            <div class="ans-item"><span class="q">II.(1) t₁（0℃まで）</span><span class="a" id="ans1">—</span></div>
+            <div class="ans-item"><span class="q">II.(2) t₂（融解完了）</span><span class="a" id="ans2">—</span></div>
+            <div class="ans-item"><span class="q">II.(3) 500秒後に沸騰</span><span class="a" id="ans3">—</span></div>
+          </div>
+        </div>
+        <div class="info-block">
+          <h3>物理のポイント</h3>
+          <p>比熱・熱量: Q = mcΔT</p>
+          <p style="margin-top:6px">状態変化（潜熱）: Q = mL</p>
+          <div class="formula">氷→0℃: Q = mc_ice × |T₀|</div>
+          <div class="formula">融解: Q = m × L_melt</div>
+          <div class="formula">水→100℃: Q = mc_water × 100</div>
+          <div class="legend">
+            <div class="leg-item"><span class="leg-swatch" style="background:var(--ice)"></span>氷</div>
+            <div class="leg-item"><span class="leg-swatch" style="background:var(--water);opacity:0.5"></span>融解中（0℃で水平）</div>
+            <div class="leg-item"><span class="leg-swatch" style="background:var(--water)"></span>水</div>
+            <div class="leg-item"><span class="leg-swatch" style="background:var(--steam);opacity:0.5"></span>蒸発中（100℃で水平）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── タブ切り替え ────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// I. 熱平衡
+// ═══════════════════════════════════════════════════════════════
+const CW = 4.2; // 水の比熱
+
+function getP1() {
+  const mw = +document.getElementById('sldmw').value;
+  const mm = +document.getElementById('sldmm').value;
+  const Tm = +document.getElementById('sldTm').value;
+  const c  = +document.getElementById('sldc').value;
+  const Tw0 = 20; // 水の初期温度（固定）
+  // 平衡温度: mw*CW*(Teq-Tw0) = mm*c*(Tm-Teq)
+  const Teq = (mw*CW*Tw0 + mm*c*Tm) / (mw*CW + mm*c);
+  const Q_water = mw * CW * (Teq - Tw0);
+  return { mw, mm, Tm, c, Tw0, Teq, Q_water };
+}
+
+function temp1At(t, p) {
+  const tau = 15;
+  const frac = 1 - Math.exp(-t/tau);
+  let Tw = p.Tw0 + (p.Teq - p.Tw0) * frac;
+  let Tm = p.Tm  + (p.Teq - p.Tm)  * frac;
+  if (Math.abs(Tw - p.Teq) < 0.05) { Tw = p.Teq; Tm = p.Teq; }
+  return { Tw, Tm };
+}
+
+function drawGraph1(p, simT1) {
+  const cv = document.getElementById('cv1Graph');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  const MX=60, MY=20, GW=W-MX-20, GH=H-MY-40;
+
+  const tMax=60, TMin=10, TMax=p.Tm+10;
+  const tx2s=t=>MX+t/tMax*GW;
+  const ty2s=T=>MY+GH-(T-TMin)/(TMax-TMin)*GH;
+
+  // 軸
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(MX,MY); ctx.lineTo(MX,MY+GH); ctx.lineTo(MX+GW,MY+GH); ctx.stroke();
+
+  // 目盛り
+  [p.Tw0, p.Teq, p.Tm].forEach((T,i)=>{
+    const y=ty2s(T);
+    const col = i===0?'#38bdf8':i===1?'#f59e0b':'#fbbf24';
+    ctx.fillStyle=col; ctx.font='10px "JetBrains Mono"';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(`${T.toFixed(1)}°C`, MX-4, y);
+    ctx.save(); ctx.setLineDash([3,4]);
+    ctx.strokeStyle=col+'44'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(MX,y); ctx.lineTo(MX+GW,y); ctx.stroke();
+    ctx.restore();
+  });
+
+  // 曲線（水）
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=i/200*tMax;
+    const {Tw}=temp1At(t,p);
+    const px=tx2s(t), py=ty2s(Tw);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // 曲線（金属球）
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=i/200*tMax;
+    const {Tm}=temp1At(t,p);
+    const px=tx2s(t), py=ty2s(Tm);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle='#fbbf24'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // 平衡温度ラベル
+  ctx.fillStyle='#f59e0b'; ctx.font='bold 10px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(`平衡温度 ${p.Teq.toFixed(1)}°C`, MX+GW*0.6, ty2s(p.Teq)-10);
+
+  // 現在位置
+  if (simT1 <= tMax) {
+    const {Tw,Tm}=temp1At(simT1,p);
+    [['#38bdf8',Tw],['#fbbf24',Tm]].forEach(([col,T])=>{
+      ctx.beginPath(); ctx.arc(tx2s(simT1),ty2s(T),5,0,Math.PI*2);
+      ctx.fillStyle=col; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    });
+  }
+
+  // 軸ラベル
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='11px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText('T(°C)', MX+4, MY+2);
+  ctx.textAlign='right'; ctx.textBaseline='top'; ctx.fillText('t(s)', MX+GW, MY+GH+4);
+}
+
+function drawAnim1(p, simT1) {
+  const cv = document.getElementById('cv1Anim');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  const {Tw,Tm} = temp1At(simT1, p);
+
+  const CX=W*0.45, CY=H*0.88;
+  const BW=220, BH=120, RIM=12;
+
+  // ビーカーパス
+  function beakerPath(){
+    ctx.beginPath();
+    ctx.moveTo(CX-BW/2-RIM, CY-BH-10);
+    ctx.lineTo(CX-BW/2, CY-BH);
+    ctx.lineTo(CX-BW/2, CY-10);
+    ctx.arcTo(CX-BW/2, CY, CX, CY, 10);
+    ctx.arcTo(CX+BW/2, CY, CX+BW/2, CY-10, 10);
+    ctx.lineTo(CX+BW/2, CY-BH);
+    ctx.lineTo(CX+BW/2+RIM, CY-BH-10);
+  }
+
+  // 水をクリップして描画
+  ctx.save();
+  beakerPath();
+  ctx.clip();
+  // 水の色（温度で少し色変化）
+  const waterAlpha = 0.4 + (Tw-20)*0.005;
+  ctx.fillStyle=`rgba(56,189,248,${waterAlpha})`;
+  ctx.fillRect(CX-BW/2, CY-BH, BW, BH);
+
+  // 金属球（水の中に沈んでいる）
+  const ballR = 28;
+  const ballX = CX, ballY = CY - BH*0.38;
+  const hue = Math.max(20, 45 - (Tm-20)*0.3);
+  const light = Math.min(65, 38 + (Tm-20)*0.08);
+  ctx.beginPath(); ctx.arc(ballX, ballY, ballR, 0, Math.PI*2);
+  ctx.fillStyle=`hsl(${hue},80%,${light}%)`;
+  ctx.fill();
+  // 球の光沢
+  ctx.beginPath(); ctx.arc(ballX-8, ballY-8, ballR*0.35, 0, Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.fill();
+  ctx.restore();
+
+  // ビーカー枠線
+  beakerPath();
+  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // 金属球ラベル
+  ctx.fillStyle='#fff'; ctx.font='bold 11px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('金属球', ballX, ballY-4);
+  ctx.font='10px "JetBrains Mono"';
+  ctx.fillText(`${Tm.toFixed(1)}°C`, ballX, ballY+10);
+
+  // 水温ラベル（左下）
+  ctx.fillStyle='#38bdf8'; ctx.font='bold 11px "Noto Sans JP"';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('水', CX-BW/2+10, CY-BH*0.82);
+  ctx.font='10px "JetBrains Mono"';
+  ctx.fillText(`${Tw.toFixed(1)}°C`, CX-BW/2+10, CY-BH*0.82+16);
+
+  // 熱移動の矢印（球の周り）
+  if (Math.abs(Tw-p.Teq) > 0.5) {
+    ctx.strokeStyle='rgba(248,113,113,0.6)'; ctx.lineWidth=1.5;
+    for(let i=0;i<6;i++){
+      const ang = i*Math.PI/3 + simT1*0.05;
+      const r1=ballR+6, r2=ballR+18;
+      ctx.beginPath();
+      ctx.moveTo(ballX+Math.cos(ang)*r1, ballY+Math.sin(ang)*r1);
+      ctx.lineTo(ballX+Math.cos(ang)*r2, ballY+Math.sin(ang)*r2);
+      ctx.stroke();
+    }
+    ctx.fillStyle='rgba(248,113,113,0.7)'; ctx.font='9px "Noto Sans JP"';
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText('熱移動', ballX, ballY-ballR-6);
+  }
+
+  // 平衡後のラベル
+  if (Math.abs(Tw-p.Teq) < 0.5) {
+    ctx.fillStyle='#f59e0b'; ctx.font='bold 11px "Noto Sans JP"';
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText(`熱平衡 ${p.Teq.toFixed(1)}°C`, CX, CY-BH-16);
+  }
+
+  // 断熱容器ラベル
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='10px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('断熱容器', CX, CY-BH-18);
+
+  // 温度計（右側）
+  const TX=CX+BW/2+40, TY=CY-5, TH=110;
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(TX,TY-TH); ctx.lineTo(TX,TY+8); ctx.stroke();
+  ctx.beginPath(); ctx.arc(TX,TY+10,7,0,Math.PI*2);
+  ctx.fillStyle='#38bdf8'; ctx.fill(); ctx.stroke();
+  const ratioW=Math.max(0,Math.min(1,(Tw-10)/(p.Tm+10-10)));
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(TX,TY); ctx.lineTo(TX,TY-TH*ratioW); ctx.stroke();
+  // 金属球用（右隣）
+  const TX2=TX+18;
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(TX2,TY-TH); ctx.lineTo(TX2,TY+8); ctx.stroke();
+  ctx.beginPath(); ctx.arc(TX2,TY+10,7,0,Math.PI*2);
+  ctx.fillStyle='#fbbf24'; ctx.fill(); ctx.stroke();
+  const ratioM=Math.max(0,Math.min(1,(Tm-10)/(p.Tm+10-10)));
+  ctx.strokeStyle='#fbbf24'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(TX2,TY); ctx.lineTo(TX2,TY-TH*ratioM); ctx.stroke();
+  // ラベル
+  ctx.fillStyle='#38bdf8'; ctx.font='8px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('水', TX, TY-TH-2);
+  ctx.fillStyle='#fbbf24';
+  ctx.fillText('球', TX2, TY-TH-2);
+}
+
+function updateReadout1(p, simT1) {
+  const {Tw,Tm} = temp1At(simT1, p);
+  const Q = p.mw * CW * (Tw - p.Tw0);
+  document.getElementById('r1Tw').textContent  = `${Tw.toFixed(1)} °C`;
+  document.getElementById('r1Tm').textContent  = `${Tm.toFixed(1)} °C`;
+  document.getElementById('r1Teq').textContent = `${p.Teq.toFixed(1)} °C`;
+  document.getElementById('r1Q').textContent   = `${Q.toFixed(0)} J`;
+  document.getElementById('a1Q').textContent   = `${p.Q_water.toFixed(0)} J ≈ ${(p.Q_water/1e3).toFixed(2)}×10³ J`;
+  // c_実際: 問題では100gの金属球、水温20→34、金属100→34
+  const cCalc = p.mw*CW*(p.Teq-p.Tw0)/(p.mm*(p.Tm-p.Teq));
+  document.getElementById('a1c').textContent   = `${cCalc.toFixed(2)} J/(g·K)`;
+}
+
+let simT1=0, running1=false, lastNow1=0;
+
+function loop1(now) {
+  const dt=Math.min(0.05,(now-lastNow1)/1000);
+  lastNow1=now;
+  const p=getP1();
+  if (running1) {
+    simT1 += dt*3;
+    if (simT1>60) { simT1=60; running1=false; document.getElementById('btn1Play').textContent='▶ 再生'; }
+  }
+  drawGraph1(p, simT1);
+  drawAnim1(p, simT1);
+  updateReadout1(p, simT1);
+  requestAnimationFrame(loop1);
+}
+
+document.getElementById('btn1Play').addEventListener('click',()=>{
+  running1=!running1;
+  document.getElementById('btn1Play').textContent=running1?'⏸ 停止':'▶ 再生';
+  lastNow1=performance.now();
+});
+document.getElementById('btn1Reset').addEventListener('click',()=>{
+  running1=false; simT1=0;
+  document.getElementById('btn1Play').textContent='▶ 再生';
+});
+[
+  {id:'sldmw',out:'vmw',fmt:v=>`${(+v).toFixed(0)} g`},
+  {id:'sldTm',out:'vTm',fmt:v=>`${(+v).toFixed(0)} °C`},
+  {id:'sldc', out:'vc', fmt:v=>`${(+v).toFixed(2)}`},
+  {id:'sldmm',out:'vmm',fmt:v=>`${(+v).toFixed(0)} g`},
+].forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    running1=false; simT1=0;
+    document.getElementById('btn1Play').textContent='▶ 再生';
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// II. 氷の加熱
+// ═══════════════════════════════════════════════════════════════
+const C_ICE=2.1, C_WATER=4.2, C_STEAM=2.0, L_MELT=3.3e2, L_VAP=2.3e3;
+
+function getP2() {
+  const m  = +document.getElementById('sldm').value;
+  const P  = +document.getElementById('sldP').value;
+  const T0 = +document.getElementById('sldT0').value;
+  const Q1=m*C_ICE*Math.abs(T0), Q2=Q1+m*L_MELT, Q3=Q2+m*C_WATER*100, Q4=Q3+m*L_VAP;
+  const t1=Q1/P, t2=Q2/P, t3=Q3/P, t4=Q4/P;
+  const boil=P*500>=Q3;
+  return {m,P,T0,Q1,Q2,Q3,Q4,t1,t2,t3,t4,boil};
+}
+
+function tempAt(t,p) {
+  const Q=p.P*t;
+  if(Q<p.Q1) return p.T0+Q/(p.m*C_ICE);
+  if(Q<p.Q2) return 0;
+  if(Q<p.Q3) return (Q-p.Q2)/(p.m*C_WATER);
+  if(Q<p.Q4) return 100;
+  return 100+(Q-p.Q4)/(p.m*C_STEAM);
+}
+
+function phaseAt(t,p) {
+  const Q=p.P*t;
+  if(Q<p.Q1) return 'ice';
+  if(Q<p.Q2) return 'melt';
+  if(Q<p.Q3) return 'water';
+  if(Q<p.Q4) return 'vap';
+  return 'steam';
+}
+
+function drawGraph2(p,simT) {
+  const cv=document.getElementById('cvGraph');
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width,H=cv.height;
+  const MX=60,MY=20,GW=W-MX-20,GH=H-MY-50;
+  const tMax=Math.max(600,p.t4*1.1);
+  const TMin=p.T0-5,TMax=130;
+  const tx2s=t=>MX+t/tMax*GW;
+  const ty2s=T=>MY+GH-(T-TMin)/(TMax-TMin)*GH;
+
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(MX,MY); ctx.lineTo(MX,MY+GH); ctx.lineTo(MX+GW,MY+GH); ctx.stroke();
+
+  [p.T0,0,100].forEach(T=>{
+    const y=ty2s(T);
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='11px "JetBrains Mono"';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(`${T}℃`,MX-4,y);
+    ctx.save(); ctx.setLineDash([3,3]);
+    ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(MX,y); ctx.lineTo(MX+GW,y); ctx.stroke();
+    ctx.restore();
+  });
+
+  [p.t1,p.t2,500].forEach(t=>{
+    if(t>tMax) return;
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='10px "JetBrains Mono"';
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText(`${Math.round(t)}s`,tx2s(t),MY+GH+4);
+  });
+
+  const phases=[
+    {color:'#93c5fd',from:0,to:p.t1},
+    {color:'#38bdf888',from:p.t1,to:p.t2},
+    {color:'#38bdf8',from:p.t2,to:p.t3},
+    {color:'#a78bfa88',from:p.t3,to:p.t4},
+    {color:'#a78bfa',from:p.t4,to:tMax},
+  ];
+  phases.forEach(({color,from,to})=>{
+    if(from>=tMax) return;
+    const tEnd=Math.min(to,tMax);
+    ctx.beginPath();
+    ctx.moveTo(tx2s(from),ty2s(tempAt(from,p)));
+    for(let i=1;i<=50;i++){
+      const t=from+(tEnd-from)*i/50;
+      ctx.lineTo(tx2s(t),ty2s(tempAt(t,p)));
+    }
+    ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.setLineDash([]); ctx.stroke();
+  });
+
+  [[p.t1,'t₁','#f59e0b'],[p.t2,'t₂','#38bdf8'],[500,'500s','#f87171']].forEach(([t,lbl,col])=>{
+    if(t>tMax) return;
+    ctx.save(); ctx.setLineDash([4,4]);
+    ctx.strokeStyle=col+'88'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(tx2s(t),MY); ctx.lineTo(tx2s(t),MY+GH); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle=col; ctx.font='bold 10px "JetBrains Mono"';
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText(lbl,tx2s(t),MY-2);
+  });
+
+  if(simT<=tMax){
+    const curT=tempAt(simT,p);
+    ctx.beginPath(); ctx.arc(tx2s(simT),ty2s(curT),6,0,Math.PI*2);
+    ctx.fillStyle='#f97316'; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='11px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText('T(°C)',MX+4,MY+2);
+  ctx.textAlign='right'; ctx.textBaseline='top'; ctx.fillText('t(s)',MX+GW,MY+GH+4);
+}
+
+function drawAnim2(p,simT) {
+  const cv=document.getElementById('cvAnim');
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width,H=cv.height;
+  const phase=phaseAt(simT,p);
+  const T_cur=tempAt(simT,p);
+  const Q_cur=p.P*simT;
+
+  const bgColor={ice:'rgba(147,197,253,0.08)',melt:'rgba(56,189,248,0.08)',water:'rgba(56,189,248,0.12)',vap:'rgba(167,139,250,0.08)',steam:'rgba(167,139,250,0.12)'}[phase];
+  ctx.fillStyle=bgColor; ctx.fillRect(0,0,W,H);
+
+  const CX=W*0.46,CY=H*0.88;
+  const BW=160,BH=110,RIM=10;
+
+  function beakerPath(){
+    ctx.beginPath();
+    ctx.moveTo(CX-BW/2-RIM,CY-BH-8);
+    ctx.lineTo(CX-BW/2,CY-BH);
+    ctx.lineTo(CX-BW/2,CY-10);
+    ctx.arcTo(CX-BW/2,CY,CX,CY,10);
+    ctx.arcTo(CX+BW/2,CY,CX+BW/2,CY-10,10);
+    ctx.lineTo(CX+BW/2,CY-BH);
+    ctx.lineTo(CX+BW/2+RIM,CY-BH-8);
+  }
+
+  ctx.save();
+  beakerPath();
+  ctx.clip();
+
+  const fillRatio=phase==='melt'?(Q_cur-p.Q1)/(p.Q2-p.Q1):1.0;
+  const vapRatio=phase==='vap'?(Q_cur-p.Q3)/(p.Q4-p.Q3):(phase==='steam'?1.0:0);
+
+  if(phase==='ice'||phase==='melt'){
+    ctx.fillStyle='rgba(147,197,253,0.5)';
+    ctx.fillRect(CX-BW/2,CY-BH,BW,BH);
+    if(phase==='melt'){
+      ctx.fillStyle='rgba(56,189,248,0.6)';
+      ctx.fillRect(CX-BW/2,CY-BH*fillRatio,BW,BH*fillRatio);
+    }
+  } else if(phase==='water'){
+    ctx.fillStyle='rgba(56,189,248,0.55)';
+    ctx.fillRect(CX-BW/2,CY-BH,BW,BH);
+  } else {
+    const waterH=BH*(1-vapRatio);
+    ctx.fillStyle='rgba(56,189,248,0.55)';
+    ctx.fillRect(CX-BW/2,CY-waterH,BW,waterH);
+  }
+  ctx.restore();
+
+  beakerPath();
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2.5; ctx.stroke();
+
+  if(phase==='vap'||phase==='steam'){
+    for(let i=0;i<6;i++){
+      const bx=CX-60+i*24;
+      const by=CY-20-(simT*1.2+i*25)%90;
+      if(by>CY-BH-20){
+        ctx.beginPath(); ctx.arc(bx,by,3+i%2,0,Math.PI*2);
+        ctx.fillStyle='rgba(167,139,250,0.6)'; ctx.fill();
+      }
+    }
+  }
+
+  if(phase==='ice'){
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1;
+    for(let i=0;i<3;i++) for(let j=0;j<2;j++){
+      const ix=CX-50+i*50,iy=CY-BH*0.7+j*40;
+      ctx.save(); ctx.translate(ix,iy);
+      for(let k=0;k<6;k++){ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,12);ctx.stroke();ctx.rotate(Math.PI/3);}
+      ctx.restore();
+    }
+  }
+
+  ctx.fillStyle='rgba(248,113,113,0.4)';
+  ctx.fillRect(CX-BW/2,CY+2,BW,12);
+  ctx.fillStyle='#f87171'; ctx.font='10px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(`${p.P} J/s`,CX,CY+8);
+
+  const TX=CX+BW/2+35,TY=CY-5,TH=120;
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(TX,TY-TH); ctx.lineTo(TX,TY+8); ctx.stroke();
+  ctx.beginPath(); ctx.arc(TX,TY+10,7,0,Math.PI*2);
+  ctx.fillStyle='#f87171'; ctx.fill(); ctx.stroke();
+  const ratio=Math.max(0,Math.min(1,(T_cur-(-40))/(140-(-40))));
+  ctx.strokeStyle='#f87171'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(TX,TY); ctx.lineTo(TX,TY-TH*ratio); ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
+  [-20,0,100].forEach(T=>{
+    const y=TY-TH*(T-(-40))/(140-(-40));
+    ctx.beginPath(); ctx.moveTo(TX-5,y); ctx.lineTo(TX+5,y); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='9px "JetBrains Mono"';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(`${T}°`,TX-8,y);
+  });
+  ctx.fillStyle='#f87171'; ctx.font='bold 10px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(`${T_cur.toFixed(1)}°C`,TX+8,TY-TH*ratio);
+
+  const phaseLabel={ice:'氷（固体）',melt:'融解中（氷＋水）',water:'水（液体）',vap:'蒸発中（100℃）',steam:'水蒸気（気体）'}[phase];
+  const phaseColor={ice:'#93c5fd',melt:'#38bdf8',water:'#38bdf8',vap:'#a78bfa',steam:'#a78bfa'}[phase];
+  ctx.fillStyle=phaseColor; ctx.font='bold 13px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(phaseLabel,CX,8);
+}
+
+function updateReadout2(p,simT) {
+  const T_cur=tempAt(simT,p);
+  const Q_cur=p.P*simT;
+  const phase=phaseAt(simT,p);
+  document.getElementById('rT').textContent=`${simT.toFixed(1)} s`;
+  document.getElementById('rTemp').textContent=`${T_cur.toFixed(1)} °C`;
+  document.getElementById('rQ').textContent=`${Math.round(Q_cur)} J`;
+  const badge=document.getElementById('phaseBadge');
+  const configs={ice:['phase-ice','氷（固体）'],melt:['phase-melt','融解中（氷＋水）'],water:['phase-water','水（液体）'],vap:['phase-vap','蒸発中（100℃）'],steam:['phase-vap','水蒸気（気体）']};
+  const[cls,lbl]=configs[phase];
+  badge.className=`phase-badge ${cls}`; badge.textContent=lbl;
+  document.getElementById('ans1').textContent=`${p.t1.toFixed(0)} s`;
+  document.getElementById('ans2').textContent=`${p.t2.toFixed(0)} s ≈ ${(p.t2/100).toFixed(1)}×10² s`;
+  document.getElementById('ans3').textContent=p.boil?'沸騰する':`沸騰しない（t₃=${p.t3.toFixed(0)}s > 500s）`;
+}
+
+let simT2=0, running2=false, lastNow2=0;
+
+function loop2(now) {
+  const dt=Math.min(0.05,(now-lastNow2)/1000);
+  lastNow2=now;
+  const p=getP2();
+  if(running2){
+    simT2+=dt*5;
+    const tLimit=Math.max(600,p.t4*1.2);
+    if(simT2>tLimit){simT2=tLimit;running2=false;document.getElementById('btn2Play').textContent='▶ 再生';}
+  }
+  drawGraph2(p,simT2);
+  drawAnim2(p,simT2);
+  updateReadout2(p,simT2);
+  requestAnimationFrame(loop2);
+}
+
+document.getElementById('btn2Play').addEventListener('click',()=>{
+  running2=!running2;
+  document.getElementById('btn2Play').textContent=running2?'⏸ 停止':'▶ 再生';
+  lastNow2=performance.now();
+});
+document.getElementById('btn2Reset').addEventListener('click',()=>{
+  running2=false; simT2=0;
+  document.getElementById('btn2Play').textContent='▶ 再生';
+});
+[
+  {id:'sldm',out:'vm',fmt:v=>`${(+v).toFixed(0)} g`},
+  {id:'sldP',out:'vP',fmt:v=>`${(+v).toFixed(0)} J/s`},
+  {id:'sldT0',out:'vT0',fmt:v=>`${(+v).toFixed(0)} °C`},
+].forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    running2=false; simT2=0;
+    document.getElementById('btn2Play').textContent='▶ 再生';
+  });
+});
+
+requestAnimationFrame(loop1);
+requestAnimationFrame(loop2);
+</script>
+</body>
+</html>
