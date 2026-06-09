@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>必修基礎問33 静止衛星と脱出速度</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --accent:#f59e0b;--ball:#f97316;
+  --gravity:#f87171;--orbit:#38bdf8;--escape:#34d399;--static:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:#34d399;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-play{background:var(--orbit);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+canvas{display:block;background:transparent}
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+.energy-bar{margin-top:8px;padding:8px;background:var(--surface2);border-radius:8px}
+.energy-row{display:flex;justify-content:space-between;font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.energy-total{font-weight:700;border-top:1px solid var(--border);padding-top:4px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>必修基礎問 <span>問33</span>　静止衛星と脱出速度</h1>
+      <p>人工衛星の円運動・脱出速度・静止衛星の軌道半径を万有引力の法則から導く。</p>
+    </div>
+    <div class="badge">青山学院大 / 必修基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>地球（質量M、半径R）のまわりを半径rで円軌道を描く人工衛星（質量m、速さv）。万有引力定数G。<br>
+    <strong>(1)(2)</strong> 円運動の運動方程式 &nbsp;
+    <strong>(3)</strong> 軌道半径 &nbsp;
+    <strong>(4)(5)</strong> 脱出条件 &nbsp;
+    <strong>(6)</strong> 静止衛星の速さ &nbsp;
+    <strong>(7)</strong> 静止衛星の軌道半径
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>衛星速度倍率（円軌道速度×）</span><span class="val" id="vspeed">1.0×</span></div>
+      <input type="range" id="sldspeed" min="0.4" max="1.5" step="0.05" value="1.0">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--orbit);display:inline-block"></span>
+          人工衛星の軌道アニメーション
+          <span style="display:flex;align-items:center;gap:5px;margin-left:8px"><span style="display:inline-block;width:16px;height:3px;background:var(--static);border-radius:2px"></span><span style="font-size:10px;font-weight:400">静止衛星軌道</span></span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:var(--escape);border-radius:2px"></span><span style="font-size:10px;font-weight:400">速度ベクトル</span></span>
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">万有引力による解析解</span>
+        </div>
+        <canvas id="cvAnim" width="740" height="460" style="width:740px;height:460px"></canvas>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">軌道半径 r</span>
+          <span class="num" id="rR" style="color:var(--accent)">— km</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">円軌道速度 v</span>
+          <span class="num" id="rV" style="color:var(--orbit)">— km/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">実際の速度</span>
+          <span class="num" id="rVact" style="color:var(--ball)">— km/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">脱出速度 v_esc</span>
+          <span class="num" id="rVesc" style="color:var(--escape)">— km/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">万有引力 F</span>
+          <span class="num" id="rF" style="color:var(--gravity)">— N</span>
+        </div>
+        <div class="energy-bar">
+          <div class="energy-row"><span style="color:var(--orbit)">運動E</span><span id="eK">— J</span></div>
+          <div class="energy-row"><span style="color:var(--gravity)">位置E</span><span id="eU">— J</span></div>
+          <div class="energy-row energy-total">
+            <span>力学的E</span>
+            <span id="eTotal" style="color:var(--escape)">— J</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item"><span class="q">(1) 向心加速度</span><span class="a">v²/r</span></div>
+          <div class="ans-item"><span class="q">(2) 万有引力</span><span class="a">GMm/r²</span></div>
+          <div class="ans-item"><span class="q">(3) 軌道半径 r</span><span class="a">GM/v²</span></div>
+          <div class="ans-item"><span class="q">(4)(5) 脱出条件</span><span class="a">½mu²−GMm/r ≥ 0</span></div>
+          <div class="ans-item"><span class="q">(6) 静止衛星速さ</span><span class="a" id="ans6">—</span></div>
+          <div class="ans-item"><span class="q">(7) 静止衛星半径</span><span class="a" id="ans7">—</span></div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>円運動の運動方程式</p>
+        <div class="formula">mv²/r = GMm/r² → r = GM/v²</div>
+        <p style="margin-top:8px">脱出速度（第二宇宙速度）</p>
+        <div class="formula">½mv² − GMm/r ≥ 0 → v ≥ √(2GM/r)</div>
+        <p style="margin-top:8px">静止衛星: v_s = r_s·ω</p>
+        <div class="formula">r_s = (GM/ω²)^(1/3)</div>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--orbit)"></span>円軌道（E&lt;0）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--static)"></span>静止衛星軌道（r≈6.6R）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--escape)"></span>速度≥脱出速度（E≥0）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G  = 6.674e-11;
+const M  = 5.972e24;
+const RE = 6.371e6;
+const omega_earth = 2*Math.PI / (24*3600);
+const rs = Math.pow(G*M/omega_earth**2, 1/3); // 静止衛星軌道半径
+
+function getP() {
+  const rRatio = rs / RE; // 静止衛星軌道に固定
+  const speedMult = +document.getElementById('sldspeed').value;
+  const r   = rRatio * RE;
+  const v_circ = Math.sqrt(G*M/r);       // 円軌道速度
+  const v   = v_circ * speedMult;        // 実際の速度
+  const v_esc = Math.sqrt(2*G*M/r);      // 脱出速度
+  const F   = G*M*1.0/r**2;             // 万有引力（m=1kgで）
+  const KE  = 0.5*1.0*v**2;
+  const UE  = -G*M*1.0/r;
+  const E   = KE + UE;
+  const omega = v / r;                   // 実際の角速度
+  return { r, rRatio, v, v_circ, v_esc, F, KE, UE, E, omega, speedMult };
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────
+let angle = 0;
+
+function draw(P, isEscape, v_cur) {
+  const cv  = document.getElementById('cvAnim');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  const CX=W*0.5, CY=H*0.5;
+
+  // スケール: 地球半径REをpx_REpxで表示
+  const maxR = 8 * RE;
+  const SC   = Math.min(W,H)*0.45 / maxR;
+  const earthR = RE * SC;
+
+  // 星（背景）
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  for(let i=0;i<80;i++){
+    const sx=(Math.sin(i*137.5)*0.5+0.5)*W;
+    const sy=(Math.cos(i*97.3)*0.5+0.5)*H;
+    ctx.beginPath(); ctx.arc(sx,sy,Math.random()<0.3?1.2:0.6,0,Math.PI*2); ctx.fill();
+  }
+
+  // 静止衛星軌道（紫破線）
+  const rsPX = rs * SC;
+  ctx.save(); ctx.setLineDash([6,4]);
+  ctx.strokeStyle='rgba(167,139,250,0.4)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(CX,CY,rsPX,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(167,139,250,0.6)'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(`静止衛星軌道 r_s≈${(rs/RE).toFixed(1)}R`, CX+rsPX+4, CY);
+
+  // 地球
+  const grad = ctx.createRadialGradient(CX-earthR*0.3, CY-earthR*0.3, 0, CX, CY, earthR);
+  grad.addColorStop(0,'#4ade80');
+  grad.addColorStop(0.4,'#2563eb');
+  grad.addColorStop(1,'#1e3a5f');
+  ctx.beginPath(); ctx.arc(CX,CY,earthR,0,Math.PI*2);
+  ctx.fillStyle=grad; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='bold 12px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('地球', CX, CY);
+
+  // 衛星の位置（sat座標をpxに変換）
+  const sx = CX + sat.x * SC;
+  const sy = CY - sat.y * SC;
+  const rPX = Math.sqrt((sx-CX)**2+(sy-CY)**2);
+
+  // 万有引力（現在のrで計算、基準はrs位置でのF）
+  const r_now = Math.sqrt(sat.x**2+sat.y**2);
+  const F_now = G*M/r_now**2;
+  const F_base = G*M/rs**2; // 静止衛星軌道でのF（基準）
+  const FscaleLen = 40 * (F_now / F_base); // 基準40pxに対して比例
+  const fdx = (CX-sx)/rPX, fdy = (CY-sy)/rPX;
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+fdx*FscaleLen, sy+fdy*FscaleLen);
+  ctx.strokeStyle='#f87171'; ctx.lineWidth=2; ctx.stroke();
+  // 矢印先端
+  const fang = Math.atan2(fdy,fdx);
+  ctx.beginPath();
+  ctx.moveTo(sx+fdx*FscaleLen, sy+fdy*FscaleLen);
+  ctx.lineTo(sx+fdx*FscaleLen - 7*Math.cos(fang-Math.PI/6), sy+fdy*FscaleLen - 7*Math.sin(fang-Math.PI/6));
+  ctx.lineTo(sx+fdx*FscaleLen - 7*Math.cos(fang+Math.PI/6), sy+fdy*FscaleLen - 7*Math.sin(fang+Math.PI/6));
+  ctx.fillStyle='#f87171'; ctx.fill();
+
+  // 速度ベクトル（実際の速度方向）
+  const vdx = v_cur>0 ? sat.vx/v_cur : 0;
+  const vdy = v_cur>0 ? -sat.vy/v_cur : 1;
+  const vLen = 40 * (v_cur / P.v_circ); // 円軌道速度を基準に長さ変化
+  const vColor = isEscape ? '#34d399' : '#38bdf8';
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+vdx*vLen, sy+vdy*vLen);
+  ctx.strokeStyle=vColor; ctx.lineWidth=2.5; ctx.stroke();
+  const vang = Math.atan2(vdy,vdx);
+  ctx.beginPath();
+  ctx.moveTo(sx+vdx*vLen, sy+vdy*vLen);
+  ctx.lineTo(sx+vdx*vLen - 8*Math.cos(vang-Math.PI/6), sy+vdy*vLen - 8*Math.sin(vang-Math.PI/6));
+  ctx.lineTo(sx+vdx*vLen - 8*Math.cos(vang+Math.PI/6), sy+vdy*vLen - 8*Math.sin(vang+Math.PI/6));
+  ctx.fillStyle=vColor; ctx.fill();
+  ctx.fillStyle=vColor+'bb'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='bottom';
+  ctx.fillText(isEscape?'v≥v_esc':'v', sx+vdx*vLen+5, sy+vdy*vLen);
+
+  // 衛星
+  ctx.beginPath(); ctx.arc(sx,sy,7,0,Math.PI*2);
+  ctx.fillStyle=isEscape?'#34d399':'#f97316'; ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // r のラベル（半径線）
+  ctx.save(); ctx.setLineDash([3,3]);
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(CX,CY); ctx.lineTo(sx,sy); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='11px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  const midx=(CX+sx)/2, midy=(CY+sy)/2;
+  ctx.fillText(`r=${(r_now/RE).toFixed(1)}R`, midx, midy-4);
+
+  // エネルギー状態表示
+  const eLabel = isEscape ? '⚡ E≥0 → 脱出可能' : '🔒 E<0 → 束縛軌道';
+  const eColor = isEscape ? '#34d399' : '#38bdf8';
+  ctx.fillStyle=eColor; ctx.font='bold 12px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(eLabel, CX, 12);
+
+  // 静止衛星の位置（静止衛星軌道上）
+  const ssX = CX + rsPX;
+  const ssY = CY;
+  ctx.beginPath(); ctx.arc(ssX, ssY, 5, 0, Math.PI*2);
+  ctx.fillStyle='#a78bfa'; ctx.fill();
+  ctx.fillStyle='#a78bfabb'; ctx.font='9px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('静止衛星', ssX+7, ssY-6);
+}
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateReadout(P, r_cur, v_cur, KE_cur, UE_cur, E_cur) {
+  document.getElementById('rR').textContent    = `${(r_cur/1e6).toFixed(2)} Mm`;
+  document.getElementById('rV').textContent    = `${(P.v_circ/1e3).toFixed(2)} km/s`;
+  document.getElementById('rVact').textContent = `${(v_cur/1e3).toFixed(2)} km/s`;
+  document.getElementById('rVesc').textContent = `${(P.v_esc/1e3).toFixed(2)} km/s`;
+  document.getElementById('rF').textContent    = `${(G*M/r_cur**2).toFixed(4)} N/kg`;
+  document.getElementById('eK').textContent    = `${(KE_cur/1e6).toFixed(3)} MJ/kg`;
+  document.getElementById('eU').textContent    = `${(UE_cur/1e6).toFixed(3)} MJ/kg`;
+  const eTotal = document.getElementById('eTotal');
+  eTotal.textContent = `${(E_cur/1e6).toFixed(3)} MJ/kg`;
+  eTotal.style.color = E_cur >= 0 ? 'var(--escape)' : 'var(--orbit)';
+
+  document.getElementById('ans6').textContent = `v_s = r_s·ω = ${(rs*omega_earth/1e3).toFixed(2)} km/s`;
+  document.getElementById('ans7').textContent = `(GM/ω²)^(1/3) = ${(rs/RE).toFixed(2)} R ≈ ${(rs/1e6).toFixed(1)} Mm`;
+}
+
+let running=false, lastNow=0, curP=null;
+// 衛星の状態: 位置(x,y)、速度(vx,vy) — 単位はメートル
+let sat = { x:0, y:0, vx:0, vy:0 };
+let trail = []; // 軌跡
+
+function resetSat() {
+  const P = getP();
+  sat.x  =  P.r;  sat.y  = 0;
+  sat.vx =  0;    sat.vy = P.v; // 接線方向（上向き）に初速
+  trail = [];
+}
+
+function stepRK4(dt) {
+  const f = (x,y,vx,vy) => {
+    const r3 = Math.pow(x*x+y*y, 1.5);
+    return { ax: -G*M*x/r3, ay: -G*M*y/r3 };
+  };
+  const {x,y,vx,vy} = sat;
+  const k1 = f(x,y,vx,vy);
+  const k2 = f(x+vx*dt/2, y+vy*dt/2, vx+k1.ax*dt/2, vy+k1.ay*dt/2);
+  const k3 = f(x+vx*dt/2, y+vy*dt/2, vx+k2.ax*dt/2, vy+k2.ay*dt/2);
+  const k4 = f(x+vx*dt,   y+vy*dt,   vx+k3.ax*dt,   vy+k3.ay*dt);
+  sat.x  += dt/6*(vx*4 + (vx+k1.ax*dt/2)*2 + (vx+k2.ax*dt/2)*2 + (vx+k3.ax*dt));
+  // 簡略: leapfrog的に
+  const ax = (k1.ax+2*k2.ax+2*k3.ax+k4.ax)/6;
+  const ay = (k1.ay+2*k2.ay+2*k3.ay+k4.ay)/6;
+  sat.x  += (vx + (vx+k1.ax*dt+vx+k2.ax*dt+vx+k3.ax*dt+vx+k4.ax*dt)/4*0)*dt;
+  sat.y  += vy*dt + ay*dt*dt*0.5;
+  sat.vx += ax*dt;
+  sat.vy += ay*dt;
+  // 正確なRK4
+  sat.x = x + dt/6*(vx + 2*(vx+k1.ax*dt/2) + 2*(vx+k2.ax*dt/2) + (vx+k3.ax*dt));
+  sat.y = y + dt/6*(vy + 2*(vy+k1.ay*dt/2) + 2*(vy+k2.ay*dt/2) + (vy+k3.ay*dt));
+  sat.vx = vx + dt/6*(k1.ax+2*k2.ax+2*k3.ax+k4.ax);
+  sat.vy = vy + dt/6*(k1.ay+2*k2.ay+2*k3.ay+k4.ay);
+
+  trail.push({x:sat.x, y:sat.y});
+  if (trail.length > 500) trail.shift();
+
+  // 地球に衝突or遠すぎたらリセット
+  const r = Math.sqrt(sat.x**2+sat.y**2);
+  if (r < RE || r > RE*200) {
+    running = false;
+    document.getElementById('btnPlay').textContent = '▶ 再生';
+  }
+}
+
+function loop(now) {
+  const dt = Math.min(0.05,(now-lastNow)/1000);
+  lastNow = now;
+  curP = getP();
+
+  if (running) {
+    // 時間加速: 実時間dt → 物理時間dt*timeScale
+    const timeScale = 5e3;
+    const steps = 20;
+    for(let i=0;i<steps;i++) stepRK4(dt*timeScale/steps);
+  }
+
+  // readout用の現在状態
+  const r_cur = Math.sqrt(sat.x**2+sat.y**2);
+  const v_cur = Math.sqrt(sat.vx**2+sat.vy**2);
+  const KE_cur = 0.5*v_cur**2;
+  const UE_cur = -G*M/r_cur;
+  const E_cur  = KE_cur+UE_cur;
+  const isEscape = E_cur >= 0;
+
+  draw(curP, isEscape, v_cur);
+  updateReadout(curP, r_cur, v_cur, KE_cur, UE_cur, E_cur);
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ 停止':'▶ 再生';
+  lastNow=performance.now();
+});
+document.getElementById('btnReset').addEventListener('click',()=>{
+  running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';
+  resetSat();
+});
+
+[
+  {id:'sldspeed',out:'vspeed',fmt:v=>`${(+v).toFixed(2)}×`},
+].forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    resetSat();
+  });
+});
+
+resetSat();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

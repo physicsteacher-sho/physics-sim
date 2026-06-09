@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>実戦基礎問32 ばね振り子と物体の離れる条件</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --accent:#f59e0b;--ball:#f97316;
+  --spring:#a78bfa;--gravity:#f87171;--normal:#38bdf8;--net:#34d399;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:#34d399;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-play{background:var(--normal);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:58px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+canvas{display:block;background:transparent}
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+.phase-badge{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;margin-top:4px}
+.phase-together{background:#0e1a2e;border:1px solid var(--normal);color:var(--normal)}
+.phase-separated{background:#2a1a0a;border:1px solid var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>実戦基礎問 <span>問32</span>　ばね振り子と物体の離れる条件</h1>
+      <p>板A（質量m）の上に物体B（質量m）を乗せ、鉛直ばね振り子として単振動させる。BはAから離れるか？</p>
+    </div>
+    <div class="badge">神奈川工科大 改 / 実戦基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>問題設定：</strong>ばね定数k。A+Bでつりあい時ばねが2d縮む。さらに3d押し込んで静かに放す。<br>
+    <strong>(1)</strong> 一体運動中にBがAから受ける垂直抗力N（xの関数） &nbsp;
+    <strong>(2)</strong> BがAから離れる位置 &nbsp;
+    <strong>(3)</strong> 離れるときのA・Bの速さ
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>押し込み量 A (m)</span><span class="val" id="va">2.0 m</span></div>
+      <input type="range" id="slda" min="0.2" max="3.0" step="0.1" value="2.0">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--spring);display:inline-block"></span>
+          アニメーション
+          <span style="display:flex;align-items:center;gap:5px;margin-left:8px"><span style="display:inline-block;width:16px;height:3px;background:#f87171;border-radius:2px"></span><span style="font-size:10px;font-weight:400">重力 mg</span></span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#38bdf8;border-radius:2px"></span><span style="font-size:10px;font-weight:400">垂直抗力 N</span></span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#a78bfa;border-radius:2px"></span><span style="font-size:10px;font-weight:400">ばね力</span></span>
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">解析解</span>
+        </div>
+        <canvas id="cvAnim" width="740" height="340" style="width:740px;height:340px"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>
+          N-x グラフ・x-t グラフ
+        </div>
+        <canvas id="cvGraph" width="740" height="220" style="width:740px;height:220px"></canvas>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">位置 x (つりあい基準)</span>
+          <span class="num" id="rX" style="color:var(--accent)">0.000 m</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速さ |v|</span>
+          <span class="num" id="rV" style="color:var(--ball)">0.000 m/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">垂直抗力 N</span>
+          <span class="num" id="rN" style="color:var(--normal)">0.000 N</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">ばねの縮み</span>
+          <span class="num" id="rSpr" style="color:var(--spring)">0.000 m</span>
+        </div>
+        <div id="phaseBadge" class="phase-badge phase-together">A・B 一体で運動中</div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item"><span class="q">(1) 垂直抗力 N</span><span class="a" id="ans1">—</span></div>
+          <div class="ans-item"><span class="q">(2) 離れる位置 x₁</span><span class="a" id="ans2">—</span></div>
+          <div class="ans-item"><span class="q">(3) 離れるときの速さ v₁</span><span class="a" id="ans3">—</span></div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>A・B一体の運動方程式</p>
+        <div class="formula">A: ma = k(2d−x) − mg − N</div>
+        <div class="formula">B: ma = N − mg</div>
+        <p style="margin-top:8px">→ N = ½k(2d−x)</p>
+        <p style="margin-top:8px">BがAから離れる条件：N = 0</p>
+        <div class="formula">x = 2d（ばね自然長位置）</div>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--gravity)"></span>重力 mg（下向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--normal)"></span>垂直抗力 N（上向き）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--spring)"></span>ばね力 k(2d−x)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G = 9.8;
+
+function getP() {
+  const k  = 10;
+  const m  = 1.0;
+  const g  = 9.8;
+  const d  = m*g/k;  // つりあい条件: kd = mg → d = mg/k = 0.98m
+  const a  = +document.getElementById('slda').value;
+  const gEff = g;
+  const omega = Math.sqrt(k/(2*m));
+  const T     = 2*Math.PI/omega;
+  const amp   = a;                   // 振幅 = 追加押し込み量
+  const x1    = 2*d;                 // 離れる位置
+  const v1    = a>2*d ? Math.sqrt(a*a - 4*d*d) * omega : 0; // 離れるときの速さ
+  const willSeparate = a >= 2*d;
+  return { k, m, d, a, gEff, omega, T, amp, x1, v1, willSeparate };
+}
+
+// 解析解: x(t) = -3d cos(ωt)
+function stateAt(t, P) {
+  const x = -P.amp * Math.cos(P.omega * t);
+  const v =  P.amp * P.omega * Math.sin(P.omega * t);
+  const N = 0.5 * P.k * (2*P.d - x);
+  return { x, v, N };
+}
+
+// ─── Arrow ────────────────────────────────────────────────────────
+function arrow(ctx, x1, y1, x2, y2, color, w=2.5) {
+  const ang = Math.atan2(y2-y1, x2-x1), hd = 8;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hd*Math.cos(ang-Math.PI/6), y2-hd*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(x2-hd*Math.cos(ang+Math.PI/6), y2-hd*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ─── Draw Spring（縦）────────────────────────────────────────────
+function drawSpringV(ctx, x, y1, y2, coils=10, r=8) {
+  const len = y2 - y1;
+  const dy  = len / (coils*2+2);
+  ctx.beginPath(); ctx.moveTo(x, y1);
+  ctx.lineTo(x, y1+dy);
+  for (let i=0; i<coils; i++) {
+    ctx.lineTo(x+r, y1+dy*(2*i+2));
+    ctx.lineTo(x-r, y1+dy*(2*i+3));
+  }
+  ctx.lineTo(x, y2);
+  ctx.strokeStyle='#a78bfa'; ctx.lineWidth=2; ctx.stroke();
+}
+
+// ─── Draw Animation ───────────────────────────────────────────────
+function drawAnim(st, P, separated) {
+  const cv  = document.getElementById('cvAnim');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+
+  const SC    = Math.min(H*0.10, 50) / P.d;
+  const CX    = W*0.38;
+  const floorY = H*0.88;
+  const halfA  = 20;
+  const halfB  = 16;
+
+  // 地面
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.fillRect(CX-80, floorY, 160, 10);
+  for(let i=-6;i<=6;i++){
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(CX+i*12, floorY+10); ctx.lineTo(CX+i*12-8, floorY+22); ctx.stroke();
+  }
+
+  // 板Aの底面y（x=0のとき）
+  // ばね自然長=5d、x=0でばねは2d縮んでる → 板A底面 = floorY - (5d-2d)*SC = floorY - 3d*SC
+  const naturalLen = 5*P.d;
+  const AbaseAt0 = floorY - (naturalLen - 2*P.d)*SC; // x=0での板A底面y
+  const Abase = AbaseAt0 - st.x*SC; // 現在の板A底面y（x増→上へ）
+  const Atop  = Abase - halfA*2;
+  const Ay    = Abase - halfA;
+
+  // ばね（地面〜板A底面）
+  drawSpringV(ctx, CX, floorY, Abase, 10, 8);
+
+  // x=0 破線
+  ctx.save(); ctx.setLineDash([4,4]);
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(CX-90, AbaseAt0-halfA); ctx.lineTo(CX+90, AbaseAt0-halfA); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  ctx.fillText('x=0', CX-65, AbaseAt0-halfA);
+
+  // x=2d 破線（離れる位置）
+  const sepLineY = AbaseAt0 - halfA - 2*P.d*SC;
+  ctx.save(); ctx.setLineDash([3,5]);
+  ctx.strokeStyle='rgba(245,158,11,0.5)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(CX-90, sepLineY); ctx.lineTo(CX+90, sepLineY); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(245,158,11,0.7)'; ctx.font='9px "JetBrains Mono"';
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  ctx.fillText('x=2d（離れる位置）', CX-65, sepLineY);
+
+  // 板A
+  ctx.fillStyle='#60a5fa'; ctx.strokeStyle='#93c5fd'; ctx.lineWidth=2;
+  ctx.fillRect(CX-halfA, Abase-halfA*2, halfA*2, halfA*2);
+  ctx.strokeRect(CX-halfA, Abase-halfA*2, halfA*2, halfA*2);
+  ctx.fillStyle='#fff'; ctx.font='bold 11px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('A', CX, Ay);
+
+  // 物体B
+  const dt_sep = simTime - sepTime;
+  const By = separated
+    ? Atop - halfB - (sepV * dt_sep - 0.5 * P.gEff * dt_sep * dt_sep) * SC
+    : Atop - halfB;
+  ctx.fillStyle=separated?'#94a3b8':'#f97316';
+  ctx.strokeStyle=separated?'#cbd5e1':'#fed7aa';
+  ctx.lineWidth=2;
+  ctx.fillRect(CX-halfB, By-halfB, halfB*2, halfB*2);
+  ctx.strokeRect(CX-halfB, By-halfB, halfB*2, halfB*2);
+  ctx.fillStyle='#fff'; ctx.font='bold 11px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('B', CX, By);
+
+  // 力の矢印
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,H); ctx.clip();
+  const fSC = SC * P.d * 0.8 / (P.m * P.gEff);
+
+  // 重力（赤・下）
+  arrow(ctx, CX+30, By, CX+30, By + P.m*P.gEff*fSC, '#f87171', 2.5);
+  ctx.fillStyle='#f87171bb'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('mg', CX+36, By + P.m*P.gEff*fSC*0.5);
+
+  // 垂直抗力（青・上）
+  if (!separated && st.N > 0.01) {
+    arrow(ctx, CX-30, By, CX-30, By - st.N*fSC, '#38bdf8', 2.5);
+    ctx.fillStyle='#38bdf8bb'; ctx.font='10px "JetBrains Mono"';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText('N', CX-36, By - st.N*fSC*0.5);
+  }
+
+  // ばね力（紫・板Aへ・上向き）
+  const springF = P.k*(2*P.d - st.x);
+  if (Math.abs(springF) > 0.01) {
+    arrow(ctx, CX+30, Ay, CX+30, Ay - springF*fSC*0.5, '#a78bfa', 2.5);
+    ctx.fillStyle='#a78bfabb'; ctx.font='10px "JetBrains Mono"';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('k(2d−x)', CX+36, Ay - springF*fSC*0.25);
+  }
+  ctx.restore();
+}
+
+// ─── Draw Graph ───────────────────────────────────────────────────
+const history = [];
+
+function drawGraph(P) {
+  const cv  = document.getElementById('cvGraph');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  const MX=50, MY=20, GW=W-MX-20, GH=H-MY-30;
+
+  // 左: N-x グラフ、右: x-t グラフ
+  const LW = GW*0.42, RW = GW*0.55;
+  const LX0=MX, RX0=MX+LW+20;
+
+  // ─ N-x グラフ ─
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(LX0,MY); ctx.lineTo(LX0,MY+GH); ctx.lineTo(LX0+LW,MY+GH); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('N-x グラフ', LX0+LW/2, MY-2);
+  ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.fillText('N', LX0-2, MY+2);
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('x', LX0+LW+2, MY+GH-2);
+
+  // N = ½k(2d-x)の直線（x=-3d〜x=2d）
+  const xMin=-3*P.d, xMax=2*P.d;
+  const NMax=0.5*P.k*(2*P.d-xMin); // x=-3dでのN最大
+  const scNx=LW/(xMax-xMin), scNy=GH*0.85/NMax;
+  const nx2s=x=>LX0+(x-xMin)*scNx;
+  const ny2s=n=>MY+GH-n*scNy;
+
+  // x=2d（N=0）の位置
+  ctx.save(); ctx.setLineDash([3,4]);
+  ctx.strokeStyle='rgba(245,158,11,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(nx2s(2*P.d),MY); ctx.lineTo(nx2s(2*P.d),MY+GH); ctx.stroke();
+  ctx.restore();
+
+  // N-x の直線
+  ctx.beginPath();
+  ctx.moveTo(nx2s(xMin), ny2s(NMax));
+  ctx.lineTo(nx2s(2*P.d), ny2s(0));
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=2; ctx.setLineDash([]); ctx.stroke();
+
+  // 現在点
+  const curN = history.length>0 ? history[history.length-1].N : P.k*P.d;
+  const curX = history.length>0 ? history[history.length-1].x : -3*P.d;
+  ctx.beginPath(); ctx.arc(nx2s(curX), ny2s(Math.max(0,curN)), 5, 0, Math.PI*2);
+  ctx.fillStyle='#f97316'; ctx.fill();
+
+  // ─ x-t グラフ ─
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(RX0,MY); ctx.lineTo(RX0,MY+GH); ctx.lineTo(RX0+RW,MY+GH); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='10px "JetBrains Mono"';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('x-t グラフ', RX0+RW/2, MY-2);
+  ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.fillText('x', RX0-2, MY+2);
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('t', RX0+RW+2, MY+GH-2);
+
+  const tMax=P.T*1.5;
+  const scTx=RW/tMax, scTy=GH*0.38/P.amp;
+  const tx2s=t=>RX0+t*scTx;
+  const ty2s=x=>MY+GH*0.6-x*scTy;
+
+  // x=0とx=2dの水平線
+  ctx.save(); ctx.setLineDash([3,4]);
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(RX0,ty2s(0)); ctx.lineTo(RX0+RW,ty2s(0)); ctx.stroke();
+  ctx.strokeStyle='rgba(245,158,11,0.35)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(RX0,ty2s(2*P.d)); ctx.lineTo(RX0+RW,ty2s(2*P.d)); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(245,158,11,0.6)'; ctx.font='9px "JetBrains Mono"';
+  ctx.textAlign='left'; ctx.textBaseline='bottom';
+  ctx.fillText('x=2d', RX0+4, ty2s(2*P.d)-1);
+
+  if (history.length >= 2) {
+    ctx.beginPath();
+    ctx.strokeStyle='#f97316'; ctx.lineWidth=2; ctx.setLineDash([]);
+    history.forEach(({t,x},i)=>{
+      const px=tx2s(t), py=ty2s(x);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+}
+
+// ─── Simulation ───────────────────────────────────────────────────
+let simTime=0, separated=false, sepTime=0, sepV=0, sepX=0;
+
+function resetSim() {
+  simTime=0; separated=false; sepTime=0; sepV=0;
+  history.length=0;
+}
+
+function stepSim(dt) {
+  const P=curP; if(!P) return;
+  simTime += dt;
+  const st = stateAt(simTime, P);
+
+  if (!separated && st.x >= P.x1 && st.v > 0 && P.willSeparate) {
+    separated=true; sepTime=simTime; sepV=st.v; sepX=st.x;
+  }
+
+  if (separated) {
+    const dt_sep = simTime - sepTime;
+    const By_rel = sepV * dt_sep - 0.5 * P.gEff * dt_sep * dt_sep;
+    if (dt_sep > 0.01 && By_rel <= 0) {
+      running = false;
+      document.getElementById('btnPlay').textContent = '▶ 再生';
+    }
+  }
+
+  history.push({t:simTime, x:st.x, N:separated?0:st.N});
+  if (history.length > 3000) history.shift();
+}
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateReadout() {
+  const P=curP; if(!P) return;
+  const st=stateAt(simTime, P);
+  const N=separated?0:st.N;
+  document.getElementById('rX').textContent   = `${st.x.toFixed(3)} m`;
+  document.getElementById('rV').textContent   = `${Math.abs(st.v).toFixed(3)} m/s`;
+  document.getElementById('rN').textContent   = `${N.toFixed(3)} N`;
+  document.getElementById('rSpr').textContent = `${(2*P.d-st.x).toFixed(3)} m`;
+  const badge=document.getElementById('phaseBadge');
+  if (separated) {
+    badge.className='phase-badge phase-separated';
+    badge.textContent='BがAから離れた！';
+  } else if (!P.willSeparate) {
+    badge.className='phase-badge phase-together';
+    badge.textContent='a < 2d → Bは離れない';
+  } else {
+    badge.className='phase-badge phase-together';
+    badge.textContent='A・B 一体で運動中';
+  }
+}
+
+function updateAnswers() {
+  const P=curP; if(!P) return;
+  document.getElementById('ans1').textContent = `N = ½k(2d−x) = ${Math.max(0,0.5*P.k*(2*P.d-stateAt(simTime,P).x)).toFixed(3)} N`;
+  document.getElementById('ans2').textContent = `x₁ = 2d = ${P.x1.toFixed(3)} m`;
+  document.getElementById('ans3').textContent = P.willSeparate
+    ? `v₁ = ${P.v1.toFixed(4)} m/s`
+    : `a < 2d → 離れない（N≥0 常に成立）`;
+}
+
+let running=false, lastNow=0, curP=null;
+
+function render() {
+  const P=curP; if(!P) return;
+  const st=stateAt(simTime, P);
+  drawAnim(st, P, separated);
+  drawGraph(P);
+  updateReadout();
+  updateAnswers();
+}
+
+function loop(now) {
+  const dt=Math.min(0.05,(now-lastNow)/1000);
+  lastNow=now;
+  if(running) stepSim(dt*0.6);
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ 停止':'▶ 再生';
+  lastNow=performance.now();
+});
+document.getElementById('btnReset').addEventListener('click',()=>{
+  running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';
+  curP=getP(); resetSim(); render();
+});
+
+[
+  {id:'slda',out:'va',fmt:v=>`${(+v).toFixed(2)} m`},
+].forEach(({id,out,fmt})=>{
+  document.getElementById(id).addEventListener('input',function(){
+    document.getElementById(out).textContent=fmt(this.value);
+    running=false;
+    document.getElementById('btnPlay').textContent='▶ 再生';
+    curP=getP(); resetSim(); render();
+  });
+});
+
+curP=getP(); resetSim();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
