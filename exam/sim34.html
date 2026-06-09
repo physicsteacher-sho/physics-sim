@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>必修基礎問34 楕円運動とケプラーの法則</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf6;--muted:#7986a3;
+  --accent:#f59e0b;--ball:#f97316;
+  --gravity:#f87171;--orbit:#38bdf8;--escape:#34d399;--area:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:1280px;margin:0 auto;padding:20px 16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.header-left h1{font-size:clamp(17px,2.5vw,26px);font-weight:900;line-height:1.3}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--muted);font-size:13px;margin-top:6px;line-height:1.7}
+.badge{white-space:nowrap;padding:6px 14px;border-radius:999px;background:#1e2a1a;border:1px solid #34d39955;color:#34d399;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.problem{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;line-height:1.9;color:#c9d1e8}
+.problem strong{color:var(--accent)}
+.top-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:end}
+.btn-group{display:flex;flex-direction:column;gap:8px}
+button{font-family:'Noto Sans JP',sans-serif;border:none;border-radius:10px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-play{background:var(--orbit);color:#0c1a26}
+.btn-reset{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--muted)}
+.label-row{display:flex;justify-content:space-between;align-items:center}
+.val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent);background:#1e1a0a;border:1px solid #f59e0b44;padding:2px 8px;border-radius:6px;min-width:72px;text-align:center}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px;background:var(--surface2);border-radius:2px;-webkit-appearance:none;outline:none;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+.left{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-size:13px;font-weight:900;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+canvas{display:block;background:transparent}
+.right{display:grid;gap:14px}
+.readout{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:8px}
+.readout-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border);padding-bottom:7px}
+.readout-row:last-child{border-bottom:none;padding-bottom:0}
+.readout-row .lbl{color:var(--muted);font-size:12px}
+.readout-row .num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.answers{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.answers-head{padding:10px 14px;font-size:12px;font-weight:900;background:var(--surface2);border-bottom:1px solid var(--border);color:var(--muted)}
+.answer-list{padding:12px 14px;display:grid;gap:8px}
+.ans-item{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;gap:10px}
+.ans-item .q{color:var(--muted);flex-shrink:0}
+.ans-item .a{font-family:'JetBrains Mono',monospace;font-weight:700;color:#a78bfa;font-size:11px;text-align:right}
+.info-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.8;color:#a0abc4}
+.info-block h3{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.formula{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);border-radius:6px;padding:6px 10px;margin-top:6px;color:var(--muted);text-align:center}
+.legend{display:grid;gap:7px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:#a0abc4}
+.leg-swatch{width:24px;height:3px;border-radius:2px;flex-shrink:0}
+.phase-badge{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;margin-top:4px}
+.phase-orbit{background:#0e1a2e;border:1px solid var(--orbit);color:var(--orbit)}
+.phase-escape{background:#0e2a1a;border:1px solid var(--escape);color:var(--escape)}
+.phase-crash{background:#2a0e0e;border:1px solid var(--gravity);color:var(--gravity)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>必修基礎問 <span>問34</span>　楕円運動とケプラーの法則</h1>
+      <p>点A（地球中心から2R）で速さvを与え、ABを長軸とする楕円軌道を描かせる。A=2R、B=6R。</p>
+    </div>
+    <div class="badge">大阪公立大 / 必修基礎問</div>
+  </div>
+
+  <div class="problem">
+    <strong>(1)</strong> 地上での重力加速度 g を R, M, G で表せ &nbsp;
+    <strong>(2)</strong> 面積速度一定より点Bの速さ V を v で表せ &nbsp;
+    <strong>(3)</strong> v を R, M, G で表せ &nbsp;
+    <strong>(4)</strong> 地球に衝突せず無限遠にも飛ばない v の範囲
+  </div>
+
+  <div class="top-bar">
+    <div class="btn-group">
+      <button class="btn-play" id="btnPlay">▶ 再生</button>
+      <button class="btn-reset" id="btnReset">↺ リセット</button>
+    </div>
+    <label>
+      <div class="label-row"><span>速さ v（円軌道速度@2R 倍）</span><span class="val" id="vv">1.0×（楕円AB）</span></div>
+      <input type="range" id="sldv" min="0.3" max="1.5" step="0.025" value="1.225">
+    </label>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <div class="card-head">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--orbit);display:inline-block"></span>
+          楕円軌道アニメーション
+          <span style="display:flex;align-items:center;gap:5px;margin-left:8px"><span style="display:inline-block;width:16px;height:3px;background:var(--area);border-radius:2px"></span><span style="font-size:10px;font-weight:400">面積速度（掃引面積）</span></span>
+          <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">RK4数値積分</span>
+        </div>
+        <canvas id="cvAnim" width="740" height="480" style="width:740px;height:480px"></canvas>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="readout">
+        <div class="readout-row">
+          <span class="lbl">現在の r</span>
+          <span class="num" id="rR" style="color:var(--accent)">— R</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">速さ |v|</span>
+          <span class="num" id="rV" style="color:var(--orbit)">— km/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">面積速度</span>
+          <span class="num" id="rArea" style="color:var(--area)">— m²/s</span>
+        </div>
+        <div class="readout-row">
+          <span class="lbl">力学的エネルギー</span>
+          <span class="num" id="rE" style="color:var(--escape)">— MJ/kg</span>
+        </div>
+        <div id="phaseBadge" class="phase-badge phase-orbit">楕円軌道</div>
+      </div>
+
+      <div class="answers">
+        <div class="answers-head">解析解（問の答え）</div>
+        <div class="answer-list">
+          <div class="ans-item"><span class="q">(1) g</span><span class="a">GM/R²</span></div>
+          <div class="ans-item"><span class="q">(2) V（点Bの速さ）</span><span class="a" id="ans2">—</span></div>
+          <div class="ans-item"><span class="q">(3) v</span><span class="a">½√(3GM/R)</span></div>
+          <div class="ans-item"><span class="q">(4) vの範囲</span><span class="a" id="ans4">—</span></div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>物理のポイント</h3>
+        <p>ケプラー第2法則（面積速度一定）</p>
+        <div class="formula">½·rA·v = ½·rB·V → V = v/3</div>
+        <p style="margin-top:8px">力学的エネルギー保存（A→B）</p>
+        <div class="formula">½v²−GM/2R = ½V²−GM/6R</div>
+        <p style="margin-top:8px">→ v = ½√(3GM/R)</p>
+        <div class="legend">
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--orbit)"></span>楕円軌道（E&lt;0）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--escape)"></span>脱出軌道（E≥0）</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--gravity)"></span>地球衝突</div>
+          <div class="leg-item"><span class="leg-swatch" style="background:var(--area)"></span>面積速度（掃引面積）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const G  = 6.674e-11;
+const M  = 5.972e24;
+const RE = 6.371e6;
+const rA = 2*RE, rB = 6*RE;
+
+// 各軌道の分類速度（r=2Rでの速度）
+const v_circ_A = Math.sqrt(G*M/rA);         // 円軌道速度@2R
+const v_AB     = 0.5*Math.sqrt(3*G*M/RE);   // 問のv（A→B楕円）
+const v_esc_A  = Math.sqrt(2*G*M/rA);       // 脱出速度@2R
+const v_low    = Math.sqrt(G*M/(3*RE));      // 下限（地球衝突境界）
+const v_high   = Math.sqrt(G*M/RE);         // 上限（脱出速度境界@地表）
+
+function getV() {
+  const mult = +document.getElementById('sldv').value;
+  return v_circ_A * mult;
+}
+
+// ─── RK4積分 ──────────────────────────────────────────────────────
+let sat = { x:rA, y:0, vx:0, vy:0 };
+let trail = [];
+let prevPositions = []; // 面積速度可視化用
+let crashed = false, escaped = false;
+
+function resetSat() {
+  const v = getV();
+  sat = { x:-rA, y:0, vx:0, vy:-v }; // A点（左側）から上向きに速度（canvas y反転なので-v）
+  trail = []; prevPositions = [];
+  crashed = false; escaped = false;
+}
+
+function stepRK4(dt) {
+  if (crashed || escaped) return;
+  const f = (x,y) => {
+    const r3 = Math.pow(x*x+y*y, 1.5);
+    return { ax:-G*M*x/r3, ay:-G*M*y/r3 };
+  };
+  const {x,y,vx,vy} = sat;
+  const k1 = f(x,y);
+  const k2 = f(x+vx*dt/2, y+vy*dt/2);
+  const k3 = f(x+vx*dt/2, y+vy*dt/2);
+  const k4 = f(x+vx*dt,   y+vy*dt);
+  const ax = (k1.ax+2*k2.ax+2*k3.ax+k4.ax)/6;
+  const ay = (k1.ay+2*k2.ay+2*k3.ay+k4.ay)/6;
+  sat.x  = x  + vx*dt + ax*dt*dt*0.5;
+  sat.y  = y  + vy*dt + ay*dt*dt*0.5;
+  sat.vx = vx + ax*dt;
+  sat.vy = vy + ay*dt;
+
+  const r = Math.sqrt(sat.x**2+sat.y**2);
+  if (r < RE) { crashed=true; return; }
+  if (r > RE*500) { escaped=true; return; }
+
+  trail.push({x:sat.x, y:sat.y});
+  if (trail.length > 800) trail.shift();
+
+  prevPositions.push({x:sat.x, y:sat.y});
+  if (prevPositions.length > 800) prevPositions.shift();
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────
+function draw() {
+  const cv  = document.getElementById('cvAnim');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  const CX=W*0.5, CY=H*0.5;
+
+  // スケール: 8Rが画面に収まるように
+  const SC = Math.min(W,H)*0.45 / (8*RE);
+  const earthR_px = RE * SC;
+
+  // 星
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  for(let i=0;i<60;i++){
+    const sx=(Math.sin(i*137.5)*0.5+0.5)*W;
+    const sy=(Math.cos(i*97.3)*0.5+0.5)*H;
+    ctx.beginPath(); ctx.arc(sx,sy,0.7,0,Math.PI*2); ctx.fill();
+  }
+
+  // A, B の参照円
+  [[rA,'2R','rgba(245,158,11,0.2)'],[rB,'6R','rgba(56,189,248,0.15)']].forEach(([r,lbl,col])=>{
+    ctx.beginPath(); ctx.arc(CX,CY,r*SC,0,Math.PI*2);
+    ctx.strokeStyle=col; ctx.lineWidth=1; ctx.setLineDash([3,4]); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  // 地球
+  const grad = ctx.createRadialGradient(CX-earthR_px*0.3,CY-earthR_px*0.3,0,CX,CY,earthR_px);
+  grad.addColorStop(0,'#4ade80'); grad.addColorStop(0.4,'#2563eb'); grad.addColorStop(1,'#1e3a5f');
+  ctx.beginPath(); ctx.arc(CX,CY,earthR_px,0,Math.PI*2);
+  ctx.fillStyle=grad; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='bold 11px "Noto Sans JP"';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('地球 O', CX, CY);
+
+  // 軌跡
+  if (trail.length > 1) {
+    ctx.beginPath();
+    const color = escaped ? '#34d399' : crashed ? '#f87171' : '#a78bfa';
+    const trailSlice = trail.slice(-300); // 三角形と同じ300ステップ分
+    trailSlice.forEach(({x,y},i)=>{
+      const px=CX+x*SC, py=CY-y*SC;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.strokeStyle=color+'99'; ctx.lineWidth=2; ctx.setLineDash([]); ctx.stroke();
+  }
+
+  // 面積速度の可視化（O・現在位置・過去の位置の三角形）
+  if (!crashed && !escaped && prevPositions.length > 300) {
+    const p1 = {x: sat.x, y: sat.y};
+    const p2 = prevPositions[prevPositions.length - 300];
+
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.lineTo(CX + p1.x*SC, CY - p1.y*SC);
+    ctx.lineTo(CX + p2.x*SC, CY - p2.y*SC);
+    ctx.closePath();
+    ctx.fillStyle='rgba(167,139,250,0.25)'; ctx.fill();
+    ctx.strokeStyle='rgba(167,139,250,0.8)'; ctx.lineWidth=1.5; ctx.stroke();
+
+    const area = Math.abs(p1.x*p2.y - p2.x*p1.y) * 0.5;
+    ctx.fillStyle='rgba(167,139,250,0.9)'; ctx.font='bold 11px "JetBrains Mono"';
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(`ΔS = ${(area/1e12).toFixed(2)}×10¹²m²（一定）`, 10, 10);
+  }
+
+  // 衛星
+  const sx = CX + sat.x*SC;
+  const sy = CY - sat.y*SC;
+  ctx.beginPath(); ctx.arc(sx,sy,6,0,Math.PI*2);
+  ctx.fillStyle=crashed?'#f87171':escaped?'#34d399':'#f97316'; ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+
+  const v_cur = Math.sqrt(sat.vx**2+sat.vy**2);
+  if (v_cur > 0 && !crashed) {
+    const vLen = 35 * (v_cur/v_circ_A);
+    const vdx = sat.vx/v_cur, vdy = -sat.vy/v_cur;
+    const vang = Math.atan2(vdy,vdx);
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+vdx*vLen,sy+vdy*vLen);
+    ctx.strokeStyle='#38bdf8'; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx+vdx*vLen,sy+vdy*vLen);
+    ctx.lineTo(sx+vdx*vLen-7*Math.cos(vang-Math.PI/6),sy+vdy*vLen-7*Math.sin(vang-Math.PI/6));
+    ctx.lineTo(sx+vdx*vLen-7*Math.cos(vang+Math.PI/6),sy+vdy*vLen-7*Math.sin(vang+Math.PI/6));
+    ctx.fillStyle='#38bdf8'; ctx.fill();
+  }
+
+  // A（左）, B（右）のラベルと点
+  ctx.fillStyle='rgba(245,158,11,0.9)'; ctx.font='bold 11px "JetBrains Mono"';
+  ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.fillText('A（2R）', CX-rA*SC-6, CY-4);
+  ctx.fillStyle='rgba(56,189,248,0.9)';
+  ctx.textAlign='left';
+  ctx.fillText('B（6R）', CX+rB*SC+6, CY-4);
+
+  ctx.beginPath(); ctx.arc(CX-rA*SC,CY,4,0,Math.PI*2);
+  ctx.fillStyle='#f59e0b'; ctx.fill();
+  ctx.beginPath(); ctx.arc(CX+rB*SC,CY,4,0,Math.PI*2);
+  ctx.fillStyle='#38bdf8'; ctx.fill();
+
+  // A〜B を通る水平線
+  ctx.save(); ctx.setLineDash([3,3]);
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(CX-rA*SC-20,CY); ctx.lineTo(CX+rB*SC+20,CY); ctx.stroke();
+  ctx.restore();
+}
+
+// ─── UI ───────────────────────────────────────────────────────────
+function updateReadout() {
+  const r_cur = Math.sqrt(sat.x**2+sat.y**2);
+  const v_cur = Math.sqrt(sat.vx**2+sat.vy**2);
+  const areaVel = Math.abs(sat.x*sat.vy - sat.y*sat.vx)*0.5;
+  const E_cur = 0.5*v_cur**2 - G*M/r_cur;
+  const v = getV();
+
+  document.getElementById('rR').textContent    = `${(r_cur/RE).toFixed(2)} R`;
+  document.getElementById('rV').textContent    = `${(v_cur/1e3).toFixed(2)} km/s`;
+  document.getElementById('rArea').textContent = `${(areaVel/1e9).toFixed(3)}×10⁹ m²/s`;
+  document.getElementById('rE').textContent    = `${(E_cur/1e6).toFixed(3)} MJ/kg`;
+
+  const V_ans = v/3;
+  document.getElementById('ans2').textContent = `V = v/3 = ${(V_ans/1e3).toFixed(2)} km/s`;
+  document.getElementById('ans4').textContent = `${(v_low/1e3).toFixed(2)} < v < ${(v_high/1e3).toFixed(2)} km/s`;
+
+  const badge = document.getElementById('phaseBadge');
+  const inRange = v > v_low && v < v_high;
+  if (crashed) {
+    badge.className='phase-badge phase-crash'; badge.textContent='地球に衝突！';
+  } else if (escaped) {
+    badge.className='phase-badge phase-escape'; badge.textContent='無限遠へ脱出！';
+  } else if (inRange) {
+    badge.className='phase-badge phase-orbit'; badge.textContent='楕円軌道（問の条件を満たす）';
+  } else if (v <= v_low) {
+    badge.className='phase-badge phase-crash'; badge.textContent='v≤√(GM/3R) → 地球衝突軌道';
+  } else {
+    badge.className='phase-badge phase-escape'; badge.textContent='v≥√(GM/R) → 脱出軌道';
+  }
+}
+
+function updateLabel() {
+  const mult = +document.getElementById('sldv').value;
+  const v = getV();
+  const inRange = v > v_low && v < v_high;
+  const isAB = Math.abs(v - v_AB) < v_AB*0.05;
+  let label = `${mult.toFixed(2)}×`;
+  if (isAB) label += '（問のv：A→B楕円）';
+  else if (v <= v_low) label += '（地球衝突）';
+  else if (v >= v_high) label += '（脱出）';
+  else if (inRange) label += '（楕円軌道）';
+  document.getElementById('vv').textContent = label;
+}
+
+let running=false, lastNow=0;
+
+function loop(now) {
+  const dt = Math.min(0.05,(now-lastNow)/1000);
+  lastNow = now;
+  if (running && !crashed && !escaped) {
+    const steps=30, timeScale=8e3;
+    for(let i=0;i<steps;i++) stepRK4(dt*timeScale/steps);
+  }
+  draw();
+  updateReadout();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click',()=>{
+  running=!running;
+  document.getElementById('btnPlay').textContent=running?'⏸ 停止':'▶ 再生';
+  lastNow=performance.now();
+});
+document.getElementById('btnReset').addEventListener('click',()=>{
+  running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';
+  resetSat();
+});
+document.getElementById('sldv').addEventListener('input',function(){
+  updateLabel();
+  running=false;
+  document.getElementById('btnPlay').textContent='▶ 再生';
+  resetSat();
+});
+
+updateLabel();
+resetSat();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
