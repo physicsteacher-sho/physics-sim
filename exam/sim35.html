@@ -268,7 +268,7 @@ function getP1() {
 }
 
 function temp1At(t, p) {
-  const tau = 15;
+  const tau = 10;
   const frac = 1 - Math.exp(-t/tau);
   let Tw = p.Tw0 + (p.Teq - p.Tw0) * frac;
   let Tm = p.Tm  + (p.Teq - p.Tm)  * frac;
