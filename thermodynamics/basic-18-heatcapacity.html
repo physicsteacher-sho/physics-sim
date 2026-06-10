@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>熱容量と比熱・熱量の保存 | 物理基礎</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --blue:#1d4ed8;--blue-dark:#0f2f7a;--blue-soft:#eff6ff;
+  --green:#15803d;--orange:#ea580c;--orange-soft:#fff7ed;
+  --purple:#7c3aed;--red:#dc2626;--cyan:#0891b2}
+body{background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px;min-height:100vh}
+h1{text-align:center;font-size:24px;font-weight:900;color:var(--blue-dark);margin-bottom:4px}
+.subtitle{text-align:center;font-size:13px;color:var(--muted);font-weight:700;margin-bottom:22px}
+.layout{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:1fr 300px;gap:18px}
+.main-col{display:flex;flex-direction:column;gap:14px}
+.side-col{display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;align-self:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 16px rgba(15,23,42,0.06);overflow:hidden}
+.card-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.badge{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:white;flex-shrink:0}
+.card-title{font-size:15px;font-weight:900;color:var(--blue-dark);flex:1}
+.card-sub{font-size:12px;color:var(--muted)}
+canvas{display:block;width:100%}
+.side-col .card{padding:16px}
+.ctrl-section{display:flex;flex-direction:column;gap:14px}
+.ctrl-section h3{font-size:14px;font-weight:900;color:var(--blue-dark);padding-bottom:8px;border-bottom:1px solid var(--line)}
+.control{display:flex;flex-direction:column;gap:5px}
+.control label{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+.val{background:#f1f5f9;border:1px solid var(--line);border-radius:8px;padding:1px 8px;font-size:12px;font-weight:700;min-width:68px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.toggle{display:grid;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.toggle.two{grid-template-columns:1fr 1fr}
+.toggle button{border:0;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;background:#f1f5f9;color:#475569;font-family:inherit;line-height:1.3}
+.toggle button.active{background:var(--blue);color:white}
+.formula-box{background:var(--blue-soft);border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700;line-height:1.9}
+.formula-box strong{color:var(--blue-dark);display:block;margin-bottom:4px}
+.result-card{border-radius:12px;padding:12px 14px;font-size:13px;font-weight:900;line-height:1.9}
+.info-half{border-radius:10px;padding:12px 14px;font-size:12px;font-weight:700;line-height:1.8}
+.hl{border-radius:4px;padding:1px 6px;font-weight:900}
+.hl-blue{background:#dbeafe;color:#1e40af}
+.hl-orange{background:#ffedd5;color:#9a3412}
+.hl-green{background:#dcfce7;color:#166534}
+.hl-red{background:#fee2e2;color:#991b1b}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn-play{border:0;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#dcfce7;color:#166534}
+.btn-reset{border:0;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#f1f5f9;color:#475569}
+.sep{border:0;border-top:1px solid var(--line);margin:4px 0}
+</style>
+</head>
+<body>
+<h1>熱容量と比熱・熱量の保存</h1>
+<p class="subtitle">物理基礎 熱力学 02 ｜ Q = CΔT = mcΔT　熱量の保存</p>
+
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#dc2626,#ea580c)">Q</div>
+        <span class="card-title" id="mainTitle">熱容量と比熱</span>
+        <span class="card-sub" id="mainSub">Q = CΔT = mcΔT</span>
+      </div>
+      <canvas id="mainCanvas" height="360"></canvas>
+    </div>
+    <div class="info-half" style="background:#fff7ed;border:1px solid #fed7aa">
+      <strong style="color:#9a3412" id="infoTitle">熱容量と比熱</strong>
+      <span id="infoBody"></span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>概念</h3>
+          <div class="toggle two" style="margin-top:10px">
+            <button id="tab1" class="active" onclick="setTab('cap')">熱容量・比熱</button>
+            <button id="tab2" onclick="setTab('eq')">熱量の保存</button>
+          </div>
+        </div>
+
+        <!-- 熱容量タブ -->
+        <div id="capCtrls" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">表示モード</div>
+            <div class="toggle two">
+              <button id="modeA" class="active" onclick="setCapMode('specific')">比熱を比べる</button>
+              <button id="modeB" onclick="setCapMode('heat')">熱容量を比べる</button>
+            </div>
+          </div>
+          <div class="control" id="cm-ctrl">
+            <label>質量 m <span class="val" id="cm-label">100 g</span></label>
+            <input type="range" id="cm-slider" min="50" max="500" value="100" step="50">
+          </div>
+          <div class="control">
+            <label>温度変化 ΔT <span class="val" id="cdt-label">10 K</span></label>
+            <input type="range" id="cdt-slider" min="1" max="100" value="10" step="1">
+          </div>
+        </div>
+
+        <!-- 熱量の保存タブ -->
+        <div id="eqCtrls" style="display:none;flex-direction:column;gap:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--blue-dark)">物体A（高温）</div>
+          <div class="control">
+            <label>質量 mA <span class="val" id="mA-label">0.1 kg</span></label>
+            <input type="range" id="mA-slider" min="0.05" max="0.5" value="0.1" step="0.05">
+          </div>
+          <div class="control">
+            <label>比熱 cA <span class="val" id="cA-label">0.44 J/(g·K)</span></label>
+            <input type="range" id="cA-slider" min="0.1" max="5" value="0.44" step="0.01">
+          </div>
+          <div class="control">
+            <label>温度 TA <span class="val" id="TA-label">100 °C</span></label>
+            <input type="range" id="TA-slider" min="30" max="200" value="100" step="5">
+          </div>
+          <hr class="sep">
+          <div style="font-size:11px;font-weight:700;color:var(--blue-dark)">物体B（低温）</div>
+          <div class="control">
+            <label>質量 mB <span class="val" id="mB-label">0.2 kg</span></label>
+            <input type="range" id="mB-slider" min="0.05" max="0.5" value="0.2" step="0.05">
+          </div>
+          <div class="control">
+            <label>比熱 cB <span class="val" id="cB-label">4.2 J/(g·K)</span></label>
+            <input type="range" id="cB-slider" min="0.1" max="5" value="4.2" step="0.01">
+          </div>
+          <div class="control">
+            <label>温度 TB <span class="val" id="TB-label">20 °C</span></label>
+            <input type="range" id="TB-slider" min="0" max="80" value="20" step="5">
+          </div>
+          <div class="btn-row">
+            <button class="btn-play" onclick="startEqAnim()">▶ 接触させる</button>
+            <button class="btn-reset" onclick="resetEqAnim()">↺ リセット</button>
+          </div>
+          <p style="font-size:10px;color:var(--muted);font-weight:700;line-height:1.6">
+            ※ 断熱容器中での接触を想定
+          </p>
+        </div>
+
+        <div class="formula-box" id="formulaBox"></div>
+        <div class="result-card" id="resultCard" style="background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR=window.devicePixelRatio||1;
+let tab='cap';
+let animId=null, lastTs=null;
+let eqTA=100, eqTB=20, eqPlaying=false, eqTime=0, eqHistory=[];
+
+const CVS=document.getElementById('mainCanvas');
+function resizeC(){
+  const r=CVS.getBoundingClientRect(); if(!r.width) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeC();
+window.addEventListener('resize',()=>{ resizeC(); redraw(); });
+const ctx=()=>CVS.getContext('2d');
+const W=()=>CVS.getBoundingClientRect().width;
+const H=()=>CVS.getBoundingClientRect().height;
+
+function lbl(c,x,y,text,color,align,base,size){
+  c.save(); c.fillStyle=color||'#334155';
+  c.font=`700 ${size||12}px Hiragino Sans,system-ui`;
+  c.textAlign=align||'center'; c.textBaseline=base||'alphabetic';
+  c.fillText(text,x,y); c.restore();
+}
+
+// ===== 熱容量・比熱タブ =====
+const MATERIALS=[
+  {name:'鉄',     c:0.45, color:'#94a3b8', note:''},
+  {name:'銅',     c:0.38, color:'#f97316', note:''},
+  {name:'アルミ',  c:0.90, color:'#a3e635', note:''},
+  {name:'水',     c:4.20, color:'#38bdf8', note:'海や湖が気温を安定させる理由！'},
+  {name:'エタノール',c:2.43, color:'#c084fc', note:''},
+  {name:'氷',     c:2.09, color:'#bfdbfe', note:''},
+];
+let capMode='specific'; // 'specific' or 'heat'
+
+function drawCap(){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const m=parseFloat(document.getElementById('cm-slider').value);
+  const dT=parseFloat(document.getElementById('cdt-slider').value);
+
+  if(capMode==='specific'){
+    // ===== モードA：比熱を比べる =====
+    lbl(c, w*0.50, h*0.05, `${m} g を ${dT} K 上げるのに必要な熱量 Q`, '#0f2f7a','center','middle',15);
+    lbl(c, w*0.50, h*0.10, 'Q = m × c × ΔT　（物質によって c が違う）', '#64748b','center','middle',12);
+
+    const barMaxH=h*0.55;
+    const barMaxQ=MATERIALS[3].c*m*dT*1.1; // 水基準
+    const colW=(w*0.88)/(MATERIALS.length);
+    const baseY=h*0.15+barMaxH;
+
+    MATERIALS.forEach((mat,i)=>{
+      const Q=mat.c*m*dT;
+      const bh=Math.max(4, (Q/barMaxQ)*barMaxH);
+      const bw=colW*0.65;
+      const bx=w*0.06+i*colW;
+      const by=baseY-bh;
+      const isWater=mat.name==='水';
+
+      c.save(); c.fillStyle=mat.color+(isWater?'ee':'99');
+      c.strokeStyle=mat.color; c.lineWidth=isWater?2.5:1.5;
+      c.beginPath(); c.roundRect(bx,by,bw,bh,4); c.fill(); c.stroke(); c.restore();
+
+      // 水だけ吹き出し
+      if(isWater){
+        c.save(); c.fillStyle='#eff6ff'; c.strokeStyle='#3b82f6'; c.lineWidth=1.5;
+        c.beginPath(); c.roundRect(bx-20,by-50,bw+40,38,8); c.fill(); c.stroke(); c.restore();
+        lbl(c, bx+bw/2, by-38, '圧倒的に多い！', '#1d4ed8','center','middle',10);
+        lbl(c, bx+bw/2, by-22, '→ 温まりにくく冷めにくい', '#1d4ed8','center','middle',9);
+      }
+
+      // Q値
+      lbl(c, bx+bw/2, by-8, Q>=1000?`${(Q/1000).toFixed(1)}kJ`:`${Q.toFixed(0)}J`,
+          isWater?'#1d4ed8':'#334155','center','middle',isWater?12:10);
+      // 物質名
+      lbl(c, bx+bw/2, baseY+14, mat.name, '#334155','center','middle',10);
+      // 比熱
+      lbl(c, bx+bw/2, baseY+26, `c=${mat.c}`, '#64748b','center','middle',9);
+    });
+
+    // 軸
+    c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(w*0.05,h*0.15); c.lineTo(w*0.05,baseY); c.lineTo(w*0.94,baseY); c.stroke(); c.restore();
+    lbl(c, w*0.03, h*0.15, 'Q[J]', '#64748b','right','middle',10);
+
+    // 式
+    lbl(c, w/2, h-10, `Q = m×c×ΔT　例）水 ${m}g を ${dT}K 上昇：Q = ${m} × 4.2 × ${dT} = ${(m*4.2*dT).toFixed(0)} J`, '#15803d','center','alphabetic',12);
+
+  } else {
+    // ===== モードB：熱容量を比べる =====
+    lbl(c, w*0.50, h*0.05, `${dT} K 上げるのに必要な熱量 Q（C = mc に注目）`, '#0f2f7a','center','middle',15);
+    lbl(c, w*0.50, h*0.10, '熱容量 C = m × c　→　Q = C × ΔT', '#64748b','center','middle',12);
+
+    // 水と鉄の4パターン
+    const patterns=[
+      {label:'水\n100g',  m:100, c:4.20, color:'#38bdf8'},
+      {label:'水\n500g',  m:500, c:4.20, color:'#0ea5e9'},
+      {label:'鉄\n100g',  m:100, c:0.45, color:'#94a3b8'},
+      {label:'鉄\n500g',  m:500, c:0.45, color:'#64748b'},
+    ];
+
+    const barMaxH=h*0.52;
+    const maxQ=Math.max(...patterns.map(p=>p.m*p.c*dT))*1.05;
+    const colW=w*0.80/patterns.length;
+    const baseY=h*0.16+barMaxH;
+
+    patterns.forEach((pat,i)=>{
+      const C=pat.m*pat.c;
+      const Q=C*dT;
+      const bh=Math.max(4,(Q/maxQ)*barMaxH);
+      const bw=colW*0.60;
+      const bx=w*0.10+i*colW;
+      const by=baseY-bh;
+
+      c.save(); c.fillStyle=pat.color+'cc'; c.strokeStyle=pat.color; c.lineWidth=1.5;
+      c.beginPath(); c.roundRect(bx,by,bw,bh,4); c.fill(); c.stroke(); c.restore();
+
+      // Q・C表示
+      lbl(c, bx+bw/2, by-22, `Q=${Q>=1000?(Q/1000).toFixed(1)+'kJ':Q.toFixed(0)+'J'}`, '#334155','center','middle',11);
+      lbl(c, bx+bw/2, by-8, `C=${C.toFixed(0)} J/K`, pat.color,'center','middle',10);
+
+      // ラベル（2行）
+      const lines=pat.label.split('\n');
+      lbl(c, bx+bw/2, baseY+14, lines[0], '#334155','center','middle',11);
+      lbl(c, bx+bw/2, baseY+26, lines[1], '#64748b','center','middle',10);
+    });
+
+    // 区切り線（水と鉄の間）
+    const sepX=w*0.10+colW*2;
+    c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1; c.setLineDash([4,4]);
+    c.beginPath(); c.moveTo(sepX,h*0.14); c.lineTo(sepX,h*0.78); c.stroke(); c.setLineDash([]); c.restore();
+    lbl(c, w*0.10+colW, h*0.14, '← 水（c=4.2）', '#38bdf8','center','middle',10);
+    lbl(c, w*0.10+colW*3, h*0.14, '← 鉄（c=0.45）', '#94a3b8','center','middle',10);
+
+    // 軸
+    c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(w*0.08,h*0.16); c.lineTo(w*0.08,baseY); c.lineTo(w*0.92,baseY); c.stroke(); c.restore();
+    lbl(c, w*0.06, h*0.16, 'Q[J]', '#64748b','right','middle',10);
+
+    // 気づき
+    lbl(c, w/2, h*0.88, '水100g と 鉄500g は熱容量Cが似ている → 同じΔTで同じ熱量が必要', '#ea580c','center','middle',11);
+    lbl(c, w/2, h-10, `C = mc　水500g：C=${500*4.2}J/K　鉄500g：C=${500*0.45}J/K　→ Q = C × ΔT = C × ${dT}`, '#15803d','center','alphabetic',12);
+  }
+}
+
+// ===== 熱量の保存タブ =====
+function getTeq(){
+  const mA=parseFloat(document.getElementById('mA-slider').value)*1000; // g
+  const cA=parseFloat(document.getElementById('cA-slider').value);
+  const TA=parseFloat(document.getElementById('TA-slider').value);
+  const mB=parseFloat(document.getElementById('mB-slider').value)*1000;
+  const cB=parseFloat(document.getElementById('cB-slider').value);
+  const TB=parseFloat(document.getElementById('TB-slider').value);
+  return (mA*cA*TA + mB*cB*TB)/(mA*cA + mB*cB);
+}
+
+function drawEq(){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const mA=parseFloat(document.getElementById('mA-slider').value)*1000;
+  const cA=parseFloat(document.getElementById('cA-slider').value);
+  const TA=parseFloat(document.getElementById('TA-slider').value);
+  const mB=parseFloat(document.getElementById('mB-slider').value)*1000;
+  const cB=parseFloat(document.getElementById('cB-slider').value);
+  const TB=parseFloat(document.getElementById('TB-slider').value);
+  const Teq=(mA*cA*TA+mB*cB*TB)/(mA*cA+mB*cB);
+  const midT=(TA+TB)/2;
+
+  const curA=eqTA, curB=eqTB;
+
+  // ===== 温度-時間グラフ =====
+  const gL=w*0.10, gR=w*0.96, gT=h*0.06, gB=h*0.50;
+  const gW=gR-gL, gH=gB-gT;
+  const rangePad=Math.max(20,(TA-TB)*0.3);
+  const Tmax=TA+rangePad, Tmin=TB-rangePad;
+  const tY=(t)=>Math.max(gT,Math.min(gB, gB-(t-Tmin)/(Tmax-Tmin)*gH));
+
+  // 軸
+  c.save(); c.strokeStyle='#94a3b8'; c.lineWidth=1.5;
+  c.beginPath(); c.moveTo(gL,gT); c.lineTo(gL,gB); c.lineTo(gR,gB); c.stroke(); c.restore();
+  lbl(c, gL-6, gT-6, 'T(°C)', '#64748b','right','middle',11);
+  lbl(c, gR+4, gB+4, 't', '#64748b','left','middle',11);
+
+  // 目盛り
+  [TA,TB,Teq].forEach((t,i)=>{
+    const y=tY(t);
+    const col=i===0?'#dc2626':i===1?'#1d4ed8':'#15803d';
+    c.save(); c.strokeStyle=i===2?'#15803d':'#e2e8f0'; c.lineWidth=1;
+    c.setLineDash(i===2?[5,4]:[]);
+    c.beginPath(); c.moveTo(gL,y); c.lineTo(gR,y); c.stroke(); c.setLineDash([]); c.restore();
+    lbl(c, gL-6, y+4, `${t.toFixed(1)}`, col,'right','middle',10);
+  });
+  lbl(c, gR-5, tY(Teq)-10, `t₀=${Teq.toFixed(1)}°C`, '#15803d','right','middle',11);
+
+  // 中間値（cAとcBが違う場合のみ）
+  if(Math.abs(cA-cB)>0.3 && Math.abs(midT-Teq)>5){
+    const y=tY(midT);
+    c.save(); c.strokeStyle='#cbd5e1'; c.lineWidth=1; c.setLineDash([3,3]);
+    c.beginPath(); c.moveTo(gL,y); c.lineTo(gR,y); c.stroke(); c.setLineDash([]); c.restore();
+    lbl(c, gL-6, y+4, `${midT.toFixed(1)}`, '#94a3b8','right','middle',9);
+    lbl(c, gR-10, y-10, `中間 ${midT.toFixed(1)}°C`, '#94a3b8','right','middle',9);
+  }
+
+  // 履歴カーブ
+  if(eqHistory.length>1){
+    const maxT=8, txX=(t)=>gL+Math.min(t/maxT,1)*gW;
+    ['ta','tb'].forEach((key,ki)=>{
+      const col=ki===0?'#dc2626':'#1d4ed8';
+      c.save(); c.strokeStyle=col; c.lineWidth=2.5; c.lineJoin='round';
+      c.beginPath();
+      eqHistory.forEach((pt,i)=>{
+        const x=txX(pt.t), y=tY(pt[key]);
+        i===0?c.moveTo(x,y):c.lineTo(x,y);
+      });
+      c.stroke(); c.restore();
+    });
+    const last=eqHistory[eqHistory.length-1];
+    const lx=gL+Math.min(last.t/8,1)*gW;
+    [['ta','#dc2626'],['tb','#1d4ed8']].forEach(([k,col])=>{
+      c.save(); c.fillStyle=col;
+      c.beginPath(); c.arc(lx,tY(last[k]),5,0,Math.PI*2); c.fill(); c.restore();
+    });
+  } else {
+    // 初期点のみ
+    c.save(); c.fillStyle='#dc2626'; c.beginPath(); c.arc(gL,tY(TA),6,0,Math.PI*2); c.fill(); c.restore();
+    c.save(); c.fillStyle='#1d4ed8'; c.beginPath(); c.arc(gL,tY(TB),6,0,Math.PI*2); c.fill(); c.restore();
+    lbl(c, gL+50, tY(TA)-12, `物体A（高温）  mAcA=${(mA*cA).toFixed(0)} J/K`, '#dc2626','left','middle',10);
+    lbl(c, gL+50, tY(TB)+12, `物体B（低温）  mBcB=${(mB*cB).toFixed(0)} J/K`, '#1d4ed8','left','middle',10);
+  }
+
+  // ===== 物体ボックス =====
+  const bh=h*0.28, boxW=w*0.24;
+  const A_cx=w*0.28, B_cx=w*0.70;
+  const by=h-h*0.06-bh;
+
+  const tColor=(t)=>{
+    const f=Math.min(1,Math.max(0,t/200));
+    return `rgb(${Math.round(180+75*f)},${Math.round(80-60*f)},${Math.round(220-150*f)})`;
+  };
+
+  lbl(c, w*0.50, by-12, '※ 断熱容器中、両物体の比熱は異なっても可', '#94a3b8','center','middle',10);
+
+  // A
+  c.save(); c.fillStyle=tColor(curA); c.strokeStyle='#475569'; c.lineWidth=2;
+  c.beginPath(); c.roundRect(A_cx-boxW/2,by,boxW,bh,8); c.fill(); c.stroke(); c.restore();
+  lbl(c, A_cx, by+bh*0.15, '物体A', '#fff','center','middle',13);
+  lbl(c, A_cx, by+bh*0.35, `mA=${(mA/1000).toFixed(2)}kg  cA=${cA}`, '#fff','center','middle',10);
+  lbl(c, A_cx, by+bh*0.55, `${curA.toFixed(1)} °C`, '#fff','center','middle',14);
+  lbl(c, A_cx, by+bh*0.78, `熱容量 mAcA = ${(mA*cA).toFixed(0)} J/K`, '#ffffffcc','center','middle',10);
+
+  // B
+  c.save(); c.fillStyle=tColor(curB); c.strokeStyle='#475569'; c.lineWidth=2;
+  c.beginPath(); c.roundRect(B_cx-boxW/2,by,boxW,bh,8); c.fill(); c.stroke(); c.restore();
+  lbl(c, B_cx, by+bh*0.15, '物体B', '#fff','center','middle',13);
+  lbl(c, B_cx, by+bh*0.35, `mB=${(mB/1000).toFixed(2)}kg  cB=${cB}`, '#fff','center','middle',10);
+  lbl(c, B_cx, by+bh*0.55, `${curB.toFixed(1)} °C`, '#fff','center','middle',14);
+  lbl(c, B_cx, by+bh*0.78, `熱容量 mBcB = ${(mB*cB).toFixed(0)} J/K`, '#ffffffcc','center','middle',10);
+
+  // 熱の移動矢印
+  const arrowY=by+bh/2;
+  const gapL=A_cx+boxW/2+8, gapR=B_cx-boxW/2-8;
+  const inContact=Math.abs(curA-Teq)<0.5&&Math.abs(curB-Teq)<0.5;
+  if(!inContact&&Math.abs(curA-curB)>1){
+    c.save(); c.strokeStyle='#ea580c'; c.fillStyle='#ea580c'; c.lineWidth=2;
+    for(let i=-1;i<=1;i++){
+      const ay=arrowY+i*12;
+      c.beginPath(); c.moveTo(gapL,ay); c.lineTo(gapR,ay); c.stroke();
+      c.beginPath(); c.moveTo(gapR,ay); c.lineTo(gapR-9,ay-5); c.lineTo(gapR-9,ay+5); c.closePath(); c.fill();
+    }
+    lbl(c, (gapL+gapR)/2, arrowY-18, 'Q', '#ea580c','center','middle',13);
+    c.restore();
+  } else {
+    lbl(c, (gapL+gapR)/2, arrowY-8, '⇌', '#15803d','center','middle',22);
+    lbl(c, (gapL+gapR)/2, arrowY+16, '熱平衡', '#15803d','center','middle',11);
+  }
+
+  // 式
+  const QA=(mA*cA*(TA-Teq)).toFixed(1);
+  const QB=(mB*cB*(Teq-TB)).toFixed(1);
+  lbl(c, w/2, h-10, `mAcA(TA−t₀) = mBcB(t₀−TB)　→　t₀ = ${Teq.toFixed(1)} °C`, '#334155','center','alphabetic',13);
+}
+
+// ===== アニメ =====
+function startEqAnim(){
+  eqTA=parseFloat(document.getElementById('TA-slider').value);
+  eqTB=parseFloat(document.getElementById('TB-slider').value);
+  eqTime=0; eqHistory=[{ta:eqTA,tb:eqTB,t:0}];
+  eqPlaying=true; if(!animId) animId=requestAnimationFrame(mainLoop);
+}
+function resetEqAnim(){
+  eqTA=parseFloat(document.getElementById('TA-slider').value);
+  eqTB=parseFloat(document.getElementById('TB-slider').value);
+  eqTime=0; eqHistory=[];
+  eqPlaying=false; drawEq();
+}
+
+function mainLoop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+  if(tab==='eq'&&eqPlaying){
+    const mA=parseFloat(document.getElementById('mA-slider').value)*1000;
+    const cA=parseFloat(document.getElementById('cA-slider').value);
+    const TA=parseFloat(document.getElementById('TA-slider').value);
+    const mB=parseFloat(document.getElementById('mB-slider').value)*1000;
+    const cB=parseFloat(document.getElementById('cB-slider').value);
+    const TB=parseFloat(document.getElementById('TB-slider').value);
+    const Teq=(mA*cA*TA+mB*cB*TB)/(mA*cA+mB*cB);
+    const kA=1.2*(mB*cB/(mA*cA+mB*cB)*2+0.3);
+    const kB=1.2*(mA*cA/(mA*cA+mB*cB)*2+0.3);
+    eqTA+=(Teq-eqTA)*dt*kA;
+    eqTB+=(Teq-eqTB)*dt*kB;
+    eqTime+=dt;
+    eqHistory.push({ta:eqTA,tb:eqTB,t:eqTime});
+    if(eqHistory.length>300) eqHistory.shift();
+    if(Math.abs(eqTA-Teq)<0.1){ eqTA=Teq; eqTB=Teq; eqPlaying=false; }
+  }
+  if(tab==='cap') drawCap();
+  else drawEq();
+  animId=requestAnimationFrame(mainLoop);
+}
+
+// ===== UI =====
+function updateUI(){
+  const infos={
+    cap:'<span class="hl hl-blue">熱容量 C</span>：物体全体を1K上昇させる熱量 [J/K]。<span class="hl hl-orange">比熱 c</span>：物質1gを1K上昇させる熱量 [J/(g·K)]。C = mc。物質の種類で決まる。',
+    eq:'<span class="hl hl-orange">熱量の保存</span>：断熱容器中で高温・低温物体を接触させると熱平衡に達する。mAcA(TA−t₀) = mBcB(t₀−TB)。比熱が違うと<span class="hl hl-blue">単純な中間値にならない</span>。',
+  };
+  const formulas={
+    cap:'<strong>熱量・熱容量・比熱</strong>Q = CΔT = mcΔT<br>C = mc [J/K]<br><span style="color:var(--muted);font-size:11px">c：比熱 [J/(g·K)]、m：質量 [g]</span>',
+    eq:'<strong>熱量の保存</strong>高温が失った熱量 = 低温が得た熱量<br>mAcA(TA−t₀) = mBcB(t₀−TB)<br><span style="color:var(--muted);font-size:11px">t₀ = (mAcATA + mBcBTB)/(mAcA + mBcB)</span>',
+  };
+  const titles={cap:'熱容量と比熱',eq:'熱量の保存'};
+  const subs={cap:'Q = CΔT = mcΔT',eq:'mAcA(TA−t₀) = mBcB(t₀−TB)'};
+  document.getElementById('mainTitle').textContent=titles[tab];
+  document.getElementById('mainSub').textContent=subs[tab];
+  document.getElementById('infoTitle').textContent=titles[tab];
+  document.getElementById('infoBody').innerHTML=infos[tab];
+  document.getElementById('formulaBox').innerHTML=formulas[tab];
+
+  if(tab==='cap'){
+    const m=parseFloat(document.getElementById('cm-slider').value);
+    const dT=parseFloat(document.getElementById('cdt-slider').value);
+    const Q_water=m*4.2*dT;
+    document.getElementById('resultCard').textContent=`水 ${m}g を ${dT}K 上げる：Q = ${m}×4.2×${dT} = ${Q_water.toFixed(0)} J`;
+    document.getElementById('resultCard').style.cssText='background:var(--orange-soft);border:1px solid #fed7aa;color:var(--orange);border-radius:12px;padding:12px 14px;font-size:12px;font-weight:900;line-height:1.9';
+  } else {
+    const mA=parseFloat(document.getElementById('mA-slider').value)*1000;
+    const cA=parseFloat(document.getElementById('cA-slider').value);
+    const TA=parseFloat(document.getElementById('TA-slider').value);
+    const mB=parseFloat(document.getElementById('mB-slider').value)*1000;
+    const cB=parseFloat(document.getElementById('cB-slider').value);
+    const TB=parseFloat(document.getElementById('TB-slider').value);
+    const Teq=(mA*cA*TA+mB*cB*TB)/(mA*cA+mB*cB);
+    document.getElementById('resultCard').textContent=`t₀ = ${Teq.toFixed(1)} °C`;
+    document.getElementById('resultCard').style.cssText='background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:900;line-height:1.9';
+  }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='cap') drawCap();
+  else drawEq();
+}
+
+function setTab(t){
+  tab=t; eqPlaying=false;
+  ['cap','eq'].forEach((x,i)=>{
+    document.getElementById('tab'+(i+1)).classList.toggle('active',t===x);
+    const el=document.getElementById(x+'Ctrls');
+    el.style.display=t===x?'flex':'none';
+    if(t===x){el.style.flexDirection='column';el.style.gap='14px';}
+  });
+  CVS.setAttribute('height',t==='eq'?420:360);
+  setTimeout(()=>{ resizeC(); redraw(); },30);
+}
+
+// スライダー
+function setCapMode(mode){
+  capMode=mode;
+  document.getElementById('modeA').classList.toggle('active',mode==='specific');
+  document.getElementById('modeB').classList.toggle('active',mode==='heat');
+  document.getElementById('cm-ctrl').style.display=mode==='specific'?'flex':'none';
+  redraw();
+}
+
+const sliderMap={
+  'cm':'cm-label','cdt':'cdt-label',
+  'mA':'mA-label','cA':'cA-label','TA':'TA-label',
+  'mB':'mB-label','cB':'cB-label','TB':'TB-label',
+};
+const fmtMap={
+  'cm':v=>parseInt(v)+' g',
+  'cdt':v=>v+' K',
+  'mA':v=>parseFloat(v).toFixed(2)+' kg',
+  'cA':v=>parseFloat(v).toFixed(2)+' J/(g·K)',
+  'TA':v=>v+' °C',
+  'mB':v=>parseFloat(v).toFixed(2)+' kg',
+  'cB':v=>parseFloat(v).toFixed(2)+' J/(g·K)',
+  'TB':v=>v+' °C',
+};
+Object.entries(sliderMap).forEach(([name,labelId])=>{
+  const el=document.getElementById(name+'-slider');
+  if(!el) return;
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmtMap[name](el.value);
+    if(['mA','cA','TA','mB','cB','TB'].includes(name)){
+      eqTA=parseFloat(document.getElementById('TA-slider').value);
+      eqTB=parseFloat(document.getElementById('TB-slider').value);
+      eqTime=0; eqHistory=[]; eqPlaying=false;
+    }
+    redraw();
+  });
+});
+
+animId=requestAnimationFrame(mainLoop);
+setTimeout(()=>{ resizeC(); redraw(); },50);
+</script>
+</body>
+</html>
