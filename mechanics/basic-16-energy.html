@@ -113,6 +113,10 @@
             <label>初期伸び x₀ <span class="val" id="sx-label">0.4 m</span></label>
             <input type="range" id="sx-slider" min="0.1" max="0.6" value="0.4" step="0.05">
           </div>
+          <div class="btn-row">
+            <button class="btn-play" onclick="startAnim()">▶ 再生</button>
+            <button class="btn-reset" onclick="resetAnim()">↺ リセット</button>
+          </div>
         </div>
 
         <!-- 振り子コントロール -->
@@ -697,8 +701,12 @@ function loop(ts){
 }
 
 function startAnim(){
-  if(tab==='slope'){ sPhase=1; sPhaseT=0; sDist=0; }
-  playing=true;
+  if(tab==='slope' && !playing){ sPhase=1; sPhaseT=0; sDist=0; }
+  playing=!playing;
+  // ボタンテキストを全て更新
+  document.querySelectorAll('.btn-play').forEach(btn=>{
+    btn.textContent = playing ? '⏸ 一時停止' : '▶ 再生';
+  });
 }
 function resetAnim(){
   animT=0; sPhase=0; sPhaseT=0; sDist=0; sStopDist=0; playing=false;
