@@ -1,1 +1,800 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>熱と温度 | 物理基礎</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --blue:#1d4ed8;--blue-dark:#0f2f7a;--blue-soft:#eff6ff;
+  --green:#15803d;--orange:#ea580c;--orange-soft:#fff7ed;
+  --purple:#7c3aed;--red:#dc2626;--cyan:#0891b2}
+body{background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px;min-height:100vh}
+h1{text-align:center;font-size:24px;font-weight:900;color:var(--blue-dark);margin-bottom:4px}
+.subtitle{text-align:center;font-size:13px;color:var(--muted);font-weight:700;margin-bottom:22px}
+.layout{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:1fr 300px;gap:18px}
+.main-col{display:flex;flex-direction:column;gap:14px}
+.side-col{display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;align-self:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 16px rgba(15,23,42,0.06);overflow:hidden}
+.card-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.badge{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:white;flex-shrink:0}
+.card-title{font-size:15px;font-weight:900;color:var(--blue-dark);flex:1}
+.card-sub{font-size:12px;color:var(--muted)}
+canvas{display:block;width:100%}
+.side-col .card{padding:16px}
+.ctrl-section{display:flex;flex-direction:column;gap:14px}
+.ctrl-section h3{font-size:14px;font-weight:900;color:var(--blue-dark);padding-bottom:8px;border-bottom:1px solid var(--line)}
+.control{display:flex;flex-direction:column;gap:5px}
+.control label{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+.val{background:#f1f5f9;border:1px solid var(--line);border-radius:8px;padding:1px 8px;font-size:12px;font-weight:700;min-width:60px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.toggle{display:grid;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.toggle.three{grid-template-columns:1fr 1fr 1fr}
+.toggle button{border:0;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;background:#f1f5f9;color:#475569;font-family:inherit;line-height:1.3}
+.toggle button.active{background:var(--blue);color:white}
+.formula-box{background:var(--blue-soft);border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:700;line-height:1.9}
+.formula-box strong{color:var(--blue-dark);display:block;margin-bottom:4px}
+.result-card{border-radius:12px;padding:12px 14px;font-size:13px;font-weight:900;line-height:1.9}
+.info-half{border-radius:10px;padding:12px 14px;font-size:12px;font-weight:700;line-height:1.8}
+.hl{border-radius:4px;padding:1px 6px;font-weight:900}
+.hl-blue{background:#dbeafe;color:#1e40af}
+.hl-orange{background:#ffedd5;color:#9a3412}
+.hl-green{background:#dcfce7;color:#166534}
+.hl-red{background:#fee2e2;color:#991b1b}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn-play{border:0;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#dcfce7;color:#166534}
+.btn-reset{border:0;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#f1f5f9;color:#475569}
+</style>
+</head>
+<body>
+<h1>熱と温度</h1>
+<p class="subtitle">物理基礎 熱力学 01 ｜ 熱運動・温度・三態と状態変化</p>
 
+<div class="layout">
+  <div class="main-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="badge" id="mainBadge" style="background:linear-gradient(135deg,#dc2626,#ea580c)">T</div>
+        <span class="card-title" id="mainTitle">熱運動とブラウン運動</span>
+        <span class="card-sub" id="mainSub">温度が高いほど粒子の運動が激しい</span>
+      </div>
+      <canvas id="mainCanvas" height="300"></canvas>
+    </div>
+    <div class="info-half" style="background:#fff7ed;border:1px solid #fed7aa">
+      <strong style="color:#9a3412" id="infoTitle">熱運動とブラウン運動</strong>
+      <span id="infoBody"><span class="hl hl-orange">熱運動</span>：分子や原子が常に激しく乱雑に運動すること。<span class="hl hl-blue">ブラウン運動</span>：空気の分子が微粒子に衝突し、微粒子が不規則に動く現象。温度が高いほど運動が激しい。</span>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <div class="card">
+      <div class="ctrl-section">
+        <div>
+          <h3>概念</h3>
+          <div class="toggle" style="margin-top:10px;grid-template-columns:1fr 1fr 1fr 1fr">
+            <button id="tab1" class="active" onclick="setTab('motion')">熱運動</button>
+            <button id="tab2" onclick="setTab('temp')">温度と熱</button>
+            <button id="tab3" onclick="setTab('state')">三態変化</button>
+            <button id="tab4" onclick="setTab('eq')">熱平衡</button>
+          </div>
+        </div>
+
+        <div id="motionCtrls">
+          <div class="control">
+            <label>温度 T <span class="val" id="T-label">300 K</span></label>
+            <input type="range" id="T-slider" min="100" max="800" value="300" step="10">
+          </div>
+          <p style="font-size:11px;color:var(--muted);font-weight:700;line-height:1.6;margin-top:2px">
+            大きい丸：微粒子（ブラウン運動）<br>小さい丸：分子
+          </p>
+        </div>
+
+        <div id="tempCtrls" style="display:none">
+          <div class="control">
+            <label>セルシウス温度 t <span class="val" id="cel-label">27 °C</span></label>
+            <input type="range" id="cel-slider" min="-273" max="500" value="27" step="1">
+          </div>
+        </div>
+
+        <div id="stateCtrls" style="display:none">
+          <div class="control">
+            <label>加熱量 Q <span class="val" id="Q-label">0 J</span></label>
+            <input type="range" id="Q-slider" min="0" max="1000" value="0" step="1">
+          </div>
+          <div class="btn-row" style="margin-top:4px">
+            <button class="btn-play" onclick="startHeatAnim()">▶ 加熱アニメ</button>
+            <button class="btn-reset" onclick="resetHeatAnim()">↺ リセット</button>
+          </div>
+        </div>
+
+        <div id="eqCtrls" style="display:none">
+          <div class="control">
+            <label>物体Aの質量 m₁ <span class="val" id="m1-label">1.0 kg</span></label>
+            <input type="range" id="m1-slider" min="0.5" max="4" value="1" step="0.5">
+          </div>
+          <div class="control">
+            <label>物体Aの温度 T₁ <span class="val" id="T1-label">500 K</span></label>
+            <input type="range" id="T1-slider" min="200" max="800" value="500" step="10">
+          </div>
+          <div class="control">
+            <label>物体Bの質量 m₂ <span class="val" id="m2-label">1.0 kg</span></label>
+            <input type="range" id="m2-slider" min="0.5" max="4" value="1" step="0.5">
+          </div>
+          <div class="control">
+            <label>物体Bの温度 T₂ <span class="val" id="T2-label">200 K</span></label>
+            <input type="range" id="T2-slider" min="100" max="600" value="200" step="10">
+          </div>
+          <div class="btn-row" style="margin-top:4px">
+            <button class="btn-play" onclick="startEq2Anim()">▶ 接触させる</button>
+            <button class="btn-reset" onclick="resetEq2Anim()">↺ リセット</button>
+          </div>
+          <p style="font-size:11px;color:var(--muted);font-weight:700;line-height:1.6;margin-top:4px">
+            比熱は同じ（c一定）として計算<br>Teq = (m₁T₁ + m₂T₂)/(m₁+m₂)
+          </p>
+        </div>
+        <div class="formula-box" id="formulaBox">
+          <strong>絶対温度と温度の関係</strong>
+          T [K] = t [°C] + 273<br>
+          <span style="color:var(--muted);font-size:11px">絶対零度：−273°C = 0 K（熱運動が止まる）</span>
+        </div>
+        <div class="result-card" id="resultCard" style="background:#fff7ed;border:1px solid #fed7aa;color:var(--orange)">
+          T = 300 K
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DPR=window.devicePixelRatio||1;
+let tab='motion';
+let animId=null, lastTs=null;
+let eqT=0, eqPlaying=false;
+let heatQ=0, heatPlaying=false;
+let eq2TA=500, eq2TB=200, eq2Playing=false, eq2Time=0;
+let eq2History=[]; // [{ta,tb}]
+
+// 気体分子（ボックス内を直進＋反射）
+const GAS_N=8;
+let gasMolState=null;
+function initGasMols(cx,cy,rW,rH){
+  const pad=16, bx=cx-rW/2+pad, bw=rW-pad*2, by=cy-rH/2+pad, bh=rH-pad*2;
+  gasMolState=Array.from({length:GAS_N},(_,i)=>({
+    x:bx+Math.random()*bw, y:by+Math.random()*bh,
+    vx:(Math.random()-0.5)*350, vy:(Math.random()-0.5)*350,
+  }));
+}
+function stepGasMols(dt,cx,cy,rW,rH){
+  if(!gasMolState) initGasMols(cx,cy,rW,rH);
+  const pad=16, bx=cx-rW/2+pad, bw=rW-pad*2, by=cy-rH/2+pad, bh=rH-pad*2;
+  for(const m of gasMolState){
+    m.x+=m.vx*dt; m.y+=m.vy*dt;
+    if(m.x<bx){m.x=bx;m.vx=Math.abs(m.vx);}
+    if(m.x>bx+bw){m.x=bx+bw;m.vx=-Math.abs(m.vx);}
+    if(m.y<by){m.y=by;m.vy=Math.abs(m.vy);}
+    if(m.y>by+bh){m.y=by+bh;m.vy=-Math.abs(m.vy);}
+  }
+}
+
+const CVS=document.getElementById('mainCanvas');
+function resizeC(){
+  const r=CVS.getBoundingClientRect(); if(!r.width) return;
+  CVS.width=r.width*DPR; CVS.height=r.height*DPR;
+  CVS.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+}
+resizeC();
+window.addEventListener('resize',()=>{ resizeC(); if(tab==='motion') initParticles(); redraw(); });
+const ctx=()=>CVS.getContext('2d');
+const W=()=>CVS.getBoundingClientRect().width;
+const H=()=>CVS.getBoundingClientRect().height;
+
+function lbl(c,x,y,text,color,align,base,size){
+  c.save(); c.fillStyle=color||'#334155';
+  c.font=`700 ${size||12}px Hiragino Sans,system-ui`;
+  c.textAlign=align||'center'; c.textBaseline=base||'alphabetic';
+  c.fillText(text,x,y); c.restore();
+}
+
+// ===== 熱運動・ブラウン運動 =====
+const N_MOL=60; // 分子数
+let molecules=[], brownX=0, brownY=0, brownVx=0, brownVy=0;
+
+function initParticles(){
+  const w=W(), h=H();
+  molecules=[];
+  for(let i=0;i<N_MOL;i++){
+    const ang=Math.random()*Math.PI*2;
+    const spd=0.5+Math.random()*1.5;
+    molecules.push({
+      x:20+Math.random()*(w-40), y:20+Math.random()*(h-40),
+      vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+      r:3+Math.random()*2,
+    });
+  }
+  brownX=w/2; brownY=h/2; brownVx=0; brownVy=0;
+}
+
+function drawMotion(){
+  const c=ctx(), w=W(), h=H();
+  const T=parseFloat(document.getElementById('T-slider').value);
+  const speedFactor=Math.sqrt(T/300);
+
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  // 背景色（温度で変化）
+  const heat=Math.min((T-100)/700,1);
+  c.save();
+  c.fillStyle=`rgba(254,${Math.round(247-80*heat)},${Math.round(237-150*heat)},${0.15+heat*0.25})`;
+  c.fillRect(0,0,w,h); c.restore();
+
+  // 分子を動かす
+  for(const m of molecules){
+    m.x+=m.vx*speedFactor*1.8;
+    m.y+=m.vy*speedFactor*1.8;
+    if(m.x<m.r||m.x>w-m.r) m.vx*=-1;
+    if(m.y<m.r||m.y>h-m.r) m.vy*=-1;
+    m.x=Math.max(m.r,Math.min(w-m.r,m.x));
+    m.y=Math.max(m.r,Math.min(h-m.r,m.y));
+  }
+
+  // ブラウン粒子との衝突
+  const BR=14;
+  let fx=0, fy=0;
+  for(const m of molecules){
+    const dx=brownX-m.x, dy=brownY-m.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<BR+m.r){
+      const nx=dx/dist, ny=dy/dist;
+      fx+=nx*speedFactor*0.8;
+      fy+=ny*speedFactor*0.8;
+    }
+  }
+  brownVx=brownVx*0.85+fx*0.4;
+  brownVy=brownVy*0.85+fy*0.4;
+  brownX+=brownVx; brownY+=brownVy;
+  if(brownX<BR){brownX=BR; brownVx*=-0.5;}
+  if(brownX>w-BR){brownX=w-BR; brownVx*=-0.5;}
+  if(brownY<BR){brownY=BR; brownVy*=-0.5;}
+  if(brownY>h-BR){brownY=h-BR; brownVy*=-0.5;}
+
+  // 分子描画
+  for(const m of molecules){
+    c.save(); c.fillStyle=`rgba(59,130,246,0.7)`; c.beginPath();
+    c.arc(m.x,m.y,m.r,0,Math.PI*2); c.fill(); c.restore();
+  }
+
+  // ブラウン粒子
+  c.save(); c.fillStyle='#fdba74'; c.strokeStyle='#ea580c'; c.lineWidth=2;
+  c.beginPath(); c.arc(brownX,brownY,BR,0,Math.PI*2); c.fill(); c.stroke(); c.restore();
+  lbl(c, brownX, brownY+4, '微粒子', '#9a3412','center','middle',10);
+
+  // 温度表示
+  const tC=T-273;
+  lbl(c, w-10, h-10, `T = ${T} K（${tC>0?'+':''}${tC} °C）　速さ ∝ √T`, '#64748b','right','alphabetic',12);
+}
+
+// ===== 温度と熱 =====
+let eqTh=400, eqTl=200; // 熱平衡アニメ用の現在温度
+
+function drawTemp(){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const cel=parseFloat(document.getElementById('cel-slider').value);
+  const K=cel+273;
+
+  // ===== セルシウス↔絶対温度 =====
+  lbl(c, w*0.08, h*0.14, 'セルシウス温度と絶対温度', '#0f2f7a','left','middle',13);
+
+  const midY=h*0.50;
+  const axL=w*0.06, axR=w*0.96;
+  const Kmin=0, Kmax=600;
+  const kScale=(axR-axL)/(Kmax-Kmin);
+
+  // 数直線
+  c.save(); c.strokeStyle='#94a3b8'; c.lineWidth=1.5;
+  c.beginPath(); c.moveTo(axL,midY); c.lineTo(axR,midY); c.stroke(); c.restore();
+
+  // 目盛り
+  [0,100,200,273,300,373,400,500,600].forEach(k=>{
+    const x=axL+k*kScale;
+    c.save(); c.strokeStyle=k===273?'#7c3aed':'#94a3b8'; c.lineWidth=k===273?2:1;
+    c.beginPath(); c.moveTo(x,midY-8); c.lineTo(x,midY+8); c.stroke(); c.restore();
+    lbl(c, x, midY+18, k, k===273?'#7c3aed':'#64748b','center','middle',10);
+  });
+  lbl(c, axR+8, midY, 'K', '#334155','left','middle',12);
+  [-273,-200,-100,0,100,200].forEach(t=>{
+    const k=t+273; if(k<0||k>600) return;
+    const x=axL+k*kScale;
+    lbl(c, x, midY+30, `${t>0?'+':''}${t}°`, '#94a3b8','center','middle',9);
+  });
+  lbl(c, axR+8, midY+30, '°C', '#94a3b8','left','middle',10);
+
+  // 絶対零度
+  lbl(c, axL, midY-20, '絶対零度 −273°C = 0 K', '#7c3aed','left','middle',10);
+
+  // 水の範囲
+  const meltX=axL+273*kScale, boilX=axL+373*kScale;
+  c.save(); c.fillStyle='#bfdbfe';
+  c.fillRect(meltX,midY-38,boilX-meltX,30); c.restore();
+  lbl(c, (meltX+boilX)/2, midY-26, '水（液体）', '#1d4ed8','center','middle',10);
+  lbl(c, meltX, midY-12, '0°C', '#1d4ed8','center','middle',9);
+  lbl(c, boilX, midY-12, '100°C', '#1d4ed8','center','middle',9);
+
+  // 現在マーカー
+  const curX=Math.max(axL, Math.min(axR, axL+Math.max(0,K)*kScale));
+  c.save(); c.fillStyle='#ea580c';
+  c.beginPath(); c.moveTo(curX,midY-48); c.lineTo(curX-7,midY-36); c.lineTo(curX+7,midY-36); c.closePath(); c.fill(); c.restore();
+  lbl(c, curX, midY-56, `T = ${Math.max(0,K)} K　t = ${cel} °C`, '#ea580c','center','middle',12);
+
+
+  // 式
+  lbl(c, w/2, h-10, `T [K] = t [°C] + 273　　絶対零度 = −273°C = 0 K`, '#64748b','center','alphabetic',12);
+
+}
+
+// ===== 三態と加熱曲線 =====
+function drawState(){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const Qval=parseFloat(document.getElementById('Q-slider').value);
+
+  // 加熱曲線のデータ（水）
+  // Q:  0  → 100: 固体（-20→0°C）
+  // Q: 100 → 200: 融解（0°C一定）334J/g
+  // Q: 200 → 500: 液体（0→100°C）
+  // Q: 500 → 750: 蒸発（100°C一定）2257J/g
+  // Q: 750 → 1000: 気体（100→200°C）
+  const segments=[
+    {q0:0,   q1:100,  t0:-20, t1:0,   phase:'固体（氷）',   color:'#bfdbfe'},
+    {q0:100, q1:200,  t0:0,   t1:0,   phase:'融解中',       color:'#e0f2fe', latent:true},
+    {q0:200, q1:500,  t0:0,   t1:100, phase:'液体（水）',   color:'#60a5fa'},
+    {q0:500, q1:750,  t0:100, t1:100, phase:'蒸発中',       color:'#fde68a', latent:true},
+    {q0:750, q1:1000, t0:100, t1:200, phase:'気体（水蒸気）', color:'#fca5a5'},
+  ];
+
+  function getTandPhase(Q){
+    for(const s of segments){
+      if(Q<=s.q1){
+        const f=(Q-s.q0)/(s.q1-s.q0);
+        return {t:s.t0+(s.t1-s.t0)*f, phase:s.phase, color:s.color, latent:s.latent||false};
+      }
+    }
+    return {t:200, phase:'気体（水蒸気）', color:'#fca5a5', latent:false};
+  }
+
+  const {t:curT, phase:curPhase, color:curColor, latent:curLatent}=getTandPhase(Qval);
+
+  // ===== 加熱曲線グラフ =====
+  const gL=w*0.08, gR=w*0.60, gB=h*0.82, gT=h*0.10;
+  const gW=gR-gL, gH=gB-gT;
+  const Qmin=0, Qmax=1000, Tmin=-40, Tmax=220;
+
+  const qx=(q)=>gL+(q-Qmin)/(Qmax-Qmin)*gW;
+  const ty=(t)=>gB-(t-Tmin)/(Tmax-Tmin)*gH;
+
+  // 背景塗り（各区間）
+  segments.forEach(s=>{
+    const x0=qx(s.q0), x1=qx(s.q1), y0=ty(s.t0), y1=ty(s.t1);
+    c.save(); c.fillStyle=s.color+'55';
+    c.fillRect(x0,Math.min(y0,y1)-2,x1-x0,Math.abs(y1-y0)+4+gB-Math.max(y0,y1));
+    c.restore();
+  });
+
+  // 軸
+  c.save(); c.strokeStyle='#94a3b8'; c.lineWidth=1.5;
+  c.beginPath(); c.moveTo(gL,gT); c.lineTo(gL,gB); c.lineTo(gR,gB); c.stroke();
+  c.restore();
+  // 目盛り
+  [-20,0,100,200].forEach(t=>{
+    const y=ty(t); c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(gL,y); c.lineTo(gR,y); c.stroke(); c.restore();
+    lbl(c, gL-6, y+4, `${t}°C`, '#64748b','right','middle',10);
+  });
+  [0,100,200,334,500,584,750,1000].forEach(q=>{
+    const x=qx(q); if(x<gL||x>gR) return;
+    c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(x,gT); c.lineTo(x,gB); c.stroke(); c.restore();
+  });
+  lbl(c, gL-20, gT-8, '温度[°C]', '#64748b','center','middle',11);
+  lbl(c, gR+8, gB+8, '熱量 Q [J]', '#64748b','left','middle',11);
+
+  // 曲線
+  c.save(); c.strokeStyle='#1d4ed8'; c.lineWidth=3; c.lineJoin='round';
+  c.beginPath();
+  segments.forEach((s,i)=>{
+    const x0=qx(s.q0), x1=qx(s.q1), y0=ty(s.t0), y1=ty(s.t1);
+    if(i===0) c.moveTo(x0,y0);
+    c.lineTo(x1,y1);
+  });
+  c.stroke(); c.restore();
+
+  // 現在の位置（赤丸）
+  c.save(); c.fillStyle='#dc2626'; c.strokeStyle='#fff'; c.lineWidth=2;
+  c.beginPath(); c.arc(qx(Qval),ty(curT),7,0,Math.PI*2); c.fill(); c.stroke(); c.restore();
+
+  // ラベル
+  lbl(c, qx(50),   ty(-10)+18, '固体', '#1d4ed8','center','middle',10);
+  lbl(c, qx(150),  ty(0)-14,   '融解', '#0891b2','center','middle',10);
+  lbl(c, qx(350),  ty(50)+14,  '液体', '#1d4ed8','center','middle',10);
+  lbl(c, qx(625),  ty(100)-14, '蒸発', '#ea580c','center','middle',10);
+  lbl(c, qx(870),  ty(150)+14, '気体', '#dc2626','center','middle',10);
+
+  // 融解熱・蒸発熱注記
+  lbl(c, qx(150), gB+12, '融解熱 334J/g', '#0891b2','center','middle',9);
+  lbl(c, qx(625), gB+12, '蒸発熱 2257J/g', '#ea580c','center','middle',9);
+
+  // ===== 右：分子配置のイメージ =====
+  const rx=w*0.66, ry=h*0.12, rW=w*0.32, rH=h*0.74;
+  c.save(); c.fillStyle=curColor+'44'; c.strokeStyle='#e2e8f0'; c.lineWidth=1;
+  c.beginPath(); c.roundRect(rx,ry,rW,rH,10); c.fill(); c.stroke(); c.restore();
+  lbl(c, rx+rW/2, ry+16, curPhase, '#334155','center','middle',13);
+
+  // 分子配置
+  const cx2=rx+rW/2, cy2=ry+rH/2+8;
+  const molR=6;
+  const now=performance.now()/1000;
+
+  if(curPhase.includes('固体')||curPhase.includes('融解')){
+    // 3×3格子＋わずかな振動
+    const spacing=24, amp=curPhase.includes('融解')?3:1;
+    let idx=0;
+    for(let row=-1;row<=1;row++) for(let col=-1;col<=1;col++){
+      const ph=idx*1.7;
+      const mx=cx2+col*spacing+amp*Math.sin(now*3.0+ph);
+      const my=cy2+row*spacing+amp*Math.cos(now*2.7+ph+1);
+      c.save(); c.fillStyle='#93c5fd'; c.strokeStyle='#60a5fa'; c.lineWidth=1;
+      c.beginPath(); c.arc(mx,my,molR,0,Math.PI*2); c.fill(); c.stroke(); c.restore();
+      idx++;
+    }
+    lbl(c, cx2, ry+rH-30, 'わずかに振動', '#64748b','center','middle',10);
+  } else if(curPhase.includes('液体')||curPhase.includes('蒸発')){
+    // 各分子が独立したLissajous軌跡でゆっくり位置交換
+    const amp=curPhase.includes('蒸発')?22:15;
+    const basePos=[
+      [-32,-28],[0,-32],[32,-24],[-20,0],[14,4],[-36,18],
+      [30,18],[-8,30],[24,32],[-28,48],
+    ];
+    basePos.forEach(([bx,by],i)=>{
+      const f1=0.18+i*0.07, f2=0.21+i*0.05;
+      const mx=cx2+bx+amp*Math.sin(now*f1+i*0.9);
+      const my=cy2+by+amp*Math.cos(now*f2+i*1.2);
+      c.save(); c.fillStyle='#60a5fa'; c.strokeStyle='#3b82f6'; c.lineWidth=1;
+      c.beginPath(); c.arc(mx,my,molR,0,Math.PI*2); c.fill(); c.stroke(); c.restore();
+    });
+    lbl(c, cx2, ry+rH-30, '互いに位置を変える', '#64748b','center','middle',10);
+  } else {
+    // 気体：直進＋壁反射、速度矢印付き
+    if(!gasMolState) initGasMols(cx2,cy2,rW,rH*0.85);
+    for(const m of gasMolState){
+      c.save(); c.fillStyle='#fca5a5'; c.strokeStyle='#f87171'; c.lineWidth=1;
+      c.beginPath(); c.arc(m.x,m.y,molR,0,Math.PI*2); c.fill(); c.stroke(); c.restore();
+    }
+    lbl(c, cx2, ry+rH-30, '自由に動き回る', '#64748b','center','middle',10);
+  }
+
+  // 潜熱説明
+  if(curLatent){
+    lbl(c, rx+rW/2, ry+28, '潜熱：温度変化なし', '#ea580c','center','middle',11);
+  }
+
+  // 現在の状態表示
+  lbl(c, w/2, h-10, `現在：${curPhase}  ${curT.toFixed(0)} °C = ${(curT+273).toFixed(0)} K`, '#334155','center','alphabetic',13);
+}
+
+// ===== 熱平衡 =====
+function drawEq(){
+  const c=ctx(), w=W(), h=H();
+  c.clearRect(0,0,w,h); c.fillStyle='#fff'; c.fillRect(0,0,w,h);
+
+  const m1=parseFloat(document.getElementById('m1-slider').value);
+  const T1=parseFloat(document.getElementById('T1-slider').value);
+  const m2=parseFloat(document.getElementById('m2-slider').value);
+  const T2=parseFloat(document.getElementById('T2-slider').value);
+  const Teq=(m1*T1+m2*T2)/(m1+m2);
+  const midT=(T1+T2)/2;
+
+  const TA=eq2TA, TB=eq2TB;
+  const inContact=Math.abs(TA-Teq)<1 && Math.abs(TB-Teq)<1;
+
+  // ===== レイアウト =====
+  const gL=w*0.10, gR=w*0.96, gT=h*0.06, gB=h*0.50;
+  const gW=gR-gL, gH=gB-gT;
+  const rawMax=Math.max(T1,T2), rawMin=Math.min(T1,T2);
+  const rangePad=Math.max(30, (rawMax-rawMin)*0.3);
+  const Tmax=rawMax+rangePad, Tmin=rawMin-rangePad;
+  const tY=(t)=>Math.max(gT, Math.min(gB, gB-(t-Tmin)/(Tmax-Tmin)*gH));
+  const maxTime=8; // グラフのX軸最大時間
+
+  // ===== 温度-時間グラフ =====
+  // 軸
+  c.save(); c.strokeStyle='#94a3b8'; c.lineWidth=1.5;
+  c.beginPath(); c.moveTo(gL,gT); c.lineTo(gL,gB); c.lineTo(gR,gB); c.stroke(); c.restore();
+  lbl(c, gL-6, gT-6, 'T(K)', '#64748b','right','middle',11);
+  lbl(c, gR+4, gB+4, 't(s)', '#64748b','left','middle',11);
+
+  // Y目盛り
+  [T1,T2,Teq].forEach(t=>{
+    const y=tY(t);
+    const col=t===Teq?'#15803d':t===Math.max(T1,T2)?'#dc2626':'#1d4ed8';
+    c.save(); c.strokeStyle=col==='#15803d'?col:'#e2e8f0'; c.lineWidth=1;
+    c.setLineDash(col==='#15803d'?[5,4]:[]);
+    c.beginPath(); c.moveTo(gL,y); c.lineTo(gR,y); c.stroke();
+    c.setLineDash([]); c.restore();
+    lbl(c, gL-6, y+4, `${Math.round(t)}`, col,'right','middle',10);
+  });
+  // 中間値（m1≠m2かつTeqと十分離れているときのみ）
+  if(Math.abs(m1-m2)>0.3 && Math.abs(midT-Teq)>8){
+    const y=tY(midT);
+    c.save(); c.strokeStyle='#cbd5e1'; c.lineWidth=1; c.setLineDash([3,3]);
+    c.beginPath(); c.moveTo(gL,y); c.lineTo(gR,y); c.stroke(); c.setLineDash([]); c.restore();
+    lbl(c, gL-6, y+4, `${Math.round(midT)}`, '#94a3b8','right','middle',9);
+    lbl(c, gR-80, y-10, `中間 ${Math.round(midT)} K`, '#94a3b8','left','middle',9);
+  }
+  // Teqラベル
+  lbl(c, gR-10, tY(Teq)-10, `Teq=${Math.round(Teq)}K`, '#15803d','right','middle',11);
+
+  // 履歴カーブ
+  if(eq2History.length>1){
+    const txX=(t)=>gL+t/maxTime*gW;
+    ['ta','tb'].forEach((key,ki)=>{
+      const col=ki===0?'#dc2626':'#1d4ed8';
+      c.save(); c.strokeStyle=col; c.lineWidth=2.5; c.lineJoin='round';
+      c.beginPath();
+      eq2History.forEach((pt,i)=>{
+        const x=txX(pt.t), y=tY(pt[key]);
+        i===0?c.moveTo(x,y):c.lineTo(x,y);
+      });
+      c.stroke(); c.restore();
+    });
+    // 現在の点
+    const last=eq2History[eq2History.length-1];
+    const lx=gL+last.t/maxTime*gW;
+    [['ta','#dc2626'],['tb','#1d4ed8']].forEach(([k,col])=>{
+      c.save(); c.fillStyle=col; c.beginPath(); c.arc(lx,tY(last[k]),5,0,Math.PI*2); c.fill(); c.restore();
+    });
+  } else {
+    // 初期点のみ
+    c.save(); c.fillStyle='#dc2626'; c.beginPath(); c.arc(gL,tY(T1),5,0,Math.PI*2); c.fill(); c.restore();
+    c.save(); c.fillStyle='#1d4ed8'; c.beginPath(); c.arc(gL,tY(T2),5,0,Math.PI*2); c.fill(); c.restore();
+    lbl(c, gL+40, tY(T1)-12, '物体A（高温）', '#dc2626','left','middle',10);
+    lbl(c, gL+40, tY(T2)+12, '物体B（低温）', '#1d4ed8','left','middle',10);
+  }
+
+  // ===== 物体A・B のボックス =====
+  const tColor=(t)=>{
+    const f=Math.min(1,Math.max(0,(t-100)/700));
+    const r=Math.round(100+155*f), g=Math.round(80-60*f), b=Math.round(220-150*f);
+    return `rgb(${r},${g},${b})`;
+  };
+
+  const A_cx=w*0.28, B_cx=w*0.70;
+  const boxW=w*0.24;
+  const bh=h*0.28; // 全て同じ高さ
+  const by1=h-h*0.06-bh, by2=h-h*0.06-bh;
+
+  // 注記
+  lbl(c, w*0.50, by1-12, '※ 両物体の比熱は同じとする', '#94a3b8','center','middle',10);
+
+  // A
+  c.save(); c.fillStyle=tColor(TA); c.strokeStyle='#475569'; c.lineWidth=2;
+  c.beginPath(); c.roundRect(A_cx-boxW/2,by1,boxW,bh,8); c.fill(); c.stroke(); c.restore();
+  lbl(c, A_cx, by1+bh*0.20, '物体A', '#fff','center','middle',13);
+  lbl(c, A_cx, by1+bh*0.42, `m₁ = ${m1} kg`, '#fff','center','middle',11);
+  lbl(c, A_cx, by1+bh*0.62, `${Math.round(TA)} K`, '#fff','center','middle',14);
+  lbl(c, A_cx, by1+bh*0.82, `熱容量 ${m1.toFixed(1)} c`, '#ffffffaa','center','middle',10);
+
+  // B
+  c.save(); c.fillStyle=tColor(TB); c.strokeStyle='#475569'; c.lineWidth=2;
+  c.beginPath(); c.roundRect(B_cx-boxW/2,by2,boxW,bh,8); c.fill(); c.stroke(); c.restore();
+  lbl(c, B_cx, by2+bh*0.20, '物体B', '#fff','center','middle',13);
+  lbl(c, B_cx, by2+bh*0.42, `m₂ = ${m2} kg`, '#fff','center','middle',11);
+  lbl(c, B_cx, by2+bh*0.62, `${Math.round(TB)} K`, '#fff','center','middle',14);
+  lbl(c, B_cx, by2+bh*0.82, `熱容量 ${m2.toFixed(1)} c`, '#ffffffaa','center','middle',10);
+
+  // 熱の流れ矢印
+  const arrowY=h-h*0.06-bh/2;
+  const gapL=A_cx+boxW/2+8, gapR=B_cx-boxW/2-8;
+  if(!inContact && Math.abs(TA-TB)>2){
+    const fromA=TA>TB;
+    c.save(); c.strokeStyle='#ea580c'; c.fillStyle='#ea580c'; c.lineWidth=2;
+    for(let i=-1;i<=1;i++){
+      const ay=arrowY+i*12;
+      const ax=fromA?gapL:gapR, bx=fromA?gapR:gapL;
+      c.beginPath(); c.moveTo(ax,ay); c.lineTo(bx,ay); c.stroke();
+      const dir=fromA?1:-1;
+      c.beginPath(); c.moveTo(bx,ay);
+      c.lineTo(bx-dir*9,ay-5); c.lineTo(bx-dir*9,ay+5); c.closePath(); c.fill();
+    }
+    lbl(c, (gapL+gapR)/2, arrowY-18, 'Q', '#ea580c','center','middle',13);
+    c.restore();
+  } else {
+    lbl(c, (gapL+gapR)/2, arrowY-8, '⇌', '#15803d','center','middle',22);
+    lbl(c, (gapL+gapR)/2, arrowY+16, '熱平衡', '#15803d','center','middle',11);
+  }
+
+  // 式
+  lbl(c, w/2, h-8, `Teq = (${m1}×${Math.round(T1)} + ${m2}×${Math.round(T2)}) / (${m1}+${m2}) = ${Math.round(Teq)} K`, '#334155','center','alphabetic',12);
+}
+
+
+// ===== アニメ =====
+
+function startEq2Anim(){
+  eq2TA=parseFloat(document.getElementById('T1-slider').value);
+  eq2TB=parseFloat(document.getElementById('T2-slider').value);
+  eq2Time=0; eq2History=[{ta:eq2TA,tb:eq2TB,t:0}];
+  eq2Playing=true; if(!animId) animId=requestAnimationFrame(mainLoop);
+}
+function resetEq2Anim(){
+  eq2TA=parseFloat(document.getElementById('T1-slider').value);
+  eq2TB=parseFloat(document.getElementById('T2-slider').value);
+  eq2Time=0; eq2History=[];
+  eq2Playing=false; if(tab==='eq') drawEq();
+}
+function startHeatAnim(){ heatPlaying=true; if(!animId) animId=requestAnimationFrame(mainLoop); }
+function resetHeatAnim(){
+  heatQ=0; heatPlaying=false;
+  document.getElementById('Q-slider').value=0;
+  document.getElementById('Q-label').textContent='0 J';
+  if(tab==='state') drawState();
+}
+
+function mainLoop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+
+  if(tab==='motion'){
+    drawMotion();
+  } else if(tab==='temp'){
+    drawTemp();
+  } else if(tab==='eq'){
+    if(eq2Playing){
+      const m1=parseFloat(document.getElementById('m1-slider').value);
+      const T1=parseFloat(document.getElementById('T1-slider').value);
+      const m2=parseFloat(document.getElementById('m2-slider').value);
+      const T2=parseFloat(document.getElementById('T2-slider').value);
+      const Teq=(m1*T1+m2*T2)/(m1+m2);
+      const kA=1.2*(m2/(m1+m2)*2+0.3), kB=1.2*(m1/(m1+m2)*2+0.3);
+      eq2TA+=(Teq-eq2TA)*dt*kA;
+      eq2TB+=(Teq-eq2TB)*dt*kB;
+      eq2Time+=dt;
+      eq2History.push({ta:eq2TA,tb:eq2TB,t:eq2Time});
+      if(eq2History.length>300) eq2History.shift();
+      if(Math.abs(eq2TA-Teq)<0.3){ eq2TA=Teq; eq2TB=Teq; eq2Playing=false; }
+    }
+    drawEq();
+  } else if(tab==='state'){
+    if(heatPlaying){
+      heatQ+=dt*120;
+      if(heatQ>=1000){ heatQ=1000; heatPlaying=false; }
+      document.getElementById('Q-slider').value=heatQ;
+      document.getElementById('Q-label').textContent=Math.round(heatQ)+' J';
+    }
+    // 気体フェーズなら分子を動かす
+    const Qv=parseFloat(document.getElementById('Q-slider').value);
+    if(Qv>=750 && gasMolState){
+      const w2=W(),h2=H(),rx2=w2*0.66,ry2=h2*0.12,rW2=w2*0.32,rH2=h2*0.74;
+      stepGasMols(dt, rx2+rW2/2, ry2+rH2/2, rW2, rH2*0.85);
+    }
+    drawState();
+  }
+  animId=requestAnimationFrame(mainLoop);
+}
+
+// ===== UI =====
+function updateUI(){
+  const infos={
+    eq:'<span class="hl hl-orange">熱平衡温度</span> Teq = (m₁T₁ + m₂T₂)/(m₁+m₂)。質量が異なると<span class="hl hl-blue">中間にならない</span>。重い方の温度に近い値になる。',
+    motion:'<span class="hl hl-orange">熱運動</span>：分子・原子が常に乱雑に運動。<span class="hl hl-blue">ブラウン運動</span>：花粉や煙の粒子が分子の衝突で不規則に揺れる現象。温度が高いほど運動は激しい。',
+    temp:'<span class="hl hl-blue">絶対温度 T [K]</span> = t [°C] + 273。絶対零度（0 K = −273°C）で熱運動が停止。<span class="hl hl-orange">熱平衡</span>：高温→低温に熱が移動し、同じ温度になった状態。',
+    state:'<span class="hl hl-blue">融解熱</span>（固体→液体）・<span class="hl hl-orange">蒸発熱</span>（液体→気体）は温度変化なしに吸収される<span class="hl hl-red">潜熱</span>。単位は J/g または J/kg。',
+  };
+  const formulas={
+    eq:'<strong>熱量保存</strong>m₁c(T₁−Teq) = m₂c(Teq−T₂)<br>Teq = (m₁T₁+m₂T₂)/(m₁+m₂)<br><span style="color:var(--muted);font-size:11px">（比熱cが同じ場合）</span>',
+    motion:'<strong>温度と熱運動</strong>温度が高い ＝ 分子運動が激しい<br><span style="color:var(--muted);font-size:11px">分子の平均速さ ∝ √T</span>',
+    temp:'<strong>温度の換算</strong>T [K] = t [°C] + 273<br><span style="color:var(--muted);font-size:11px">絶対零度：−273°C = 0 K（熱運動停止）</span>',
+    state:'<strong>状態変化と潜熱</strong>融解熱（水）：334 J/g<br>蒸発熱（水）：2257 J/g<br><span style="color:var(--muted);font-size:11px">潜熱中は温度一定</span>',
+  };
+  const titles={eq:'熱平衡',motion:'熱運動とブラウン運動',temp:'温度と熱・熱平衡',state:'物質の三態と加熱曲線'};
+  const subs={eq:'Teq = (m₁T₁+m₂T₂)/(m₁+m₂)',motion:'温度が高いほど粒子の運動が激しい',temp:'T [K] = t [°C] + 273',state:'固体 → 融解 → 液体 → 蒸発 → 気体'};
+
+  document.getElementById('mainTitle').textContent=titles[tab];
+  document.getElementById('mainSub').textContent=subs[tab];
+  document.getElementById('infoTitle').textContent=titles[tab];
+  document.getElementById('infoBody').innerHTML=infos[tab];
+  document.getElementById('formulaBox').innerHTML=formulas[tab];
+
+  if(tab==='eq'){
+    const m1=parseFloat(document.getElementById('m1-slider').value);
+    const T1=parseFloat(document.getElementById('T1-slider').value);
+    const m2=parseFloat(document.getElementById('m2-slider').value);
+    const T2=parseFloat(document.getElementById('T2-slider').value);
+    const Teq=(m1*T1+m2*T2)/(m1+m2);
+    document.getElementById('resultCard').textContent=`Teq = ${Math.round(Teq)} K`;
+    document.getElementById('resultCard').style.color='var(--green)';
+    document.getElementById('resultCard').style.background='#f0fdf4';
+    document.getElementById('resultCard').style.border='1px solid #bbf7d0';
+  } else if(tab==='motion'){
+    const T=parseFloat(document.getElementById('T-slider').value);
+    document.getElementById('resultCard').textContent=`T = ${T} K = ${T-273} °C`;
+    document.getElementById('resultCard').style.color='var(--orange)';
+    document.getElementById('resultCard').style.background='#fff7ed';
+    document.getElementById('resultCard').style.border='1px solid #fed7aa';
+  } else if(tab==='temp'){
+    const cel=parseFloat(document.getElementById('cel-slider').value);
+    document.getElementById('resultCard').textContent=`t = ${cel} °C → T = ${cel+273} K`;
+    document.getElementById('resultCard').style.color='var(--blue)';
+    document.getElementById('resultCard').style.background='var(--blue-soft)';
+    document.getElementById('resultCard').style.border='1px solid #bfdbfe';
+  } else {
+    const Q=parseFloat(document.getElementById('Q-slider').value);
+    const segs=[{q0:0,q1:100,t0:-20,t1:0},{q0:100,q1:200,t0:0,t1:0},{q0:200,q1:500,t0:0,t1:100},{q0:500,q1:750,t0:100,t1:100},{q0:750,q1:1000,t0:100,t1:200}];
+    const phases=['固体','融解中','液体','蒸発中','気体'];
+    let seg=4;
+    for(let i=0;i<segs.length;i++){ if(Q<=segs[i].q1){seg=i;break;} }
+    document.getElementById('resultCard').textContent=`Q = ${Math.round(Q)} J → ${phases[seg]}`;
+    document.getElementById('resultCard').style.color='var(--red)';
+    document.getElementById('resultCard').style.background='#fff1f2';
+    document.getElementById('resultCard').style.border='1px solid #fecdd3';
+  }
+}
+
+function redraw(){
+  updateUI();
+  if(tab==='motion') drawMotion();
+  else if(tab==='temp') drawTemp();
+  else if(tab==='eq') drawEq();
+  else drawState();
+}
+
+function setTab(t){
+  tab=t; eqPlaying=false; heatPlaying=false;
+  // タブごとにcanvasの高さを変える
+  CVS.setAttribute('height', t==='temp' ? 420 : 300);
+  CVS.setAttribute('height', t==='temp'?260:t==='eq'?420:300);
+  ['motion','temp','state','eq'].forEach((x,i)=>{
+    const el=document.getElementById('tab'+(i+1)); if(el) el.classList.toggle('active',t===x);
+    const ctrl=document.getElementById(x+'Ctrls'); if(ctrl){ ctrl.style.display=t===x?'flex':'none'; if(t===x){ ctrl.style.flexDirection='column'; ctrl.style.gap='14px'; } }
+  });
+
+  setTimeout(()=>{ resizeC(); redraw(); },30);
+}
+
+// スライダー
+const sliderMap={
+  'm1':'m1-label','T1':'T1-label','m2':'m2-label','T2':'T2-label',
+  'T':'T-label','cel':'cel-label','Th':'Th-label','Tl':'Tl-label','Q':'Q-label',
+};
+const fmtMap={
+  'm1':v=>parseFloat(v).toFixed(1)+' kg','T1':v=>v+' K','m2':v=>parseFloat(v).toFixed(1)+' kg','T2':v=>v+' K',
+  'T':v=>v+' K','cel':v=>v+' °C','Th':v=>v+' K','Tl':v=>v+' K','Q':v=>Math.round(v)+' J',
+};
+Object.entries(sliderMap).forEach(([name,labelId])=>{
+  const el=document.getElementById(name+'-slider');
+  if(!el) return;
+  el.addEventListener('input',()=>{
+    document.getElementById(labelId).textContent=fmtMap[name](el.value);
+
+    if(name==='Q'){ heatQ=parseFloat(el.value); heatPlaying=false; if(heatQ<750) gasMolState=null; }
+    if(name==='m1'||name==='m2'||name==='T1'||name==='T2'){
+      eq2TA=parseFloat(document.getElementById('T1-slider').value);
+      eq2TB=parseFloat(document.getElementById('T2-slider').value);
+      eq2Time=0; eq2History=[]; eq2Playing=false;
+    }
+    updateUI();
+    if(tab==='motion') drawMotion();
+    else if(tab==='temp') drawTemp();
+    else drawState();
+  });
+});
+
+// 起動
+initParticles();
+animId=requestAnimationFrame(mainLoop);
+setTimeout(()=>{ resizeC(); initParticles(); redraw(); },50);
+</script>
+</body>
+</html>
