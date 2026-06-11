@@ -59,7 +59,7 @@ input[type=range]{width:100%;accent-color:var(--blue)}
         <span class="card-title" id="mainTitle">熱運動とブラウン運動</span>
         <span class="card-sub" id="mainSub">温度が高いほど粒子の運動が激しい</span>
       </div>
-      <canvas id="mainCanvas" height="300"></canvas>
+      <canvas id="mainCanvas" height="250"></canvas>
     </div>
     <div class="info-half" style="background:#fff7ed;border:1px solid #fed7aa">
       <strong style="color:#9a3412" id="infoTitle">熱運動とブラウン運動</strong>
@@ -753,8 +753,6 @@ function redraw(){
 function setTab(t){
   tab=t; eqPlaying=false; heatPlaying=false;
   // タブごとにcanvasの高さを変える
-  CVS.setAttribute('height', t==='temp' ? 420 : 300);
-  CVS.setAttribute('height', t==='temp'?260:t==='eq'?420:300);
   ['motion','temp','state','eq'].forEach((x,i)=>{
     const el=document.getElementById('tab'+(i+1)); if(el) el.classList.toggle('active',t===x);
     const ctrl=document.getElementById(x+'Ctrls'); if(ctrl){ ctrl.style.display=t===x?'flex':'none'; if(t===x){ ctrl.style.flexDirection='column'; ctrl.style.gap='14px'; } }
