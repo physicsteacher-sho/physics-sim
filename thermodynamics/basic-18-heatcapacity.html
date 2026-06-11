@@ -60,7 +60,7 @@ input[type=range]{width:100%;accent-color:var(--blue)}
         <span class="card-title" id="mainTitle">熱容量と比熱</span>
         <span class="card-sub" id="mainSub">Q = CΔT = mcΔT</span>
       </div>
-      <canvas id="mainCanvas" height="360"></canvas>
+      <canvas id="mainCanvas" height="250"></canvas>
     </div>
     <div class="info-half" style="background:#fff7ed;border:1px solid #fed7aa">
       <strong style="color:#9a3412" id="infoTitle">熱容量と比熱</strong>
@@ -208,12 +208,14 @@ function drawCap(){
       c.strokeStyle=mat.color; c.lineWidth=isWater?2.5:1.5;
       c.beginPath(); c.roundRect(bx,by,bw,bh,4); c.fill(); c.stroke(); c.restore();
 
-      // 水だけ吹き出し
+      // 水だけ吹き出し（バーの右横）
       if(isWater){
+        const cbW=w*0.16, cbH=36;
+        const cbx=bx-cbW-8, cby=by+bh*0.3;
         c.save(); c.fillStyle='#eff6ff'; c.strokeStyle='#3b82f6'; c.lineWidth=1.5;
-        c.beginPath(); c.roundRect(bx-20,by-50,bw+40,38,8); c.fill(); c.stroke(); c.restore();
-        lbl(c, bx+bw/2, by-38, '圧倒的に多い！', '#1d4ed8','center','middle',10);
-        lbl(c, bx+bw/2, by-22, '→ 温まりにくく冷めにくい', '#1d4ed8','center','middle',9);
+        c.beginPath(); c.roundRect(cbx,cby,cbW,cbH,8); c.fill(); c.stroke(); c.restore();
+        lbl(c, cbx+cbW/2, cby+10, '圧倒的に多い！', '#1d4ed8','center','middle',10);
+        lbl(c, cbx+cbW/2, cby+24, '温まりにくく冷めにくい', '#1d4ed8','center','middle',9);
       }
 
       // Q値
@@ -270,14 +272,13 @@ function drawCap(){
       const lines=pat.label.split('\n');
       lbl(c, bx+bw/2, baseY+14, lines[0], '#334155','center','middle',11);
       lbl(c, bx+bw/2, baseY+26, lines[1], '#64748b','center','middle',10);
+      lbl(c, bx+bw/2, baseY+40, `c = ${pat.c}`, '#94a3b8','center','middle',9);
     });
 
     // 区切り線（水と鉄の間）
     const sepX=w*0.10+colW*2;
     c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1; c.setLineDash([4,4]);
     c.beginPath(); c.moveTo(sepX,h*0.14); c.lineTo(sepX,h*0.78); c.stroke(); c.setLineDash([]); c.restore();
-    lbl(c, w*0.10+colW, h*0.14, '← 水（c=4.2）', '#38bdf8','center','middle',10);
-    lbl(c, w*0.10+colW*3, h*0.14, '← 鉄（c=0.45）', '#94a3b8','center','middle',10);
 
     // 軸
     c.save(); c.strokeStyle='#e2e8f0'; c.lineWidth=1;
@@ -518,7 +519,6 @@ function setTab(t){
     el.style.display=t===x?'flex':'none';
     if(t===x){el.style.flexDirection='column';el.style.gap='14px';}
   });
-  CVS.setAttribute('height',t==='eq'?420:360);
   setTimeout(()=>{ resizeC(); redraw(); },30);
 }
 
