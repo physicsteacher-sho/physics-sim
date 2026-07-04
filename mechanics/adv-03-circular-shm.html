@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>等速円運動と単振動（正射影）| 専門物理</title>
+<style>
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --teal:#0E7C7B; --teal-soft:#e6f2f2;
+    --amber:#B8860B; --amber-soft:#fff7e0;
+    --blue:#2980B9; --blue-soft:#e8f2fa;
+    --orange:#E67E22; --orange-soft:#fdece0;
+    --slate:#5D6D7E;
+  }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",Meiryo,sans-serif; min-height:100vh; }
+  .layout { display:grid; grid-template-columns: 1fr 300px; gap:16px; padding:16px; max-width:1400px; margin:0 auto; }
+  .main { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .header h1 { font-size:18px; color:var(--teal); font-weight:700; margin-bottom:2px; }
+  .header p { font-size:12px; color:var(--muted); }
+  .canvas-wrap { background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; position:relative; }
+  canvas { display:block; width:100%; height:520px; touch-action:none; cursor:grab; }
+  canvas:active { cursor:grabbing; }
+  .view-btns { position:absolute; bottom:12px; left:12px; display:flex; gap:6px; z-index:2; }
+  .view-btn { background:rgba(255,255,255,0.95); border:1px solid var(--line); color:var(--text); padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:500; }
+  .view-btn:hover { border-color:var(--teal); color:var(--teal); }
+  .view-btn.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+  
+  .side { display:flex; flex-direction:column; gap:12px; position:sticky; top:16px; align-self:start; max-height:calc(100vh - 32px); overflow-y:auto; }
+  .panel h2 { font-size:11px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  .row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .row:last-child { margin-bottom:0; }
+  .row label { font-size:12px; color:var(--text); flex:0 0 70px; }
+  .row .val { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; min-width:38px; text-align:right; }
+  input[type="range"] { flex:1; accent-color:var(--teal); }
+  .btn-row { display:flex; gap:6px; }
+  .btn { flex:1; background:var(--teal); color:#fff; border:none; padding:8px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:500; }
+  .btn.secondary { background:#fff; color:var(--text); border:1px solid var(--line); }
+  .btn.secondary:hover { border-color:var(--teal); color:var(--teal); }
+  .btn:hover { opacity:0.9; }
+  .check { display:flex; align-items:center; gap:8px; margin-bottom:7px; cursor:pointer; font-size:12px; }
+  .check:last-child { margin-bottom:0; }
+  .check input { width:15px; height:15px; cursor:pointer; }
+  .sw { width:11px; height:11px; border-radius:2px; flex:0 0 auto; }
+  .display { background:var(--teal-soft); border-radius:6px; padding:8px 10px; font-size:12px; line-height:1.7; font-variant-numeric:tabular-nums; }
+  .display .v { color:var(--teal); font-weight:600; }
+  .info { font-size:11px; color:var(--muted); line-height:1.5; }
+  .info b { color:var(--text); }
+  
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    .side { position:static; max-height:none; }
+    canvas { height:60vh; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="main">
+    <div class="card header">
+      <h1>等速円運動と単振動（正射影）</h1>
+      <p>ドラッグで視点を回転　—　真横から見ると影が単振動、正面から見ると円運動として見える</p>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div class="view-btns">
+        <button class="view-btn" id="btn-front">正面（円運動）</button>
+        <button class="view-btn" id="btn-side">真横（単振動）</button>
+        <button class="view-btn active" id="btn-persp">斜め</button>
+      </div>
+    </div>
+  </div>
+  
+  <aside class="side">
+    <div class="card panel">
+      <h2>再生</h2>
+      <div class="btn-row">
+        <button class="btn" id="btn-play">一時停止</button>
+        <button class="btn secondary" id="btn-reset">リセット</button>
+      </div>
+    </div>
+    
+    <div class="card panel">
+      <h2>パラメータ</h2>
+      <div class="row">
+        <label>角振動数 ω</label>
+        <input type="range" id="sl-omega" min="0.3" max="2.5" step="0.05" value="1.0">
+        <span class="val" id="v-omega">1.00</span>
+      </div>
+      <div class="row">
+        <label>振幅 A</label>
+        <input type="range" id="sl-A" min="1.0" max="3.0" step="0.1" value="2.0">
+        <span class="val" id="v-A">2.0</span>
+      </div>
+    </div>
+    
+    <div class="card panel">
+      <h2>表示切り替え</h2>
+      <label class="check"><input type="checkbox" id="ck-shadow" checked><span class="sw" style="background:var(--amber)"></span>影 Q（単振動）</label>
+      <label class="check"><input type="checkbox" id="ck-trace" checked><span class="sw" style="background:var(--amber)"></span>影の軌跡（正弦曲線）</label>
+      <label class="check"><input type="checkbox" id="ck-vel"><span class="sw" style="background:var(--blue)"></span>速度ベクトル</label>
+      <label class="check"><input type="checkbox" id="ck-acc"><span class="sw" style="background:var(--orange)"></span>加速度ベクトル</label>
+      <label class="check"><input type="checkbox" id="ck-proj" checked><span class="sw" style="background:#aaa"></span>影への投影線</label>
+    </div>
+    
+    <div class="card panel">
+      <h2>現在の値</h2>
+      <div class="display">
+        位置 x = <span class="v" id="d-x">0.00</span><br>
+        速度 v = <span class="v" id="d-v">0.00</span><br>
+        加速度 a = <span class="v" id="d-a">0.00</span><br>
+        周期 T = <span class="v" id="d-T">6.28</span>
+      </div>
+    </div>
+    
+    <div class="card panel">
+      <h2>ポイント</h2>
+      <div class="info">
+        円周上の点 <b>P</b> が等速円運動し、壁への影 <b>Q</b> が単振動する。<br><br>
+        <b>正面ビュー</b>：円運動として見える<br>
+        <b>真横ビュー</b>：影と重なり、単振動として見える<br><br>
+        2つは<b>同じ運動の別の見え方</b>。
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  
+  // ====== 状態 ======
+  const state = {
+    omega: 1.0,
+    A: 2.0,
+    t: 0,
+    playing: true,
+    // カメラ回転（球面座標：yaw=水平角、pitch=仰角）
+    yaw: -0.5,    // -π/2 で真横、-π で正面（-x方向）、0 で背後
+    pitch: 0.35,  // 上向き
+    show: { shadow:true, trace:true, vel:false, acc:false, proj:true },
+  };
+  
+  // ====== 3D 座標系 ======
+  // x軸: 円運動の回転軸（右向き）
+  // y軸: 鉛直上向き（画面の上下方向にほぼ対応）
+  // z軸: 奥行き
+  // 円は y-z 平面上（x=0）、中心O=原点、半径A
+  // 点P = (0, A cosθ, A sinθ)、θ = ωt
+  // 壁は x = X_WALL に立つ（y-z平面と平行）
+  // 影Q = (X_WALL, y_P, 0) ← 「x軸方向に平行光線を当てた影」ではなく、
+  //   ここでは「円の平面から x軸方向に押し出した壁面 x=X_WALL 上の対応点」として、
+  //   P と同じ y座標、z=0 の点を Q とする。
+  //   つまり Q_y = A cosθ が単振動する。
+  const X_WALL = 3.5;
+  
+  // ====== 透視投影 ======
+  // カメラは原点を注視、距離 D 離れた球面上に配置。
+  // yaw を x-z 平面での角度、pitch を y方向の仰角とする。
+  const CAM_DIST = 12;
+  const FOV = 480;
+  
+  function project(x, y, z) {
+    // まず原点中心にワールドを回転（カメラ視点に変換）
+    // カメラ位置：
+    //   cx = D cos(pitch) cos(yaw)
+    //   cy = D sin(pitch)
+    //   cz = D cos(pitch) sin(yaw)
+    // カメラ座標系での座標（カメラは原点を見ている）
+    const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw);
+    const cp = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+    
+    // yaw 回転（y軸周り）
+    const xr = x * cy - z * sy;
+    const zr = x * sy + z * cy;
+    // pitch 回転（x軸周り、原点にカメラを向ける）
+    const yr =  y * cp - zr * sp;
+    const zr2 = y * sp + zr * cp;
+    
+    // カメラからの距離
+    const cameraZ = CAM_DIST - zr2;
+    if (cameraZ <= 0.01) return null;
+    const scale = FOV / cameraZ;
+    return {
+      sx: cv.width * 0.5 + xr * scale,
+      sy: cv.height * 0.5 - yr * scale,
+      depth: cameraZ,
+    };
+  }
+  
+  // ====== 描画補助 ======
+  function drawLine3D(p1, p2, color, w=2, dash=null) {
+    const a = project(p1[0], p1[1], p1[2]);
+    const b = project(p2[0], p2[1], p2[2]);
+    if (!a || !b) return;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    if (dash) ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.moveTo(a.sx, a.sy);
+    ctx.lineTo(b.sx, b.sy);
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  function drawPolyline3D(pts, color, w=2, dash=null) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    if (dash) ctx.setLineDash(dash);
+    ctx.beginPath();
+    let first = true;
+    for (const p of pts) {
+      const q = project(p[0], p[1], p[2]);
+      if (!q) continue;
+      if (first) { ctx.moveTo(q.sx, q.sy); first = false; }
+      else ctx.lineTo(q.sx, q.sy);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  function drawSphere3D(pos, radius, color) {
+    const p = project(pos[0], pos[1], pos[2]);
+    if (!p) return;
+    const r = radius * (FOV / p.depth);
+    ctx.save();
+    // 陰影
+    const grad = ctx.createRadialGradient(p.sx - r*0.3, p.sy - r*0.3, r*0.1, p.sx, p.sy, r);
+    grad.addColorStop(0, lighten(color, 0.4));
+    grad.addColorStop(1, color);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  
+  function lighten(hex, amt) {
+    // #RRGGBB → 明るく
+    const h = hex.replace('#', '');
+    const r = Math.min(255, parseInt(h.substr(0,2),16) + amt*255);
+    const g = Math.min(255, parseInt(h.substr(2,2),16) + amt*255);
+    const b = Math.min(255, parseInt(h.substr(4,2),16) + amt*255);
+    return `rgb(${r|0},${g|0},${b|0})`;
+  }
+  
+  function drawArrow3D(from, to, color, headSize=0.18) {
+    const a = project(from[0], from[1], from[2]);
+    const b = project(to[0], to[1], to[2]);
+    if (!a || !b) return;
+    const dx = b.sx - a.sx, dy = b.sy - a.sy;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(a.sx, a.sy);
+    ctx.lineTo(b.sx, b.sy);
+    ctx.stroke();
+    // 矢印の頭
+    const hs = 12; // ピクセル
+    const ang = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(b.sx, b.sy);
+    ctx.lineTo(b.sx - hs * Math.cos(ang - 0.35), b.sy - hs * Math.sin(ang - 0.35));
+    ctx.lineTo(b.sx - hs * Math.cos(ang + 0.35), b.sy - hs * Math.sin(ang + 0.35));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  
+  function drawWall() {
+    // 壁 x=X_WALL の四角形（半透明）
+    const s = 3.2;
+    const corners = [
+      [X_WALL, -s, -s], [X_WALL, s, -s], [X_WALL, s, s], [X_WALL, -s, s]
+    ];
+    ctx.save();
+    ctx.beginPath();
+    let first = true;
+    for (const c of corners) {
+      const p = project(c[0], c[1], c[2]);
+      if (!p) { ctx.restore(); return; }
+      if (first) { ctx.moveTo(p.sx, p.sy); first = false; }
+      else ctx.lineTo(p.sx, p.sy);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(233, 238, 243, 0.55)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(93, 109, 126, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // 壁上の y軸（中心線）
+    drawLine3D([X_WALL, -s, 0], [X_WALL, s, 0], 'rgba(93,109,126,0.6)', 1);
+    ctx.restore();
+  }
+  
+  function drawCircle() {
+    // 円軌道 y-z 平面、半径 A
+    const pts = [];
+    const seg = 96;
+    for (let i = 0; i <= seg; i++) {
+      const a = (i / seg) * Math.PI * 2;
+      pts.push([0, state.A * Math.cos(a), state.A * Math.sin(a)]);
+    }
+    drawPolyline3D(pts, '#B0B7BF', 1.5);
+  }
+  
+  function drawAxis() {
+    // 回転軸（x軸）
+    drawLine3D([-0.6, 0, 0], [X_WALL + 0.3, 0, 0], '#C5CFD8', 1);
+  }
+  
+  function drawTrace(t, w, A) {
+    // 壁の右側（x > X_WALL）に時間軸を伸ばして正弦曲線を描く
+    const TRACE_LEN = 5.5;
+    const TRACE_SPAN = 4 * Math.PI / w; // 2周期分
+    const seg = 160;
+    const pts = [];
+    for (let i = 0; i <= seg; i++) {
+      const p = i / seg;
+      const tau = t - p * TRACE_SPAN;
+      const xPos = X_WALL + p * TRACE_LEN;
+      const yPos = A * Math.cos(w * tau);
+      pts.push([xPos, yPos, 0]);
+    }
+    drawPolyline3D(pts, '#B8860B', 2);
+    // 時間軸
+    drawLine3D([X_WALL, 0, 0], [X_WALL + TRACE_LEN, 0, 0], '#C5CFD8', 1);
+  }
+  
+  // ====== ドラッグ操作 ======
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+  cv.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    cv.setPointerCapture(e.pointerId);
+    clearActiveViewBtn();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    state.yaw += dx * 0.008;
+    state.pitch += dy * 0.008;
+    state.pitch = Math.max(-1.3, Math.min(1.3, state.pitch));
+  });
+  cv.addEventListener('pointerup', (e) => { dragging = false; });
+  cv.addEventListener('pointercancel', () => { dragging = false; });
+  
+  function clearActiveViewBtn() {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  }
+  
+  // ====== 視点ボタン ======
+  function animateView(targetYaw, targetPitch) {
+    const startYaw = state.yaw, startPitch = state.pitch;
+    const t0 = performance.now();
+    const dur = 600;
+    function step() {
+      const p = Math.min(1, (performance.now() - t0) / dur);
+      const e = p < 0.5 ? 2*p*p : 1 - (2-2*p)*(2-2*p)/2;
+      state.yaw = startYaw + (targetYaw - startYaw) * e;
+      state.pitch = startPitch + (targetPitch - startPitch) * e;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    step();
+  }
+  
+  document.getElementById('btn-front').onclick = () => {
+    clearActiveViewBtn();
+    document.getElementById('btn-front').classList.add('active');
+    // 正面：円運動を正面から見る → x軸方向（壁側）から円を見る
+    animateView(Math.PI / 2, 0);
+  };
+  document.getElementById('btn-side').onclick = () => {
+    clearActiveViewBtn();
+    document.getElementById('btn-side').classList.add('active');
+    // 真横：z軸方向から見る → 円がぺちゃんこの線に、影と重なる
+    animateView(0, 0);
+  };
+  document.getElementById('btn-persp').onclick = () => {
+    clearActiveViewBtn();
+    document.getElementById('btn-persp').classList.add('active');
+    animateView(-0.5, 0.35);
+  };
+  
+  // ====== UIバインド ======
+  const btnPlay = document.getElementById('btn-play');
+  const btnReset = document.getElementById('btn-reset');
+  const slOmega = document.getElementById('sl-omega');
+  const slA = document.getElementById('sl-A');
+  const vOmega = document.getElementById('v-omega');
+  const vA = document.getElementById('v-A');
+  
+  btnPlay.onclick = () => {
+    state.playing = !state.playing;
+    btnPlay.textContent = state.playing ? '一時停止' : '再生';
+  };
+  btnReset.onclick = () => { state.t = 0; };
+  slOmega.oninput = () => { state.omega = parseFloat(slOmega.value); vOmega.textContent = state.omega.toFixed(2); };
+  slA.oninput = () => { state.A = parseFloat(slA.value); vA.textContent = state.A.toFixed(1); };
+  
+  ['shadow','trace','vel','acc','proj'].forEach(k => {
+    document.getElementById('ck-' + k).onchange = (e) => { state.show[k] = e.target.checked; };
+  });
+  
+  // ====== リサイズ ======
+  function resize() {
+    const rect = cv.getBoundingClientRect();
+    cv.width = rect.width * (window.devicePixelRatio || 1);
+    cv.height = rect.height * (window.devicePixelRatio || 1);
+    ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  
+  // ====== メインループ ======
+  let last = performance.now();
+  function loop() {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (state.playing) state.t += dt;
+    
+    const w = state.omega, A = state.A, t = state.t;
+    const theta = w * t;
+    const yP = A * Math.cos(theta);
+    const zP = A * Math.sin(theta);
+    const vy = -A * w * Math.sin(theta);
+    const ay = -A * w * w * Math.cos(theta);
+    
+    // 描画
+    const dw = cv.width / (window.devicePixelRatio || 1);
+    const dh = cv.height / (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, dw, dh);
+    
+    // 背景
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, dw, dh);
+    
+    // シーン描画（奥→手前の順に近い形）
+    drawWall();
+    drawAxis();
+    drawCircle();
+    if (state.show.trace) drawTrace(t, w, A);
+    
+    // 投影線 P→Q
+    if (state.show.proj && state.show.shadow) {
+      drawLine3D([0, yP, zP], [X_WALL, yP, 0], 'rgba(160,160,160,0.8)', 1, [4, 3]);
+    }
+    
+    // 半径ベクトル O→P
+    drawLine3D([0, 0, 0], [0, yP, zP], '#0E7C7B', 2);
+    
+    // 影Q（先に描く）
+    if (state.show.shadow) {
+      drawSphere3D([X_WALL, yP, 0], 0.14, '#B8860B');
+    }
+    
+    // 速度ベクトル（影Qから y方向）
+    if (state.show.vel && state.show.shadow) {
+      const scale = 0.4;
+      const vend = yP + vy * scale;
+      drawArrow3D([X_WALL, yP, 0], [X_WALL, vend, 0], '#2980B9');
+    }
+    // 加速度ベクトル
+    if (state.show.acc && state.show.shadow) {
+      const scale = 0.3;
+      const aend = yP + ay * scale;
+      drawArrow3D([X_WALL, yP, 0], [X_WALL, aend, 0], '#E67E22');
+    }
+    
+    // 点P（最後、手前に）
+    drawSphere3D([0, yP, zP], 0.16, '#0E7C7B');
+    
+    // 数値表示
+    document.getElementById('d-x').textContent = yP.toFixed(2);
+    document.getElementById('d-v').textContent = vy.toFixed(2);
+    document.getElementById('d-a').textContent = ay.toFixed(2);
+    document.getElementById('d-T').textContent = (2 * Math.PI / w).toFixed(2);
+    
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
